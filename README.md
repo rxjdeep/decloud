@@ -1,38 +1,98 @@
+<div align="center">
+
 # DeCloud
 
-**Your own private cloud in a browser tab.** DeCloud is a self-hosted web app (and installable PWA) that turns the computer under your desk into a personal media server, file manager and control panel. Open it from your phone, laptop or TV, with no accounts and no subscriptions. Your files never leave your machine.
+**Your own private cloud in a browser tab.**
 
-![License](https://img.shields.io/badge/license-MIT-blue) ![Python](https://img.shields.io/badge/python-3.10%2B-3776ab) ![Self--hosted](https://img.shields.io/badge/self--hosted-yes-2ea44f)
+A self-hosted web app (and installable PWA) that turns the computer under your desk into a photo library, file manager, music player, audiobook reader and control panel. Open it from your phone, laptop or TV. No accounts, no subscriptions, and your files never leave your machine.
 
-## What it does
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)
+![Self-hosted](https://img.shields.io/badge/self--hosted-yes-2ea44f)
+![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8)
+![Tests](https://img.shields.io/badge/tests-138%20passing-brightgreen)
 
-- **🖼️ Gallery** — An iOS / Google Photos style library for your camera roll and screenshots: day sections, a fast year/month scrubber, pinch-to-zoom grid, multi-select, and a full-screen viewer with swipe, pinch and double-tap zoom, video playback and EXIF details.
-- **📁 Files** — A Finder / Nautilus style browser: places sidebar, path bar, list and icon views, sortable columns, search, keyboard navigation and context menus. Browse a single folder or, if you opt in, the whole machine.
-- **🎵 Music** — A full player on top of Navidrome / Subsonic with two looks (glossy black, or a Spotify-style layout), cross-device **Connect** (control playback on any device), a Trap Nation style bass visualizer, media-key and desktop media-widget support.
-- **📚 Audiobooks** — Read PDF, JSON and TXT books with real-time word highlighting and voice playback (Piper TTS).
-- **💬 AI Chat and Generate** — Local LLMs through Ollama (or cloud models) and image generation through ComfyUI.
-- **🖥️ Terminal** — A full interactive web terminal, locked behind an authenticator-app code (TOTP).
-- **📊 Lab and Logs** — Live CPU, RAM, GPU and network stats for all your machines, plus an audit trail of sign-ins, terminal unlocks and file deletions.
-- **🧠 Model Advisor, Journal, Privacy Scanner** — Optional extras for picking models that fit your hardware, voice notes, and finding your data on broker sites.
+<img src="docs/screenshots/gallery.jpg" alt="DeCloud Gallery: a photo library with day sections" width="860">
 
-Every feature is optional. The app works with zero configuration, and anything that needs an external service degrades gracefully with a helpful message.
+</div>
 
-## Built to be safe on the open internet
+---
 
-- Password login with opaque session tokens, a login throttle and CSRF protection.
-- Terminal access needs a second factor (authenticator-app code with replay and lockout protection).
-- Strict Content-Security-Policy: no third-party scripts (every library is vendored), no inline script blocks, escaped output everywhere.
-- Runs as an unprivileged user, ships with a hardened systemd unit, and binds to localhost so it is reachable only through your tunnel.
+## Contents
 
-## Quick Start
+[Highlights](#highlights) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Remote access](#remote-access) · [Terminal two-step code](#terminal-two-step-code) · [Configuration](#configuration) · [Security](#security) · [Integrations](#integrations) · [Operating it](#operating-it) · [Development](#development) · [License](#license)
 
-### Prerequisites
+---
 
-- Linux or macOS (Linux recommended for GPU features)
-- Python 3.10+
-- [Tailscale](https://tailscale.com) for secure remote access (recommended)
+## Highlights
 
-### Install
+| | |
+|---|---|
+| 🖼️ **Gallery** | An iOS / Google Photos style library for your camera roll and screenshots, built for libraries of thousands of photos. |
+| 📁 **Files** | A Finder / Nautilus style browser for one folder, or (opt-in) the whole machine. |
+| 🎵 **Music** | A full player on top of Navidrome, with two themes and cross-device **Connect**. |
+| 📚 **Audiobooks** | Read PDF, JSON and TXT books with real-time word highlighting and voice playback. |
+| 🤖 **AI** | Local chat through Ollama, image generation through ComfyUI, a hardware-aware model advisor. |
+| 🖥️ **Terminal** | A real PTY terminal in the browser, locked behind an authenticator-app code. |
+| 📊 **Lab and Logs** | Live stats for every machine you own, plus an audit trail of sign-ins and deletions. |
+
+Every app is optional. DeCloud works with zero configuration, and anything that needs an outside service degrades gracefully with a helpful message.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/mobile.jpg" alt="Gallery, viewer, Files and Logs on a phone" width="860">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/viewer.jpg" alt="Full-screen photo viewer"><br><sub><b>Viewer.</b> Swipe, pinch and double-tap zoom, drag down to close, video, details.</sub></td>
+    <td width="50%"><img src="docs/screenshots/files-icons.jpg" alt="Files in icon view"><br><sub><b>Files.</b> Icon view with live thumbnails, places sidebar, sortable list view.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/logs.jpg" alt="Audit log"><br><sub><b>Logs.</b> Every sign-in, failed attempt, terminal unlock and deletion, with IP and device.</sub></td>
+    <td width="50%"><img src="docs/screenshots/terminal.jpg" alt="Terminal two-step lock"><br><sub><b>Terminal.</b> Stays locked until you enter a code from your authenticator app.</sub></td>
+  </tr>
+</table>
+
+## What is inside
+
+### 🖼️ Gallery
+- Library, Videos and Screenshots tabs, read straight from the `Camera` and `Screenshots` folders of your backup (for example an Android phone backup).
+- Photos grouped by day with sticky headers, a **year and month scrubber** you can drag, and video length badges.
+- Pinch (or Ctrl and scroll) to change the grid density. Long-press or **Select** to pick several, then download or move to Trash.
+- Thumbnails respect the phone's rotation flag and are generated once and cached. Videos get a poster frame.
+- The viewer streams originals with Range support, so long videos seek instantly. Zooming into a photo swaps in the full-resolution file.
+- Back, forward and reload all land you on the same photo.
+
+### 📁 Files
+- Places sidebar, path bar, list and icon views, sortable columns, search, and full keyboard navigation (arrows, Enter, Backspace, Delete).
+- Right-click or long-press menus: open, download, move to Trash, Poof, Shred.
+- Opens in your home folder. Set `DECLOUD_BROWSE_ROOT=/` to browse the entire machine.
+- Photos and videos open in the same viewer as the Gallery.
+- **Swipe cleanup** lets you triage a folder Tinder-style: left for Trash, right for Poof.
+
+### 🎵 Music
+- Works with [Navidrome](https://www.navidrome.org) / any Subsonic server, with a built-in file-tag fallback.
+- **Two themes:** a glossy black player, and a Spotify-style layout with home shelves, album and artist pages, a library sidebar, queue, and a draggable full-screen player on phones.
+- **Connect:** see every signed-in device, pause on one and it pauses on all, hand playback to another device, and keep your place across refreshes and devices.
+- Bass-reactive visualizer, haptics on mobile, media keys and lock-screen controls.
+- An optional desktop companion (`static/tools/decloud-mpris.py`) adds shuffle and repeat to the KDE or GNOME media widget.
+
+### 📚 Audiobooks and 🤖 AI
+- Audiobooks: PDF, JSON and TXT, Piper TTS voices, bookmarks, chapter navigation, AI summaries.
+- AI Chat through Ollama or a cloud API. Image generation through ComfyUI.
+- **Model Advisor:** reads your hardware and scores models from HuggingFace using real file sizes, then downloads them into the right folders. Split GGUF files are merged and chat models are imported into Ollama for you.
+- A voice assistant that can navigate the app and answer questions.
+
+### 📊 Lab, Logs, Terminal
+- **My Lab:** CPU, RAM, GPU, disk and network for this machine and any others you add (paired with a six-digit code, Bluetooth style).
+- **Logs:** an append-only audit trail (`audit.log`, mode 0600, rotated at about 1 MB) with filters for sign-ins, terminal, files and alerts.
+- **Terminal:** a full-screen xterm.js terminal, protected by [two-step codes](#terminal-two-step-code).
+
+## Quick start
+
+**Requirements:** Linux or macOS (Linux recommended for GPU features), Python 3.10+, and [Tailscale](https://tailscale.com) if you want remote access. Windows is supported for everything except the interactive terminal (see [Windows](#windows)).
 
 ```bash
 git clone https://github.com/rxjdeep/decloud.git ~/decloud
@@ -40,214 +100,187 @@ cd ~/decloud
 ./install.sh
 ```
 
-The installer:
-1. Creates a Python virtual environment
-2. Installs all dependencies
-3. Creates a `.env` config file with a random secret key
-4. Sets up a systemd service (auto-starts on boot, auto-restarts on crash)
-5. Starts a secure tunnel via Tailscale Funnel
-6. Prints the URL + QR code for your phone
+The installer creates a virtual environment, installs dependencies, writes a `.env` with a random secret key and a generated 8-digit passcode (change it any time in Settings or `.env`), sets up a systemd user service (auto-start on boot, auto-restart on crash), starts a Tailscale Funnel, and prints your URL with a QR code for your phone.
 
-### Access from anywhere
+Already have a copy and just want to run it?
 
-DeCloud uses **Tailscale Funnel** for secure remote access:
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# set DECLOUD_PIN in .env first, otherwise there is no sign-in
+.venv/bin/python app.py        # http://127.0.0.1:8899
+```
 
-- **Permanent URL**: `https://your-machine.tail1234.ts.net`
-- **No port forwarding** — works behind NAT/firewalls
-- **End-to-end encrypted** — WireGuard + TLS 1.3
-- **Friends don't need Tailscale** — they just open the link
+## Remote access
 
-The first time you open DeCloud, sign in with your password.
+DeCloud binds to **localhost only**. To reach it from your phone, put a tunnel in front of it. The supported way is [Tailscale Funnel](https://tailscale.com/kb/1223/funnel):
+
+```bash
+tailscale funnel 8899          # https://<machine>.<tailnet>.ts.net
+```
+
+- No port forwarding, works behind NAT and firewalls.
+- End-to-end encrypted (WireGuard and TLS 1.3), with a permanent URL.
+- Friends need no Tailscale account, they just open the link.
+- `cloudflared` works too if you prefer it.
+
+Open the URL, sign in with your password, and choose **Add to Home Screen** to install it as an app.
+
+## Terminal two-step code
+
+The web terminal is a shell on your machine, so it asks for a second factor even after you have signed in. Set it up **once, in your own terminal on the server** (never through the web UI, so an attacker who reaches the homepage cannot enrol their own device):
+
+```bash
+.venv/bin/python scripts/totp_setup.py
+```
+
+It prints a QR code (needs `qrencode`) and a secret. Add it to any authenticator app (Aegis, 2FAS, Google Authenticator: TOTP, SHA1, 6 digits, 30 s). Until you do, the Terminal stays locked and tells you how to fix that.
+
+- A correct code unlocks the terminal for 4 hours for that session.
+- Five wrong codes lock it for 15 minutes. A code can be used only once.
+- Test a code without the browser: `.venv/bin/python scripts/totp_setup.py --check 123456`.
+- Replace the secret with `--reset`.
 
 ## Configuration
 
-All configuration is via environment variables in `.env` (see `.env.example`):
+Everything is configured through environment variables in `.env` (see [`.env.example`](.env.example)). Restart after editing.
 
 | Variable | Default | Description |
 |---|---|---|
-| `DECLOUD_PORT` | `8899` | Port to run on |
-| `DECLOUD_PIN` | *(random)* | Passcode to unlock the app (8+ chars recommended) |
-| `DECLOUD_BOOKS_DIR` | `~/Books` | Where your books live |
-| `DECLOUD_FILES_DIR` | `~` (home) | Directory for the Files browser |
-| `DECLOUD_MUSIC_DIR` | `~/Music` | Music library path |
-| `OLLAMA_HOST` | `http://localhost:11434` | Ollama LLM endpoint |
-| `DECLOUD_LLM_MODEL` | `llama3.2` | Default LLM model |
+| `DECLOUD_PORT` | `8899` | Port to listen on |
+| `DECLOUD_HOST` | `127.0.0.1` | Bind address. Leave it on loopback and use a tunnel |
+| `DECLOUD_PIN` | *(generated by the installer)* | Your sign-in password (8 to 64 characters). Leave it unset only for local experiments, because then there is no sign-in |
+| `DECLOUD_FILES_DIR` | `~` | Base folder for Files, and the folder that contains `Camera` and `Screenshots` for the Gallery |
+| `DECLOUD_BROWSE_ROOT` | *(= `DECLOUD_FILES_DIR`)* | Set to `/` to let Files browse the whole machine |
+| `DECLOUD_BOOKS_DIR` | `~/Books` | Audiobook library |
+| `DECLOUD_MUSIC_DIR` | `~/Music` | Music folder (file-tag fallback) |
+| `DECLOUD_NAVIDROME_URL` | `http://127.0.0.1:4533/navidrome` | Navidrome / Subsonic server |
+| `DECLOUD_NAVIDROME_USER`, `DECLOUD_NAVIDROME_PASS` | | Navidrome credentials (used server-side only) |
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama endpoint |
+| `DECLOUD_LLM_MODEL` | `llama3.2` | Default chat model |
 | `COMFY_URL` | `http://localhost:8188` | ComfyUI endpoint |
-| `DECLOUD_PIPER_DIR` | `~/.local/share/piper` | Piper TTS voice models |
+| `DECLOUD_PIPER_DIR` | `~/.local/share/piper` | Piper voice models |
+| `DECLOUD_MODELS_DIR`, `DECLOUD_COMFY_MODELS_DIR` | `~/Models`, `~/ComfyUI/models` | Where the Model Advisor downloads to |
+| `DECLOUD_TOTP_FILE`, `DECLOUD_AUDIT_FILE` | `totp.json`, `audit.log` | Locations of the terminal secret and audit trail |
+| `DECLOUD_UPDATE_REPO` | `rxjdeep/decloud` | GitHub repo the self-updater checks |
 
-### Optional features
-
-| Variable | Description |
-|---|---|
-| `DECLOUD_OSINT_DIR` | Path to osint-tools for privacy scanner |
-| `DECLOUD_JOURNAL_DIR` | Obsidian vault path for journal features |
-| `DECLOUD_HERMES_HOME` | Hermes Agent home for the Agents panel |
-
-## CLI Commands
-
-```bash
-./decloud start      # Start app + tunnel
-./decloud stop       # Stop everything
-./decloud restart    # Restart app + tunnel
-./decloud status     # Show what's running
-./decloud qr         # Show current URL + QR code
-./decloud version    # Show version
-```
-
-## Architecture
-
-```
-app.py                  # Entry point, SSL/network setup
-shared.py               # Config, shared state, helpers
-decloud                 # CLI wrapper (start/stop/qr/status)
-requirements.txt        # Python dependencies
-install.sh              # One-command installer
-
-routes/                 # Flask Blueprints (one per feature)
-  __init__.py           # Blueprint registry
-  books.py              # Audiobook API
-  ollama.py             # AI chat proxy
-  lego.py               # File browser
-  terminal.py           # WebSocket terminal
-  system.py             # System stats
-  ...
-
-templates/
-  index.html            # Single-page app entry
-
-static/
-  css/                  # Stylesheets (liquid glass design)
-  js/
-    app.js              # Bootstrap
-    modules/            # Feature modules (one per app)
-  icons/                # PWA icons
-  manifest.json         # PWA manifest
-  sw.js                 # Service worker
-```
-
-### Adding a new feature
-
-1. Create `routes/myfeature.py` with a Blueprint
-2. Register it in `routes/__init__.py`
-3. Create `static/js/modules/myfeature.js`
-4. Add it to the `APPS` array in `static/js/modules/core.js`
-5. Bump the cache version in `static/sw.js`
-
-No changes to `app.py` needed.
-
-## Optional Integrations
-
-### Ollama (AI Chat)
-```bash
-# Install: https://ollama.com
-ollama pull llama3.2
-```
-
-### AI Model Advisor (HuggingFace downloads)
-
-In the System screen, DeCloud shows which models actually fit your machine
-(based on real file sizes from HuggingFace) with **Get** buttons that
-download into the right place:
-
-- **Chat** → `~/Models/chat` and auto-imported into Ollama (they appear in
-  AI Chat right away; split GGUF archives are merged for you)
-- **Image / Video / Music** → your ComfyUI models folders
-- Paste any `huggingface.co/...` link to analyze any repo
-
-```env
-DECLOUD_MODELS_DIR=~/Models            # where chat models download
-DECLOUD_COMFY_MODELS_DIR=~/ComfyUI/models   # image/video/music target
-```
-
-### ComfyUI (Image Generation)
-```bash
-# Install: https://github.com/comfyanonymous/ComfyUI
-# Start it, then set COMFY_URL in .env
-```
-
-### Piper TTS (Audiobook Voices)
-```bash
-# Install: pip install piper-tts
-# Download voice models to ~/.local/share/piper/
-# Get voices from: https://github.com/rhasspy/piper/blob/master/VOICES.md
-```
-
-## Design
-
-Liquid glass aesthetic: frosted glass cards, rounded corners (22px), indigo accent (#6366f1). Light mode default with auto dark mode. Mobile-first responsive layout.
-
-## Service Management
-
-```bash
-systemctl --user status decloud      # Check status
-systemctl --user restart decloud     # Restart after config changes
-systemctl --user stop decloud        # Stop
-journalctl --user -u decloud -f      # View live logs
-```
-
-## Updates
-
-Settings → About → **Check for updates**. The self-updater is designed to
-never break your machine:
-
-- Updates are **explicit** — you see the exact version and confirm first
-- Refuses to touch a tree with your own local edits
-- The new version is **test-booted on a scratch port before anything
-  restarts**; failures roll back automatically and your current version
-  keeps running
-- If the new version still crashes on startup, DeCloud detects it and
-  **reverts to the last working version by itself**
-- A "Revert last update" button returns you to the previous release
-- Requires a git install (see Quick Start); `.env`, books, and settings
-  are never touched
+Optional integrations: `DECLOUD_OSINT_DIR` (privacy scanner), `DECLOUD_JOURNAL_DIR` (Obsidian vault with voice notes), `DECLOUD_HERMES_HOME` (agents panel).
 
 ## Security
 
-- **Passcode authentication** — the app is locked behind `DECLOUD_PIN`
-  (8 digits generated at install; passphrases up to 64 chars). The
-  passcode is only used at login; after that the app uses an opaque
-  session token (never the passcode) with a 30-day expiry.
-- **CSRF protection** — state-changing requests require a per-session
-  CSRF token.
-- **Rate limiting + lockout** — 5 login attempts per minute per IP, with
-  exponential backoff after repeated failures.
-- **Localhost by default** — the app binds to 127.0.0.1 unless you
-  explicitly set `DECLOUD_HOST`; binding wider prints a loud warning.
-- **Tailscale Funnel only** — no third-party relay fallbacks. End-to-end
-  encrypted tunnel, no open ports. (cloudflared works manually if you
-  prefer.)
-- **Hardened shell** — quick commands run shell-free from a fixed
-  allowlist; the interactive terminal requires the session token,
-  including over tunnels.
-- **Security headers** — CSP, X-Frame-Options, nosniff, Referrer-Policy,
-  and no-store caching on API responses.
-- **Local-only usage stats** — the Usage screen logs activity to a local
-  JSON file; nothing is tracked externally, nothing leaves your machine.
+DeCloud is designed to be exposed to the internet through a tunnel, so the defaults are strict.
 
-See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for the full audit and its
-accepted limitations.
+- **Authentication:** password login. The password is used once; afterwards the app uses an opaque session token (HttpOnly, SameSite=Strict, 30-day expiry), never the password. Logins are throttled with exponential backoff.
+- **Second factor for the shell:** TOTP with replay protection and lockout (see above). The terminal socket refuses connections without it.
+- **CSRF protection:** every state-changing request needs a per-session token.
+- **Strict Content-Security-Policy:** no third-party scripts (every library is vendored under `static/vendor`), no inline `<script>` blocks, no `javascript:` URLs. All user-supplied strings are escaped before they reach the page, and inline handlers receive values through a JSON-safe helper.
+- **Path safety:** every filesystem path from the browser is resolved and checked against the configured root; symlink and traversal attempts are rejected. Media endpoints serve only image and video files.
+- **Least privilege:** runs as your normal user, binds to localhost, and the systemd unit the installer writes sets `NoNewPrivileges`, `RestrictSUIDSGID`, `LockPersonality`, `RestrictRealtime`, a memory ceiling and a task limit.
+- **Audit trail:** sign-ins, failures, terminal unlocks and denials, and file deletions are logged with IP and device. Passwords and codes are never written down.
+- **No telemetry.** Usage stats stay in a local JSON file.
 
-## Testing
+Please report vulnerabilities privately (GitHub Security tab) rather than in a public issue. See also [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for the audit and its accepted limitations.
+
+> **Note:** `NoNewPrivileges` also stops `sudo` inside the web terminal. Use SSH for administration. Remove that line from the unit file if you disagree.
+
+## Integrations
+
+<details>
+<summary><b>Navidrome (Music)</b></summary>
+
+Install [Navidrome](https://www.navidrome.org), point it at your music, then add to `.env`:
+
+```env
+DECLOUD_NAVIDROME_URL=http://127.0.0.1:4533/navidrome
+DECLOUD_NAVIDROME_USER=you
+DECLOUD_NAVIDROME_PASS=your-navidrome-password
+```
+
+DeCloud proxies streams, artwork, stars and scrobbles server-side, so your Navidrome credentials never reach the browser.
+
+For shuffle and repeat in the KDE or GNOME media widget, run the companion on your desktop:
+
+```bash
+curl -O https://<your-decloud>/static/tools/decloud-mpris.py
+python3 decloud-mpris.py --install-service
+```
+</details>
+
+<details>
+<summary><b>Ollama (AI Chat) and the Model Advisor</b></summary>
+
+```bash
+# https://ollama.com
+ollama pull llama3.2
+```
+
+Open **My Lab** to see which models fit your machine. **Get** downloads them to the right place, and chat models are imported into Ollama automatically.
+
+```env
+DECLOUD_MODELS_DIR=~/Models
+DECLOUD_COMFY_MODELS_DIR=~/ComfyUI/models
+```
+</details>
+
+<details>
+<summary><b>ComfyUI (images) and Piper (audiobook voices)</b></summary>
+
+```bash
+# ComfyUI: https://github.com/comfyanonymous/ComfyUI  (start it, then set COMFY_URL)
+# Piper:   pip install piper-tts  and put voices in ~/.local/share/piper/
+```
+</details>
+
+## Operating it
+
+```bash
+./decloud start | stop | restart | status | qr | version
+systemctl --user status decloud       # service state
+systemctl --user restart decloud      # after editing .env
+journalctl --user -u decloud -f       # live logs
+```
+
+**Updates:** Settings > About > *Check for updates*. The updater shows the exact version and asks first, refuses to touch a tree with local edits, test-boots the new version on a scratch port before restarting, rolls back automatically on failure, and offers a one-click revert. `.env`, your books and settings are never touched.
+
+### Windows
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+.\decloud.ps1 status
+```
+
+Everything works except the interactive terminal, which needs a POSIX PTY.
+
+## Development
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest tests/        # 99 security + smoke tests
+python -m pytest -q          # 138 tests: auth, path security, terminal allowlist, TOTP, gallery, updater
 ```
 
-CI runs the suite on Ubuntu, macOS, and Windows.
+Project layout:
 
-## Windows
-
-Windows is supported (the app itself runs anywhere Python 3.10+ does):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\setup.ps1   # install + logon task
-.\decloud.ps1 status                                   # manage the app
+```
+app.py                 entry point
+shared.py              config, sessions, security headers, helpers
+audit.py               append-only audit trail
+routes/                Flask blueprints, one per feature
+  gallery.py           media list, thumbnails, posters, inline file serving
+  lego.py              Files browser and file actions
+  security.py          terminal TOTP and the logs API
+  music.py             Navidrome proxy and the Connect WebSocket
+  terminal.py          PTY terminal over WebSocket
+templates/index.html   single-page app shell
+static/
+  js/modules/          one module per app (gallery.js, lego.js, music.js, nav.js, ...)
+  css/                 app.css, gallery.css, onboarding.css
+  vendor/              xterm, three, qrcode, cannon-es, fonts (served locally)
+  tools/               desktop media-widget companion
+scripts/               TOTP setup, version bump, updater
+tests/                 pytest suite
 ```
 
-The interactive web terminal requires Linux/macOS (it uses a PTY) and
-shows a friendly message on Windows; every other feature works.
+Adding an app: create `routes/myapp.py` with a Blueprint and register it in `routes/__init__.py`, add `static/js/modules/myapp.js`, list it in `APPS` in `core.js`, and bump the cache version in `static/sw.js`. See [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md) for conventions.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE). Use it, change it, host it for your family.

@@ -266,6 +266,14 @@ EnvironmentFile=${APP_DIR}/.env
 ExecStart=${APP_DIR}/.venv/bin/python ${APP_DIR}/app.py
 Restart=always
 RestartSec=3
+# Hardening. NoNewPrivileges also stops sudo inside the web terminal (use SSH for admin work).
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+MemoryMax=8G
+TasksMax=2048
 
 [Install]
 WantedBy=default.target
