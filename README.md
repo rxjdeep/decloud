@@ -1,26 +1,28 @@
 # DeCloud
 
-A self-hosted PWA dashboard for audiobooks, AI chat, file browsing, system monitoring, and more. Secure by default, no accounts, no cloud dependencies.
+**Your own private cloud in a browser tab.** DeCloud is a self-hosted web app (and installable PWA) that turns the computer under your desk into a personal media server, file manager and control panel. Open it from your phone, laptop or TV, with no accounts and no subscriptions. Your files never leave your machine.
 
-![License](https://img.shields.io/badge/license-MIT-blue)
+![License](https://img.shields.io/badge/license-MIT-blue) ![Python](https://img.shields.io/badge/python-3.10%2B-3776ab) ![Self--hosted](https://img.shields.io/badge/self--hosted-yes-2ea44f)
 
-## Features
+## What it does
 
-- **📚 Audiobooks** — Real-time word highlighting, voice playback (Piper TTS), bookmarks. Reads PDF, JSON, and TXT.
-- **💬 AI Chat** — Local LLM via Ollama, or cloud models
-- **📁 Files** — Fast file browser with thumbnail previews, image gallery
-- **🎨 Generate** — AI image generation via ComfyUI (FLUX, SDXL, etc)
-- **📊 System Monitor** — CPU, RAM, GPU, network stats in real time
-- **🧠 AI Model Advisor** — reads your hardware, scores chat/image/video/music
-  models from HuggingFace (real file sizes, not guesses), and downloads them
-  into the right app folders — split GGUF archives merge automatically and
-  chat models import straight into Ollama. No terminal needed.
-- **🖥️ Terminal** — Full interactive web terminal (WebSocket-based)
-- **🎵 Music** — Browse and play your local music library
-- **🔐 Privacy Scanner** — Optional OSINT tool to find and remove your data from broker sites
-- **📓 Journal** — Optional Obsidian vault integration with voice notes (Whisper STT)
+- **🖼️ Gallery** — An iOS / Google Photos style library for your camera roll and screenshots: day sections, a fast year/month scrubber, pinch-to-zoom grid, multi-select, and a full-screen viewer with swipe, pinch and double-tap zoom, video playback and EXIF details.
+- **📁 Files** — A Finder / Nautilus style browser: places sidebar, path bar, list and icon views, sortable columns, search, keyboard navigation and context menus. Browse a single folder or, if you opt in, the whole machine.
+- **🎵 Music** — A full player on top of Navidrome / Subsonic with two looks (glossy black, or a Spotify-style layout), cross-device **Connect** (control playback on any device), a Trap Nation style bass visualizer, media-key and desktop media-widget support.
+- **📚 Audiobooks** — Read PDF, JSON and TXT books with real-time word highlighting and voice playback (Piper TTS).
+- **💬 AI Chat and Generate** — Local LLMs through Ollama (or cloud models) and image generation through ComfyUI.
+- **🖥️ Terminal** — A full interactive web terminal, locked behind an authenticator-app code (TOTP).
+- **📊 Lab and Logs** — Live CPU, RAM, GPU and network stats for all your machines, plus an audit trail of sign-ins, terminal unlocks and file deletions.
+- **🧠 Model Advisor, Journal, Privacy Scanner** — Optional extras for picking models that fit your hardware, voice notes, and finding your data on broker sites.
 
-All features are optional — the app works with zero configuration. Features that need external services (Ollama, ComfyUI, Piper) gracefully degrade and show helpful messages until configured.
+Every feature is optional. The app works with zero configuration, and anything that needs an external service degrades gracefully with a helpful message.
+
+## Built to be safe on the open internet
+
+- Password login with opaque session tokens, a login throttle and CSRF protection.
+- Terminal access needs a second factor (authenticator-app code with replay and lockout protection).
+- Strict Content-Security-Policy: no third-party scripts (every library is vendored), no inline script blocks, escaped output everywhere.
+- Runs as an unprivileged user, ships with a hardened systemd unit, and binds to localhost so it is reachable only through your tunnel.
 
 ## Quick Start
 
@@ -55,7 +57,7 @@ DeCloud uses **Tailscale Funnel** for secure remote access:
 - **End-to-end encrypted** — WireGuard + TLS 1.3
 - **Friends don't need Tailscale** — they just open the link
 
-The first time you open DeCloud, enter your passcode to unlock (tap ✓ after typing).
+The first time you open DeCloud, sign in with your password.
 
 ## Configuration
 
