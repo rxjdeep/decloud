@@ -1,0 +1,85 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+self-signed.*
+secrets/
+.hermes/
+
+# Credentials
+config-local.yaml
+auth.json
+credentials.json
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.pyc
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+npm-debug.log
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache (generated at runtime, never commit)
+audio_cache/
+thumb_cache/
+text_cache/
+voice_clips/
+voices/
+openvoice_checkpoints/
+telemetry/*.json
+__pycache__/
+.cache/
+*.cache
+
+# SSL certs (user-specific)
+*.crt
+*.key
+
+# Runtime
+settings.json
+run_tts.sh
+.update_meta.json
+
+# Runtime artifacts (never commit)
+*.pid
+tunnel.url
+voice_hermes_session.txt
+voice_history.json
+sessions.json
+sessions.json.tmp
+
+# Lab pairing keys (cert, token)
+lab-state/
+music_index.json
+music_state.json
+music_session.json
+
+# Runtime secrets / logs
+totp.json
+audit.log
+audit.log.1

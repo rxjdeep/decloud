@@ -1,0 +1,211 @@
+// ===== Module: comfy =====
+let comfyPollTimer = null;
+
+async function loadComfyStatus() {
+  try {
+    const r = await fetch('/api/comfy/status');
+    const d = await r.json();
+    const bar = document.getElementById('comfy-status-bar');
+    if (!d.online) {
+      bar.innerHTML = 'ComfyUI offline ' +
+        '<button class="models-get-btn" style="margin-left:10px" onclick="comfyStart()">Start ComfyUI</button>' +
+        '<button class="models-get-btn" style="margin-left:6px;background:var(--glass);color:var(--text);border:1px solid var(--glass-border)" onclick="loadComfyStatus()">Check again</button>';
+      bar.className = 'comfy-status-bar offline';
+      document.getElementById('comfy-generate-btn').disabled = true;
+      const hint = document.getElementById('comfy-offline-hint');
+      if (hint) hint.style.display = 'none';
+      comfyShowLog();
+      return;
+    }
+    const hint = document.getElementById('comfy-offline-hint');
+    if (hint) hint.style.display = 'none';
+    bar.className = 'comfy-status-bar online';
+    const vramUsed = ((d.vram_total - d.vram_free) / 1e9).toFixed(1);
+    const vramTotal = (d.vram_total / 1e9).toFixed(1);
+    const queueText = d.queue_running > 0 ? ` · ${d.queue_running} running` : '';
+    const pendingText = d.queue_pending > 0 ? ` · ${d.queue_pending} queued` : '';
+    bar.innerHTML = `${escapeHtml(d.gpu)} · VRAM ${vramUsed}/${vramTotal}GB${queueText}${pendingText}`;
+    document.getElementById('comfy-generate-btn').disabled = false;
+  } catch {
+    document.getElementById('comfy-status-bar').innerHTML = 'Failed to check status';
+  }
+}
+
+async function loadComfyModels() {
+  try {
+    const r = await fetch('/api/comfy/models');
+    const d = await r.json();
+    if (d.error) return;
+    // Could populate checkpoint/lora selectors here in the future
+  } catch {}
+}
+
+async function loadComfyGallery() {
+  try {
+    const r = await fetch('/api/comfy/gallery');
+    const d = await r.json();
+    if (d.error || !d.images || d.images.length === 0) {
+      document.getElementById('comfy-gallery').innerHTML = '<span class="text-dim">No generations yet</span>';
+      return;
+    }
+    const gallery = document.getElementById('comfy-gallery');
+    gallery.innerHTML = d.images.slice(0, 20).map(img => 
+      `<div class="comfy-gallery-item" data-url="${escapeHtml(img.url)}" onclick="openComfyImage(this.dataset.url)"><img src="${escapeHtml(img.url)}&amp;preview=1" loading="lazy" alt="" /></div>`
+    ).join('');
+  } catch {}
+}
+
+function openComfyImage(url) {
+  // Open in new tab for full quality
+  window.open(url, '_blank');
+}
+
+async function comfyGenerate() {
+  const prompt = document.getElementById('comfy-prompt').value.trim();
+  if (!prompt) return;
+
+  const sizeStr = document.getElementById('comfy-size').value;
+  const [width, height] = sizeStr.split('x').map(Number);
+  const steps = parseInt(document.getElementById('comfy-steps').value);
+  const seedStr = document.getElementById('comfy-seed').value.trim();
+  const seed = seedStr ? parseInt(seedStr) : 0;
+
+  const btn = document.getElementById('comfy-generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+
+  const progress = document.getElementById('comfy-progress');
+  const progressText = document.getElementById('comfy-progress-text');
+  const progressFill = document.getElementById('comfy-progress-fill');
+  const result = document.getElementById('comfy-result');
+  progress.style.display = 'block';
+  progressText.textContent = 'Queuing generation...';
+  progressFill.style.width = '0%';
+  result.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/comfy/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, width, height, steps, seed }),
+    });
+    const d = await r.json();
+    if (d.error) {
+      progressText.innerHTML = `<span style="color:var(--red)">Error: ${escapeHtml(d.error)}</span>`;
+      btn.disabled = false;
+      btn.textContent = 'Generate';
+      return;
+    }
+
+    // Poll for completion
+    const promptId = d.prompt_id;
+    let elapsed = 0;
+    comfyPollTimer = setInterval(async () => {
+      elapsed += 1;
+      try {
+        const pr = await fetch(`/api/comfy/progress/${encodeURIComponent(promptId)}`);
+        if (pr.status === 503) return;  // ComfyUI hiccup. Keep polling
+        const pd = await pr.json().catch(() => ({}));
+        if (pd.error || !pr.ok) {
+          clearInterval(comfyPollTimer);
+          comfyPollTimer = null;
+          progressText.innerHTML = `<span style="color:var(--red)">Error: ${escapeHtml(pd.error || `HTTP ${pr.status}`)}</span>`;
+          btn.disabled = false;
+          btn.textContent = 'Generate';
+        } else if (pd.done) {
+          clearInterval(comfyPollTimer);
+          comfyPollTimer = null;
+          progressFill.style.width = '100%';
+          progressText.textContent = 'Done!';
+          if (pd.images && pd.images.length > 0) {
+            result.style.display = 'block';
+            result.innerHTML = pd.images.map(img => 
+              `<img src="${escapeHtml(img.url)}" alt="" data-url="${escapeHtml(img.url)}" onclick="openComfyImage(this.dataset.url)" style="width:100%;border-radius:12px;cursor:pointer" />`
+            ).join('');
+          }
+          btn.disabled = false;
+          btn.textContent = 'Generate';
+          loadComfyGallery();
+          loadComfyStatus();
+          setTimeout(() => { progress.style.display = 'none'; }, 2000);
+        } else {
+          progressText.textContent = `Generating... ${elapsed}s${pd.pending > 0 ? ` (${pd.pending} in queue)` : ''}`;
+          progressFill.style.width = `${Math.min(90, elapsed * 5)}%`;
+        }
+      } catch {}
+    }, 1000);
+  } catch (e) {
+    progressText.innerHTML = `<span style="color:var(--red)">Error: ${escapeHtml(e.message)}</span>`;
+    btn.disabled = false;
+    btn.textContent = 'Generate';
+  }
+}
+
+// Refresh ComfyUI status periodically when on that screen
+setInterval(() => {
+  if (document.getElementById('comfy-screen')?.classList.contains('active')) {
+    loadComfyStatus();
+  }
+}, 5000);
+
+// ─── Long-press to save ─────────────────────────────────
+
+// ─── ComfyUI lifecycle (start/stop/log from the UI) ─────────
+async function comfyStart() {
+  const bar = document.getElementById('comfy-status-bar');
+  bar.innerHTML = 'Starting ComfyUI… (usually 20-60s)';
+  try {
+    const r = await fetch('/api/comfy/start', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) {
+      bar.innerHTML = escapeHtml(d.error || 'Could not start ComfyUI');
+      return;
+    }
+    comfyPollUntilOnline(0);
+  } catch (e) {
+    bar.innerHTML = 'Could not reach the server: ' + escapeHtml(e.message || 'network');
+  }
+}
+
+async function comfyPollUntilOnline(attempt) {
+  if (attempt > 30) {
+    loadComfyStatus();
+    comfyShowLog();
+    return;
+  }
+  try {
+    const r = await fetch('/api/comfy/status');
+    const d = await r.json();
+    if (d.online) { loadComfyStatus(); return; }
+  } catch (e) {}
+  setTimeout(() => comfyPollUntilOnline(attempt + 1), 2000);
+}
+
+async function comfyStop() {
+  if (!confirm('Stop ComfyUI? Image and music generation will pause.')) return;
+  try {
+    const r = await fetch('/api/comfy/stop', { method: 'POST' });
+    const d = await r.json();
+    alert(d.message || d.error || 'Done');
+    loadComfyStatus();
+  } catch (e) {}
+}
+
+async function comfyShowLog() {
+  try {
+    const r = await fetch('/api/comfy/log');
+    const d = await r.json();
+    const hint = document.getElementById('comfy-offline-hint');
+    if (!hint || !d.log || !d.log.length) return;
+    hint.style.display = '';
+    hint.innerHTML = '<div class="empty-icon">🖥️</div>' +
+      '<h3>ComfyUI is starting (or failed to start)</h3>' +
+      '<p class="empty-hint">Last lines from its log:</p>' +
+      '<pre class="musicgen-song-lyrics" style="text-align:left;max-height:140px;overflow:auto">' +
+      escapeHtml(d.log.slice(-12).join('\n')) + '</pre>' +
+      (d.online ? '<p class="empty-hint">It is online now.</p>' : '');
+  } catch (e) {}
+}
+
+window.comfyStart = comfyStart;
+window.comfyStop = comfyStop;

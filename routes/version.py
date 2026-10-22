@@ -1,0 +1,209 @@
+"""Version info route for About panel.
+
+Single source of truth: VERSION below, which must match CHANGELOG[0].
+`date` shown in the About panel is the release date of that entry.
+"""
+import json
+from flask import Blueprint, jsonify
+
+bp = Blueprint('version', __name__)
+
+VERSION = "0.5.0"
+
+CHANGELOG = [
+    {
+        "version": "0.5.0",
+        "date": "2026-10-23",
+        "changes": [
+            "Gallery, Files browser, Logs, two-step Terminal, XSS hardening",
+            "Gallery: iOS/Google-Photos style library with viewer",
+            "Files: Finder/Nautilus style browser over the whole machine (opt-in via DECLOUD_BROWSE_ROOT)",
+            "Terminal needs a TOTP code (scripts/totp_setup.py)",
+            "Logs screen with audit trail",
+            "CSP: no CDN, no inline scripts, many XSS sinks escaped",
+            "Music: glossy and Spotify themes, Connect, visualizer",
+            "Router: back/forward navigation",
+        ]
+    },
+    {
+        "version": "0.4.1",
+        "date": "2026-10-11",
+        "changes": [
+            "Fix Windows CI (musicgen test file handle)",
+            "Tests: close streamed audio before deleting, so the suite passes on Windows",
+        ]
+    },
+    {
+        "version": "0.4.0",
+        "date": "2026-10-11",
+        "changes": [
+            "My Lab: whole-homelab overview card in three styles",
+            "System screen is now My Lab: one iPhone-sized card for this machine plus paired devices, with Neofetch, Rack and Constellation styles and a screenshot mode",
+            "Add devices Bluetooth-style: Find devices on my Wi-Fi, tap Add, check both screens show the same 6-digit number, tap Allow",
+            "Device stats travel over HTTPS pinned to each device's own certificate; keys only unlock stats and can be reset anytime",
+            "DeCloud stays localhost-only unless you turn on Let other devices add this computer",
+            "Headless boxes (Pi, NAS, Proxmox) run a tiny stats-only agent: one command, approves in the terminal, starts on boot",
+            "Shows Docker/Podman containers, loaded Ollama models, chosen systemd services and top processes",
+            "Fix: opening a #screen link no longer crashes before telemetry loads",
+        ]
+    },
+    {
+        "version": "0.3.0",
+        "date": "2026-10-11",
+        "changes": [
+            "Polish + fixes; Liquid UI, Music Generator, Model Advisor, ComfyUI lifecycle",
+            "Liquid UI: press-squash, ripples and stretchy AI spread (experimental apps stay hidden, disabled buttons dim again)",
+            "Music Generator, AI Model Advisor with one-tap downloads, ComfyUI start/stop/log from the UI, neofetch-style System panel",
+            "Fix split GGUF downloads deleting themselves when merged",
+            "Fix blank Legos (three.js now from jsdelivr, allowed by CSP)",
+            "QR codes generated in the browser (no third-party QR service, tunnel URL stays private)",
+            "Fix unstyled onboarding button and broken journal mic icon",
+            "Agents Recent Activity shows 'No activity yet.' instead of loading forever",
+            "Music/ComfyUI generation polls stop on errors and re-enable the button",
+            "XSS hardening: data-* attributes instead of inline onclick values, escaped system/ComfyUI fields, removed duplicate escapeHtml",
+            "Service worker no longer caches /api/ responses",
+        ]
+    },
+    {
+        "version": "0.2.1",
+        "date": "2026-09-07",
+        "changes": [
+            "Polish pass: TUI non-blocking polls, session caching, agent workflow docs",
+            "TUI fetches run in worker threads so a slow/offline app never blocks the UI",
+            "TUI session token is cached in memory and invalidated on 401",
+            "Fixed session-cache bug that skipped loading the saved session",
+            "Added comprehensive AGENTS.md + CLAUDE.md workflow (test/bug/dependency/release protocols) for all agents",
+        ]
+    },
+    {
+        "version": "0.2.0",
+        "date": "2026-09-06",
+        "changes": [
+            "TUI dashboard: 'decloud tui'",
+            "'decloud tui' opens a brutalist terminal dashboard (system, voice, music, devices, logs)",
+            "Update panel + 'U' action reuse the verified updater",
+            "works even when the app is offline",
+            "Optional 'textual' dependency via requirements-tui.txt (friendly one-line hint if missing)",
+            "Passcode login handled in-TUI and the session is stored in ~/.config/decloud",
+        ]
+    },
+    {
+        "version": "0.1.0",
+        "date": "2026-09-06",
+        "changes": [
+            "Terminal updates: 'decloud update' CLI",
+            "'decloud update' command (check / update / rollback) shares the in-app updater's verified logic",
+            "install.sh symlinks decloud into ~/.local/bin so it's on PATH",
+        ]
+    },
+    {
+        "version": "0.0.6",
+        "date": "2026-09-06",
+        "changes": [
+            "One-click updates: auto-release pipeline, semver compare, supervised restarts",
+            "Updater only offers genuine upgrades (semver compare. No more downgrade offers)",
+            "GitHub Action auto-creates a git tag + release for each version bump (no manual tagging)",
+            "Manual ./decloud starts now supervise the app so self-update restarts work without systemd",
+            "install.sh warns when the install is not a git checkout (updates need git)",
+        ]
+    },
+    {
+        "version": "0.0.5",
+        "date": "2026-09-06",
+        "changes": [
+            "Persistent sessions + XSS hardening via event delegation",
+            "Sessions now persist across app restarts (sessions.json, chmod 600)",
+            "Refactor inline onclick handlers to data-* attributes in file browser, books, and agents (closes quote-breakout XSS)",
+            "ProxyFix trusts the tunnel hop so rate limits/backoff are per-client",
+        ]
+    },
+    {
+        "version": "0.0.4",
+        "date": "2026-09-06",
+        "changes": [
+            "Security hardening + polish: fix path traversal in books, XSS sinks, and deploy/config issues",
+            "Fix arbitrary file read via books routes (book_id/file traversal)",
+            "Fix XSS across terminal, agent logs, file browser, reader, and chat (escaped output + single-quote)",
+            "Docker: require passcode + secret, localhost-only port, fix .dockerignore secret leak",
+            "Remove localhost.run relay from installer (Tailscale/cloudflared only)",
+            "Bump cryptography to 50.0.0 to close 11 known CVEs",
+            "Sanitize universe names, reject change_pin in open mode, ProxyFix for per-client limits",
+            "Add upload size cap and input validation",
+        ]
+    },
+    {
+        "version": "0.0.3",
+        "date": "2026-09-06",
+        "changes": [
+            "Voice agent: drives Hermes natively with a persistent session (falls back to local Ollama/cloud when Hermes isn't installed)",
+            "Voice agent: modular STT/LLM/TTS engines configurable from Settings → Voice. No terminal needed",
+            "Voice agent: command access tiers (Talk / Basic / Full) with a confirmation for unrestricted access",
+            "Voice agent: remembers your conversation, can be named, and shows clear errors instead of failing silently",
+            "Voice agent: browser or Whisper speech recognition, Piper or browser speech",
+            "Security: fixed open-mode auth bypass on fresh installs (duplicate passcode in .env)",
+            "Security: fixed path traversal in the music and file-browser routes",
+            "UI: voice overlay now matches the black/white minimalism theme",
+            "Settings: change your passcode in-app; library paths apply instantly without restart",
+            "Devices: real Tailscale device list with names, OS, and online status",
+            "Fixes: TTS autoplay on phones, stuck 'speaking' state, book-reader crash, duplicate HTML cleanup",
+        ]
+    },
+    {
+        "version": "0.0.2",
+        "date": "2026-08-19",
+        "changes": [
+            "Security: opaque session tokens replace the PIN cookie. The passcode is never stored in the browser",
+            "Security: CSRF protection on all state-changing requests",
+            "Security: WebSocket terminal/voice sockets require the session token (works over tunnels now)",
+            "Security: quick commands run shell-free (allowlisted argv table, no shell=True)",
+            "Security: brute-force backoff + rate limits on login; 8-digit passcode default",
+            "Security: removed third-party localhost.run relay, Tailscale Funnel only",
+            "Security: binds 127.0.0.1 by default; loud warning otherwise",
+            "Security: CSP, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy headers",
+            "Books: correct chapter counts per book (no more 30-chapter cap)",
+            "Books: reading position syncs across devices (phone and laptop resume the same spot)",
+            "Books: cover generator uses cross-platform fonts",
+            "AI chat: consistent default model, input caps, real error messages from summarize/Q&A",
+            "Cross-platform: real OS detection (Debian/Fedora/macOS/Windows)",
+            "Windows: setup.ps1 installer + decloud.ps1 lifecycle wrapper; terminal degrades gracefully",
+            "Tests: 74 security tests (auth, CSRF, WebSocket, allowlist, traversal, symlinks) + CI on Ubuntu/macOS/Windows",
+        ]
+    },
+    {
+        "version": "0.0.1",
+        "date": "2026-08-14",
+        "changes": [
+            "First public release. Experimental alpha",
+            "Report issues on GitHub",
+            ".env now loaded on manual start (not just systemd)",
+            "Settings: library paths save to .env for real",
+            "AI chat surfaces model errors instead of hanging",
+            "Universe: fixed duplicated empty-state message",
+            "Projects: onboarding empty state",
+            "ComfyUI: offline install guidance",
+            "Notifications built from real system stats",
+            "App writes request logs (Logs screen works)",
+            "Safari share sheet crash fixed",
+            "First-run onboarding walkthrough added",
+        ]
+    },
+]
+
+
+def _current_entry():
+    """Changelog entry matching VERSION; falls back to the newest entry."""
+    for entry in CHANGELOG:
+        if entry.get('version') == VERSION:
+            return entry
+    return CHANGELOG[0] if CHANGELOG else {"version": VERSION, "date": "", "changes": []}
+
+
+@bp.route('/api/version')
+def get_version():
+    """Return current version and changelog."""
+    current = _current_entry()
+    return jsonify({
+        "version": current["version"],
+        "date": current["date"],
+        "changelog": CHANGELOG,
+    })
