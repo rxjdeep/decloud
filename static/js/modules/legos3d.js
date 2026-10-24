@@ -77,11 +77,18 @@ function addBrickFromSpread(rows, cols, color) {
 
 // ─── 3D Legos Engine ───────────────────────────────────
 
+var legosLoading = false;
 function initLegos3D() {
   if (legos3D) { legos3D.animate(); return; }
   var canvas = document.getElementById('legos-canvas');
-  if (!canvas || !window.THREE) return;
-  if (!window.CANNON) { setTimeout(initLegos3D, 200); return; }
+  if (!canvas) return;
+  if (!window.THREE || !window.CANNON) {                    // the 3D libraries are fetched the first time this screen opens
+    if (!legosLoading) {
+      legosLoading = true;
+      loadVendor('legos').then(function () { legosLoading = false; initLegos3D(); }).catch(function () { legosLoading = false; });
+    }
+    return;
+  }
 
   // Scene - white, bright, minimal
   var scene = new THREE.Scene();

@@ -1,5 +1,5 @@
 // DeCloud Service Worker
-const CACHE_NAME = 'decloud-v165';
+const CACHE_NAME = 'decloud-v270';
 
 self.addEventListener('install', e => {
   self.skipWaiting(); // activate immediately
@@ -8,10 +8,10 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      // Nuke ALL caches — forces clean slate on every SW update
+      // Nuke ALL caches on every SW update. (No forced reload of open pages: fetches are network-first and
+      // scripts carry ?v=, so the next open is fresh anyway, and a reload here made the app load twice.)
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.matchAll()).then(clients =>
-      clients.forEach(c => c.navigate(c.url)))
+    )
   );
   self.clients.claim();
 });

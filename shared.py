@@ -7,6 +7,7 @@ from functools import lru_cache
 import requests as _requests
 import websocket as _ws_lib
 import hashlib
+import gzip as _gzip_mod
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 sock = Sock(app)
@@ -101,7 +102,7 @@ app.secret_key = SECRET_KEY
 
 # Session store: token -> expiry epoch seconds. Persisted to disk so sessions
 # survive an app restart (still single-process - see note in save_sessions).
-SESSIONS_FILE = Path(__file__).parent / 'sessions.json'
+SESSIONS_FILE = Path(os.environ.get('DECLOUD_SESSIONS_FILE') or Path(__file__).parent / 'sessions.json')   # tests point this at a temp dir
 SESSION_TTL_SECONDS = 30 * 24 * 60 * 60  # 30 days
 MAX_SESSIONS = 50
 _session_lock = threading.Lock()
@@ -245,6 +246,8 @@ def _require_auth():
         return
     if req.path == '/api/auth/login' or req.path == '/api/auth/check':
         return
+    if req.path.startswith('/api/backup/'):
+        return  # the phone's push: its own bearer token, checked in routes/backup.py (off unless DECLOUD_BACKUP_TOKEN is set)
     if req.path == '/lab-agent.py' and req.method == 'GET':
         return  # public: this repo's own source, curl'd onto devices being added
     if not _is_authenticated():
@@ -352,6 +355,52 @@ def _harden_response(resp):
     except Exception:
         pass
     return resp
+
+_GZ_TYPES = ('text/', 'application/json', 'application/javascript', 'application/manifest+json', 'image/svg+xml')
+_gz_static = {}                                    # (path, etag) -> gzipped bytes: the static files are compressed once, not per request
+
+
+@app.after_request
+def _speed_up(resp):
+    """Fewer bytes and fewer round trips per page open, with no dependency: versioned static files are cached for a year
+    (the ?v= in every URL changes when a file does), and text responses are gzipped when the browser accepts it."""
+    path = request.path
+    if path.startswith('/static/') and resp.status_code in (200, 304):
+        if path.startswith('/static/vendor/fonts/') or request.args.get('v'):
+            resp.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        elif path.startswith(('/static/vendor/', '/static/icons/')):
+            resp.headers['Cache-Control'] = 'public, max-age=604800'
+    if (resp.status_code != 200 or request.method != 'GET' or resp.headers.get('Content-Encoding') or 'Range' in request.headers
+            or 'gzip' not in request.headers.get('Accept-Encoding', '')):
+        return resp
+    if not resp.headers.get('Content-Type', '').startswith(_GZ_TYPES):
+        return resp
+    static = path.startswith('/static/')
+    # a generator (live output) must stay a stream; a small text file response (the page itself) is fine to read and compress
+    small_file = resp.direct_passthrough and 0 < (resp.content_length or 0) <= 2_000_000
+    if resp.is_streamed and not (static or small_file):
+        return resp
+    etag = resp.headers.get('ETag')
+    key = (path, etag) if static and etag else None
+    gz = _gz_static.get(key) if key else None
+    if gz is None:
+        resp.direct_passthrough = False
+        data = resp.get_data()
+        if len(data) < 1024:
+            return resp
+        gz = _gzip_mod.compress(data, 6 if key else 4)
+        if key:
+            if len(_gz_static) > 300:
+                _gz_static.clear()
+            _gz_static[key] = gz
+    resp.direct_passthrough = False
+    resp.set_data(gz)
+    resp.headers['Content-Encoding'] = 'gzip'
+    resp.headers.add('Vary', 'Accept-Encoding')
+    if etag and not etag.startswith('W/'):
+        resp.headers['ETag'] = 'W/' + etag         # the same file in two encodings: a weak validator still matches for 304s
+    return resp
+
 
 def _env_path(key, default):
     """Read a path from env var, falling back to default."""

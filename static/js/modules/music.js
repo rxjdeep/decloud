@@ -18,7 +18,7 @@ var mz = {
   queue: [], origQueue: null, qi: -1, shuffle: false, repeat: 'off',
   counted: false, seeking: false,
   ac: null, an: null, fdata: null, tdata: null, vizRaf: 0, peaks: [],
-  prefs: { vol: 1, muted: false, haptics: true, coverOpen: false, viz: !/iPad|iPhone|iPod/.test(navigator.userAgent), sideW: { glossy: 232, spotify: 320 }, queueW: 290 },
+  prefs: { vol: 1, muted: false, haptics: true, coverOpen: false, viz: !/iPad|iPhone|iPod/.test(navigator.userAgent), sideW: { glossy: 232, spotify: 320 }, queueW: 290, barH: 90, recents: [] },
   coarse: !!(window.matchMedia && matchMedia('(pointer: coarse)').matches),
 };
 try {
@@ -81,11 +81,17 @@ function mzArt(t, size, cls, id) {
   return '<div class="wm-art ' + (cls || '') + '"' + (id ? ' id="' + id + '"' : '') + ' style="--h:' + t.h + '">' + letter +
     (t.c ? '<img loading="lazy" decoding="async" alt="" src="' + escapeHtml(mzCoverUrl(t.c, size)) + '" onerror="this.remove()">' : '') + '</div>';
 }
-function mzToast(msg) {
+function mzToast(msg, act) {                                    // act: { label, fn } adds a button, e.g. Undo (the toast then stays a few seconds longer)
   var t = mzEl('wm-toast');
   if (!t) { t = document.createElement('div'); t.id = 'wm-toast'; t.className = 'wm-toast'; document.body.appendChild(t); }
   t.textContent = msg; t.dataset.mzt = mz.theme; t.style.opacity = '1';
-  clearTimeout(t._h); t._h = setTimeout(function () { t.style.opacity = '0'; }, 1600);
+  t.classList.toggle('act', !!act);
+  if (act) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'wm-toast-act'; b.textContent = act.label;
+    b.onclick = function () { clearTimeout(t._h); t.style.opacity = '0'; t.classList.remove('act'); act.fn(); };
+    t.appendChild(b);
+  }
+  clearTimeout(t._h); t._h = setTimeout(function () { t.style.opacity = '0'; t.classList.remove('act'); }, act ? 6000 : 1600);
 }
 
 var MZ_ICON = {
@@ -98,6 +104,15 @@ var MZ_ICON = {
 };
 
 // ─── library ─────────────────────────────────────────────
+// Who is credited on a song: [{id, name}]. Navidrome gives them separately (t.as); otherwise it is the one artist.
+function mzCredits(t) {
+  if (t.as && t.as.length) return t.as.map(function (c) { return { id: c[0], name: c[1] }; });
+  return [{ id: t.ai || t.ar, name: t.ar }];
+}
+// one link per artist, so you can pick which one to open
+function mzArtistLinks(t, cls, act) {
+  return mzCredits(t).map(function (c) { return '<a class="' + cls + '" data-act="' + act + '" data-v="' + escapeHtml(c.id) + '">' + escapeHtml(c.name) + '</a>'; }).join(', ');
+}
 function mzIngest(d) {
   mz.source = d.source || '';
   mz.error = d.error || (d.source === 'files' ? 'Showing tags read from the files. Add DECLOUD_NAVIDROME_USER and DECLOUD_NAVIDROME_PASS to .env to use Navidrome metadata.' : '');
@@ -107,18 +122,21 @@ function mzIngest(d) {
   musicPlaylist.forEach(function (t, i) {
     t.i = i; t.h = mzHue(t.ar); t.k = (t.t + ' ' + t.ar + ' ' + t.al + ' ' + t.g).toLowerCase();
     mz.byId.set(t.f, t);
-    var ak = t.ai || t.ar, a = mz.artists.get(ak);
-    if (!a) { a = { id: ak, name: t.ar, tracks: [], albums: new Set() }; mz.artists.set(ak, a); }
-    a.tracks.push(t);
+    var al = null;
     if (t.li) {
-      var al = mz.albums.get(t.li);
+      al = mz.albums.get(t.li);
       if (!al) { al = { id: t.li, name: t.al || 'Unknown Album', tracks: [], who: {}, aa: t.aa, year: '', added: 0, g: '', first: t }; mz.albums.set(t.li, al); }
       al.tracks.push(t); al.who[t.ar] = (al.who[t.ar] || 0) + 1;
       if (t.y && !al.year) al.year = t.y;
       if (t.g && !al.g) al.g = t.g;
       if (t.a > al.added) al.added = t.a;
-      a.albums.add(al);
     }
+    mzCredits(t).forEach(function (c) {                          // a song belongs to every artist credited on it
+      var a = mz.artists.get(c.id);
+      if (!a) { a = { id: c.id, name: c.name, tracks: [], albums: new Set() }; mz.artists.set(c.id, a); }
+      a.tracks.push(t);
+      if (al) a.albums.add(al);
+    });
     if (t.g) { var g = mz.genres.get(t.g); if (!g) { g = []; mz.genres.set(t.g, g); } g.push(t); }
   });
   mz.albums.forEach(function (al) {
@@ -131,6 +149,33 @@ function mzIngest(d) {
   });
 }
 
+// the library as it was last time, kept on this device so the music screen can draw before the network answers
+function mzLibCacheRead() {
+  try {
+    var c = JSON.parse(localStorage.getItem('mzLib') || 'null');
+    return c && c.tracks && c.tracks.length && c.source === 'navidrome' ? c : null;
+  } catch (_) { return null; }
+}
+function mzLibCacheWrite(d) {
+  try { var j = JSON.stringify(d); if (j.length < 3500000) localStorage.setItem('mzLib', j); } catch (_) {}      // too big or storage full: just skip it
+}
+
+// where you were in Music, so opening it from the home screen puts you back there (not on its home page)
+var MZ_KEEP_VIEWS = ['albums', 'artists', 'songs', 'genres', 'favorites', 'recent', 'played', 'artist', 'album', 'genre', 'playlist', 'library'];
+function mzLastViewSave() {
+  try {
+    if (MZ_KEEP_VIEWS.indexOf(mz.view.type) >= 0) localStorage.setItem('mzLastView', JSON.stringify({ type: mz.view.type, key: mz.view.key || '' }));
+    else if (mz.view.type === 'home') localStorage.removeItem('mzLastView');
+  } catch (_) {}
+}
+function mzLastRouteParts() {
+  try {
+    var v = JSON.parse(localStorage.getItem('mzLastView') || 'null');
+    if (v && MZ_KEEP_VIEWS.indexOf(v.type) >= 0) return v.key ? [v.type, encodeURIComponent(v.key)] : [v.type];
+  } catch (_) {}
+  return [];
+}
+
 var mzLoading = null;
 function loadMusic() {
   if (!mzLoading) mzLoading = mzLoad().finally(function () { mzLoading = null; });
@@ -141,12 +186,23 @@ async function mzLoad() {
   if (!content) return;
   if (!musicAudio) { musicAudio = mzEl('music-audio'); mzBindAudio(); mzBindUI(); }
   mzConnect();
+  if (!mz.loaded) {                                              // the copy kept from last time shows at once; the fresh one swaps in below
+    var cached = mzLibCacheRead();
+    if (cached) {
+      try {
+        mzIngest(cached); mz.loaded = true;
+        if (mz.pendingMsg) { var pm0 = mz.pendingMsg; mz.pendingMsg = null; mzOnState(pm0); }
+        mzRestoreState(); mzRender();
+      } catch (e) { mz.loaded = false; try { localStorage.removeItem('mzLib'); } catch (_) {} }
+    }
+  }
   if (!mz.loaded) content.innerHTML = '<div class="wm-empty">Loading your library…</div>';
   else mzRender();
   try {
     var r = await fetch('/api/music/library');
     if (!r.ok) throw new Error('HTTP ' + r.status);
     var d = await r.json();
+    setTimeout(function () { mzLibCacheWrite(d); }, 1500);       // after the screen has drawn: stringifying the whole library is not free
     var had = mz.loaded;
     mzIngest(d);
     if (had && mz.queue.length) {
@@ -169,35 +225,53 @@ function mzRoute(v) {
   if (v.type === mzDefaultType() && !v.key) return 'music';
   return 'music/' + v.type + (v.key ? '/' + encodeURIComponent(v.key) : '');
 }
+// Remember where each page was scrolled, so Back lands where you left it (like a native app)
+var mzScrollMem = {};
+function mzScrollSave() { var c = mzEl('wm-content'); if (c && mz.view) mzScrollMem[mzRoute(mz.view)] = c.scrollTop; }
+function mzScrollRestore() {
+  var c = mzEl('wm-content'); if (!c) return;
+  var y = (typeof nav !== 'undefined' && nav.dir === 'back' && mzScrollMem[mzRoute(mz.view)]) || 0;
+  c.scrollTop = y;
+  if (y) requestAnimationFrame(function () { if (Math.abs(c.scrollTop - y) > 2) c.scrollTop = y; });
+}
 function mzGo(type, key) {
+  if (typeof mzSp !== 'undefined' && mzSp) mzSp.npSet(false, true);     // leave the full-screen player
+  mzScrollSave();
   mz.view = { type: type, key: key || '' };
   mz.sel = -1; mz.sort = { col: '', dir: 1 };
   if (type !== 'search') { mz.query = ''; var si = mzEl('wm-search-input'); if (si) si.value = ''; }
+  mzLastViewSave();
   navSet(mzRoute(mz.view));
   mzRender();
   var c = mzEl('wm-content'); if (c) c.scrollTop = 0;
 }
 // Apply a #music/... route from back/forward or a deep link (never pushes history)
 function mzApplyRoute(parts) {
-  mzCloseMenu();
+  mzCloseMenu({ route: true });
   var wEl = document.querySelector('#music-screen .wm');
   if (parts[0] === 'player') {                                   // the phone's full-screen player sits on top of the current page
-    if (mz.theme === 'spotify' && mzCur() && typeof mzSp !== 'undefined' && mzSp) mzSp.npSet(true, true);
+    if (mz.theme === 'spotify' && mzCur() && typeof mzSp !== 'undefined' && mzSp) { mzSp.npSet(true, true); if (mzSp.qOpen()) mzSp.qSet(false, true); }
+    return;
+  }
+  if (parts[0] === 'queue') {                                    // the queue sheet on top of the player
+    if (mz.theme === 'spotify' && mzCur() && typeof mzSp !== 'undefined' && mzSp) { mzSp.npSet(true, !mzSp.qOpen()); mzSp.qSet(true, true); }
     return;
   }
   if (typeof mzSp !== 'undefined' && mzSp) mzSp.npSet(false, true);
   var type = parts[0] || mzDefaultType(), key = parts[1] ? navSafeDecode(parts[1]) : '';
-  var ok = ['albums', 'artists', 'songs', 'genres', 'favorites', 'recent', 'played', 'now', 'search', 'artist', 'album', 'genre', 'playlist'];
+  var ok = ['albums', 'artists', 'songs', 'genres', 'favorites', 'recent', 'played', 'now', 'lyrics', 'search', 'artist', 'album', 'genre', 'playlist'];
   if (mz.theme === 'spotify') ok.push('home', 'mix', 'library');
   if (ok.indexOf(type) < 0) { type = mzDefaultType(); key = ''; }
   if (type === 'now' && !mzCur() && !mzHasSavedState()) type = mzDefaultType();
   if (type !== 'search') { mz.query = ''; var si = mzEl('wm-search-input'); if (si) si.value = ''; }
+  mzScrollSave();
   mz.view = { type: type, key: key }; mz.sel = -1; mz.sort = { col: '', dir: 1 };
+  mzLastViewSave();
   mzRender();
-  var c = mzEl('wm-content'); if (c) c.scrollTop = 0;
+  mzScrollRestore();
 }
 function mzHideNP() { if (typeof mzSp !== 'undefined' && mzSp) mzSp.npSet(false, false); }
-function mzCloseSheet() { mzCloseMenu(); }
+function mzCloseSheet() { mzCloseMenu({ route: true }); }
 
 // ─── media keys / OS media widgets (KDE, lock screen) ────
 // Explicit play / pause (not a toggle), so the OS can never send the wrong one. They also work when
@@ -254,7 +328,7 @@ function mzNowText(t) {
   if (mz.theme === 'spotify' && !mzIsMobile()) {
     var E = escapeHtml;
     ti.innerHTML = t.li ? '<a class="npl" data-act="np-album" data-v="' + E(t.li) + '">' + E(t.t) + '</a>' : E(t.t);
-    ar.innerHTML = '<a class="npl" data-act="np-artist" data-v="' + E(t.ai || t.ar) + '">' + E(t.ar) + '</a>' +
+    ar.innerHTML = mzArtistLinks(t, 'npl', 'np-artist') +
       (t.al && t.li ? ' · <a class="npl" data-act="np-album" data-v="' + E(t.li) + '">' + E(t.al) + '</a>' : (t.al ? ' · ' + E(t.al) : ''));
   } else { ti.textContent = t.t; ar.textContent = t.ar + (t.al ? ' · ' + t.al : ''); }
 }
@@ -619,14 +693,26 @@ function mzConnect() {
   ws.onopen = function () {
     mz.wsTry = 0;
     mzSend({ t: 'hello', dev: mzMe(), label: mzDeviceLabel() });
-    clearInterval(mz.hb); mz.hb = setInterval(function () { mzSend({ t: 'ping' }); }, 20000);
+    mz.lastRx = Date.now();
+    clearInterval(mz.hb); mz.hb = setInterval(function () {
+      if (Date.now() - mz.lastRx > 50000) { mzRevive(true); return; }   // nothing back for 50 s: the socket is dead (phones drop it silently)
+      mzSend({ t: 'ping' });
+    }, 20000);
   };
-  ws.onmessage = function (e) { var m; try { m = JSON.parse(e.data); } catch (_) { return; } mzOnMsg(m); };
+  ws.onmessage = function (e) { mz.lastRx = Date.now(); var m; try { m = JSON.parse(e.data); } catch (_) { return; } mzOnMsg(m); };
   ws.onclose = function () {
     clearInterval(mz.hb);
     if (mz.ws === ws) { mz.ws = null; setTimeout(mzConnect, Math.min(10000, 1000 * Math.pow(2, mz.wsTry++))); }
   };
   ws.onerror = function () {};
+}
+// a socket can look open while the network under it is gone (phone asleep, tunnel restarted): replace it
+function mzRevive(force) {
+  if (!mz.loaded) return;
+  if (!force && mzWsOpen() && Date.now() - mz.lastRx < 30000) return;
+  var old = mz.ws; mz.ws = null; clearInterval(mz.hb);
+  if (old) { try { old.close(); } catch (_) {} }
+  mz.wsTry = 0; mzConnect();
 }
 function mzOnMsg(m) {
   switch (m.t) {
@@ -742,10 +828,11 @@ function mzTryPlay(from) {
   var p = musicAudio.play();
   if (p && p.catch) p.catch(function () { mzSetPlayIcon(false); if (from) mzSend({ t: 'blocked', to: from }); });
 }
+function mzStreamUrl(t) { return '/api/music/stream/' + mzEnc(t.f) + (t.sx === 'wav' ? '?x=wav' : ''); }
 function mzStartCurrent(pos) {
   var t = mzCur(); if (!t) return;
-  mz.counted = false; mz.resumeAt = pos || 0;
-  musicAudio.src = '/api/music/stream/' + mzEnc(t.f);
+  mz.counted = false; mz.resumeAt = pos || 0; mz.fb = false;
+  musicAudio.src = mzStreamUrl(t);
 }
 
 // active device ← command from a remote (or from the server during a transfer)
@@ -799,6 +886,14 @@ function mzTransfer(id) {
 }
 function mzDevicesMenu(e) {
   e.stopPropagation();
+  if (mzUseSheet()) {
+    var me0 = mzMe(), items = mz.devices.map(function (d) {
+      return { label: d.label + (d.id === me0 ? ' · this device' : ''), sub: d.active ? 'Playing' : '', on: d.active, run: function () { mzTransfer(d.id); } };
+    });
+    if (mz.devices.length < 2) items.push({ info: true, label: 'Open DeCloud on another device to control playback between them.' });
+    mzSp.menuSheet({ title: 'Connect to a device', items: items });
+    return;
+  }
   var me = mzMe(), m = mzEl('wm-menu');
   var h = '<div class="wm-menu-h">Connect to a device</div>';
   mz.devices.forEach(function (d) {
@@ -828,7 +923,7 @@ function mzApplyState(st, opts) {
     try { musicAudio.currentTime = pos; } catch (_) {}
   } else {
     mz.counted = false; mz.resumeAt = pos;
-    musicAudio.src = '/api/music/stream/' + mzEnc(t.f);
+    mz.fb = false; musicAudio.src = mzStreamUrl(t);
   }
   mzLastSig = tracks.length === st.q.length ? mzQueueSig() : '';   // if tracks went missing the indexes differ: resend in full
   mzSnapFrom = 0;
@@ -902,7 +997,8 @@ function mzStart() {
   var t = mzCur(); if (!t) return;
   if (!musicAudio) musicAudio = mzEl('music-audio');
   musicCurrentIdx = t.i; mz.counted = false; mz.resumeAt = 0;
-  musicAudio.src = '/api/music/stream/' + mzEnc(t.f);
+  mz.fb = false; musicAudio.src = mzStreamUrl(t);
+  if (mz.ac && mz.ac.state !== 'running') { try { mz.ac.resume().catch(function () {}); } catch (_) {} }   // the next song must not wait for an unlock
   mzSaveState(true);
   mzTryPlay(null);
   mzUpdateNow();
@@ -963,6 +1059,7 @@ function mzUpdateModes() {
   var s = mzEl('wm-shuffle'), r = mzEl('wm-repeat');
   if (s) { s.classList.toggle('on', mz.shuffle); s.setAttribute('aria-pressed', mz.shuffle ? 'true' : 'false'); s.title = mz.shuffle ? 'Shuffle: on' : 'Shuffle: off'; }
   if (r) { r.classList.toggle('on', mz.repeat !== 'off'); r.setAttribute('aria-pressed', mz.repeat !== 'off' ? 'true' : 'false'); r.title = mz.repeat === 'off' ? 'Repeat: off' : mz.repeat === 'all' ? 'Repeat: all songs' : 'Repeat: this song'; r.innerHTML = mz.repeat === 'one' ? MZ_ICON.repeatOne : MZ_ICON.repeat; }
+  if (typeof appModesPush === 'function') appModesPush();
 }
 function mzQueueNext(t) {
   mzHaptic('queue');
@@ -1038,6 +1135,12 @@ function mzBindAudio() {
     if (typeof updateMediaSessionPosition === 'function') updateMediaSessionPosition();
   };
   musicAudio.onseeked = function () { mzSaveState(true); };
+  musicAudio.onerror = function () {
+    var t = mzCur(); if (!t || mz.fb || !musicAudio.src) return;
+    mz.fb = true; mz.resumeAt = musicAudio.currentTime || 0;   // browser cannot decode the original (e.g. some WAVs): play a transcode
+    musicAudio.src = '/api/music/stream/' + mzEnc(t.f) + '?fb=1';
+    mzTryPlay(null);
+  };
   musicAudio.onended = function () {
     if (mz.repeat === 'one') { musicAudio.currentTime = 0; musicAudio.play(); return; }
     mzAdvance(true);
@@ -1089,6 +1192,9 @@ var MZ_TN_COLORS = [[255, 185, 15], [255, 0, 0], [255, 0, 255], [58, 95, 205], [
 mz.vz = { img: null, imgId: '', bg: null, col: [250, 45, 72], parts: [], v: [], raw: [], layers: [], hist: [], peak: 0.3, bpeak: 0.12,
   base: 0, kick: 0, prevRaw: 0, lastBeat: 0, beats: 0, t0: 0, R: 0, live: false, fps: 60 };
 
+function mzAcKeepAlive() {
+  if (mz.ac && mz.ac.state !== 'running' && musicAudio && !musicAudio.paused) { try { mz.ac.resume().catch(function () {}); } catch (_) {} }
+}
 function mzVizEnsure() {
   if (mz.ac) {
     if (mz.ac.state === 'suspended' && Date.now() - (mz.acTry || 0) > 800) { mz.acTry = Date.now(); try { mz.ac.resume().catch(function () {}); } catch (_) {} }
@@ -1106,6 +1212,7 @@ function mzVizEnsure() {
     src.connect(mz.an); mz.an.connect(mz.ac.destination);
     mz.fdata = new Uint8Array(mz.an.frequencyBinCount);
     if (mz.ac.state === 'suspended') mz.ac.resume().catch(function () {});
+    mz.ac.onstatechange = mzAcKeepAlive;                    // a locked phone suspends the context, which mutes the <audio> routed through it
     return true;
   } catch (e) { mz.ac = null; mz.vzFailAt = Date.now(); return false; }
 }
@@ -1293,17 +1400,71 @@ function mzVizFrame(ts) {
 }
 
 // ─── context menu ────────────────────────────────────────
-function mzCloseMenu() { var m = mzEl('wm-menu'); if (m) m.style.display = 'none'; }
+function mzClosePopup() { var m = mzEl('wm-menu'); if (m) m.style.display = 'none'; }
+// Close whatever menu is open: the desktop popup and any bottom sheet. opts.route: the history is being changed by someone else (a route change), so a sheet must not touch it.
+function mzCloseMenu(opts) {
+  mzClosePopup();
+  ['sp-msheet', 'sp-addsheet'].forEach(function (id) { var el = document.getElementById(id); if (el && el._close) el._close(opts && opts.route ? { route: true } : null); });
+}
+function mzSheetsOpen() { return !!(document.getElementById('sp-msheet') || document.getElementById('sp-addsheet')); }
+
+// ─── bottom sheets and the Back gesture ──────────────────
+// An open sheet owns one history entry (same URL), so Back, or the phone's back gesture, closes just the sheet and nothing behind it.
+// A sheet closed by hand takes its entry out again with history.back(), so entries never pile up; `then` runs once that has happened,
+// which is what lets "Go to artist" navigate without leaving a dead entry behind.
+var mzSheetStack = [], mzPopSkips = 0, mzPopThen = [], mzPopGen = 0;
+function mzSheetOpenEntry(onBack) {
+  var n = ((history.state && history.state.n) || 0) + 1;
+  history.pushState(Object.assign({}, history.state || {}, { n: n, sheet: 1 }), '', location.href);
+  if (typeof nav !== 'undefined') nav.n = n;
+  var h = { live: true, onBack: onBack };
+  mzSheetStack.push(h);
+  return h;
+}
+function mzSheetDrop(h) { if (h) { h.live = false; mzSheetStack = mzSheetStack.filter(function (x) { return x !== h; }); } }
+function mzSheetCloseEntry(h, then) {
+  if (!h || !h.live) { if (then) then(); return; }
+  mzSheetDrop(h);
+  mzPopSkips++;
+  if (then) mzPopThen.push(then);
+  var gen = ++mzPopGen;
+  history.back();
+  setTimeout(function () {                              // the pop we asked for never reported back: stop waiting for it, and still do what was waiting
+    if (mzPopGen === gen && mzPopSkips > 0) { mzPopSkips = 0; mzPopThen.splice(0).forEach(function (f) { f(); }); }
+  }, 1200);
+}
+window.addEventListener('popstate', function () {
+  if (mzPopSkips > 0) {                                  // the pop we asked for ourselves: nothing else to do but the action that was waiting
+    mzPopSkips--;
+    var fns = mzPopThen.splice(0);
+    fns.forEach(function (f) { setTimeout(f, 0); });
+    return;
+  }
+  var h = mzSheetStack.pop();                            // the user went Back: that closes the top sheet
+  if (h && h.live) { h.live = false; h.onBack(); }
+});
+function mzUseSheet() { return typeof mzSp !== 'undefined' && !!mzSp && !!mzSp.menuSheet && mz.theme === 'spotify' && mzIsMobile(); }
+function mzQueueRemoveAt(c) {
+  if (isNaN(c) || c === mz.qi) return;
+  if (mz.remote) { if (mz.queue[c]) mzCmd('qremove', mz.queue[c].f); return; }
+  mz.queue.splice(c, 1); if (c < mz.qi) mz.qi--; mzSaveState(true); mzRender();
+}
 function mzOpenMenu(x, y, id, fromQueue, qIdx) {
   var t = mz.byId.get(id); if (!t) return;
+  if (mzUseSheet()) { mzSp.trackMenu(t, { fromQueue: fromQueue, qIdx: qIdx }); return; }
   function it(a, label) { return '<button data-act="m-' + a + '" data-t="' + escapeHtml(id) + '" data-c="' + (qIdx == null ? '' : qIdx) + '">' + label + '</button>'; }
   var m = mzEl('wm-menu');
   var sp = mz.theme === 'spotify';
-  m.innerHTML = (sp ? it('queue', 'Add to queue') + it('next', 'Play next') + '<hr>' + it('artist', 'Go to artist') + (t.li ? it('album', 'Go to album') : '') + '<hr>' +
+  function artistItems() {
+    var cr = mzCredits(t);
+    return cr.length < 2 ? it('artist', 'Go to artist') : cr.map(function (c) { return '<button data-act="m-artist" data-v="' + escapeHtml(c.id) + '">Go to ' + escapeHtml(c.name) + '</button>'; }).join('');
+  }
+  var addPl = typeof mzSp !== 'undefined' && mzSp && mzSp.addMenu ? it('addpl', 'Add to playlist') : '';
+  m.innerHTML = (sp ? it('queue', 'Add to queue') + it('next', 'Play next') + addPl + '<hr>' + artistItems() + (t.li ? it('album', 'Go to album') : '') + '<hr>' +
       it('fav', t.fav ? 'Remove from Liked Songs' : 'Save to your Liked Songs') + (fromQueue ? it('remove', 'Remove from queue') : '')
-    : it('play', 'Play') + it('next', 'Play next') + it('queue', 'Add to queue') + '<hr>' +
+    : it('play', 'Play') + it('next', 'Play next') + it('queue', 'Add to queue') + addPl + '<hr>' +
       it('fav', t.fav ? 'Remove from favorites' : 'Add to favorites') + '<hr>' +
-      it('artist', 'Go to artist') + (t.li ? it('album', 'Go to album') : '') + (fromQueue ? '<hr>' + it('remove', 'Remove from queue') : ''));
+      artistItems() + (t.li ? it('album', 'Go to album') : '') + (fromQueue ? '<hr>' + it('remove', 'Remove from queue') : ''));
   m.style.display = '';
   var r = m.getBoundingClientRect();
   m.style.left = Math.max(4, Math.min(x, window.innerWidth - r.width - 4)) + 'px';
@@ -1358,6 +1519,13 @@ function mzSetTheme(name) {
 }
 function mzThemeMenu(e) {
   e.stopPropagation();
+  if (mzUseSheet()) {
+    var th = [{ label: 'Glossy Black', on: mz.theme === 'glossy', run: function () { mzSetTheme('glossy'); } }, { label: 'Spotify', on: mz.theme === 'spotify', run: function () { mzSetTheme('spotify'); } }];
+    if (typeof navigator.vibrate === 'function' && (mz.coarse || /Android/i.test(navigator.userAgent))) { th.push({ sep: true }); th.push({ label: 'Vibration feedback', on: mz.prefs.haptics !== false, run: function () { mzToggleHaptics(); } }); }
+    th.push({ sep: true }); th.push({ label: 'Back to DeCloud', run: function () { goHome(); } });
+    mzSp.menuSheet({ title: 'Settings', items: th });
+    return;
+  }
   var m = mzEl('wm-menu');
   function it(v, label) { return '<button data-act="theme" data-v="' + v + '">' + (mz.theme === v ? '✓ ' : '\u2003') + label + '</button>'; }
   m.innerHTML = '<div class="wm-menu-h">Theme</div>' + it('glossy', 'Glossy Black') + it('spotify', 'Spotify') +
@@ -1373,10 +1541,12 @@ function mzSearchFocus() {
     mz.prevView = mz.view; mz.view = { type: 'search', key: '' }; mz.sort = { col: '', dir: 1 };
     navSet('music/search'); mzRender();
   }
+  if (mz.theme === 'spotify' && typeof mzSp !== 'undefined' && mzSp && mzSp.setSf) mzSp.setSf(true);
 }
 
 // ─── resizable panes ─────────────────────────────────────
-var MZ_SIDE_DEFAULT = { glossy: 232, spotify: 320 }, MZ_COLLAPSED = 72, MZ_QUEUE_DEFAULT = 290;
+var MZ_SIDE_DEFAULT = { glossy: 232, spotify: 320 }, MZ_COLLAPSED = 72, MZ_QUEUE_DEFAULT = 290, MZ_BAR_DEFAULT = 90, MZ_BAR_MIN = 64, MZ_BAR_MAX = 150;
+function mzClampBar(h) { return Math.round(Math.max(MZ_BAR_MIN, Math.min(h, MZ_BAR_MAX))); }
 function mzClampSide(raw, theme) {
   if (theme === 'spotify') return raw < 150 ? MZ_COLLAPSED : Math.max(240, Math.min(raw, 560));
   return Math.max(180, Math.min(raw, 420));
@@ -1386,15 +1556,18 @@ function mzApplySizes() {
   var sw = mz.prefs.sideW[mz.theme] || MZ_SIDE_DEFAULT[mz.theme];
   w.style.setProperty('--wm-side-w', sw + 'px');
   w.style.setProperty('--wm-q-w', mz.prefs.queueW + 'px');
+  var bh = mzClampBar(mz.prefs.barH || MZ_BAR_DEFAULT);                   // the player bar: its height, and a scale its contents follow
+  w.style.setProperty('--sp-bar-h', bh + 'px'); w.style.setProperty('--sp-bs', (bh / MZ_BAR_DEFAULT).toFixed(3));
   w.classList.toggle('side-collapsed', mz.theme === 'spotify' && sw <= MZ_COLLAPSED + 8);
 }
 function mzResizeStart(e, handle) {
   e.preventDefault();
-  var queue = handle.id === 'wm-qsplit', w = handle.closest('.wm');
-  var box = (queue ? handle.parentElement : mzEl('wm-side')).getBoundingClientRect();
+  var queue = handle.id === 'wm-qsplit', bar = handle.id === 'wm-bsplit', w = handle.closest('.wm');
+  var box = (queue ? handle.parentElement : bar ? handle.parentElement : mzEl('wm-side')).getBoundingClientRect();
   handle.setPointerCapture(e.pointerId); handle.classList.add('drag'); w.classList.add('resizing');
   function move(ev) {
-    if (queue) mz.prefs.queueW = Math.round(Math.max(200, Math.min(box.right - ev.clientX, 560)));
+    if (bar) mz.prefs.barH = mzClampBar(box.bottom - ev.clientY);
+    else if (queue) mz.prefs.queueW = Math.round(Math.max(200, Math.min(box.right - ev.clientX, 560)));
     else mz.prefs.sideW[mz.theme] = Math.round(mzClampSide(ev.clientX - box.left, mz.theme));
     mzApplySizes();
   }
@@ -1405,7 +1578,8 @@ function mzResizeStart(e, handle) {
   handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end);
 }
 function mzResizeReset(handle) {
-  if (handle.id === 'wm-qsplit') mz.prefs.queueW = MZ_QUEUE_DEFAULT; else mz.prefs.sideW[mz.theme] = MZ_SIDE_DEFAULT[mz.theme];
+  if (handle.id === 'wm-bsplit') mz.prefs.barH = MZ_BAR_DEFAULT;
+  else if (handle.id === 'wm-qsplit') mz.prefs.queueW = MZ_QUEUE_DEFAULT; else mz.prefs.sideW[mz.theme] = MZ_SIDE_DEFAULT[mz.theme];
   mzApplySizes(); mzSavePrefs();
 }
 
@@ -1456,15 +1630,13 @@ function mzBindUI() {
       case 'm-play': if (t) mzPlayList([t], 0); mzCloseMenu(); break;
       case 'm-next': if (t) mzQueueNext(t); mzCloseMenu(); break;
       case 'm-queue': if (t) mzQueueAdd(t); mzCloseMenu(); break;
+      case 'm-addpl': mzCloseMenu(); if (t && typeof mzSp !== 'undefined' && mzSp.addMenu) mzSp.addMenu(null, t, {}); break;
       case 'm-fav': if (t) mzToggleFav(t); mzCloseMenu(); break;
-      case 'm-artist': mzCloseMenu(); if (t) mzGo('artist', t.ai || t.ar); break;
+      case 'm-artist': mzCloseMenu(); if (v || t) mzGo('artist', v || t.ai || t.ar); break;
       case 'm-album': mzCloseMenu(); if (t) mzGo('album', t.li); break;
       case 'm-remove':
         mzCloseMenu();
-        if (!isNaN(c) && c !== mz.qi) {
-          if (mz.remote) { if (mz.queue[c]) mzCmd('qremove', mz.queue[c].f); break; }
-          mz.queue.splice(c, 1); if (c < mz.qi) mz.qi--; mzSaveState(true); mzRender();
-        }
+        mzQueueRemoveAt(c);
         break;
       case 'g-play': e.stopPropagation(); mzPlayCtx(c); break;
       case 'g-more': { e.stopPropagation(); var gr = el.getBoundingClientRect(); mzOpenMenu(gr.left, gr.bottom + 4, tid, false, null); break; }
@@ -1488,7 +1660,7 @@ function mzBindUI() {
     if (!row) return;
     e.preventDefault();
     var q = row.classList.contains('wm-q') || row.classList.contains('qrow');
-    if (!q) mzSelect(parseInt(row.dataset.c, 10));
+    if (!q && !mzUseSheet()) mzSelect(parseInt(row.dataset.c, 10));          // selecting a row is a mouse idea: on a phone it would stay highlighted
     mzOpenMenu(e.clientX, e.clientY, row.dataset.t, q, q ? parseInt(row.dataset.c, 10) : null);
   });
   root.addEventListener('pointerdown', function (e) {
@@ -1496,15 +1668,26 @@ function mzBindUI() {
   });
   root.addEventListener('dblclick', function (e) { var h = e.target.closest('.wm-split'); if (h) mzResizeReset(h); });
   root.addEventListener('keydown', function (e) {
-    var h = e.target.closest && e.target.closest('.wm-split'); if (!h || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    var h = e.target.closest && e.target.closest('.wm-split'); if (!h) return;
+    if (h.id === 'wm-bsplit') {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault(); mz.prefs.barH = mzClampBar((mz.prefs.barH || MZ_BAR_DEFAULT) + (e.key === 'ArrowUp' ? 8 : -8)); mzApplySizes(); mzSavePrefs(); return;
+    }
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
     var d = (e.key === 'ArrowRight' ? 1 : -1) * (h.id === 'wm-qsplit' ? -16 : 16);
     if (h.id === 'wm-qsplit') mz.prefs.queueW = Math.max(200, Math.min(mz.prefs.queueW + d, 560));
     else mz.prefs.sideW[mz.theme] = mzClampSide((mz.prefs.sideW[mz.theme] || MZ_SIDE_DEFAULT[mz.theme]) + d, mz.theme);
     mzApplySizes(); mzSavePrefs();
   });
-  window.addEventListener('blur', mzCloseMenu);
-  mzEl('wm-content').addEventListener('scroll', mzCloseMenu, { passive: true });
+  // a long press on a cover, link or button must not raise the browser's "Download image / Open in new tab" menu
+  document.addEventListener('contextmenu', function (e) {
+    if (!mz.coarse || e.defaultPrevented) return;
+    var t = e.target; if (t && t.closest && t.closest('input, textarea, [contenteditable="true"]')) return;
+    if (t && t.closest && t.closest('#music-screen')) e.preventDefault();
+  });
+  window.addEventListener('blur', mzClosePopup);                    // a sheet stays: it is not a pointer menu that a focus change should dismiss
+  mzEl('wm-content').addEventListener('scroll', function () { if (!mzSheetsOpen()) mzClosePopup(); }, { passive: true });   // and a fling that is still settling under a fresh sheet must not close it
 
   var sk = mzEl('wm-seek');
   sk.addEventListener('input', function () {
@@ -1523,6 +1706,17 @@ function mzBindUI() {
     mz.prefs.vol = vol.value / 100; mz.prefs.muted = false; mzSavePrefs(); mzApplyVolume();
     if (mz.remote) mzCmd('vol', mz.prefs.vol);          // volume belongs to the device that is playing
   });
+
+  // Escape closes an open menu, sheet or help panel and nothing else. This runs before the desktop's "Escape goes Home" shortcut, which used to
+  // fire as well and take you out of the player with the menu still open.
+  window.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !mzScreenOpen()) return;
+    var pop = mzEl('wm-menu'), help = mzEl('wm-help');
+    var open = (pop && pop.style.display !== 'none') || mzSheetsOpen() || (help && help.getAttribute('aria-hidden') === 'false');
+    if (!open) return;
+    e.preventDefault(); e.stopPropagation();
+    mzCloseMenu(); mzCloseHelp();
+  }, true);
 
   document.addEventListener('keydown', function (e) {
     if (!mzScreenOpen()) return;
@@ -1548,9 +1742,11 @@ function mzBindUI() {
 window.addEventListener('pagehide', function () { mzSaveState(true); clearTimeout(mzPushT); mzPush(true); });
 document.addEventListener('visibilitychange', function () {
   if (document.hidden) { mzSaveState(true); clearTimeout(mzPushT); mzPush(true); }
-  else { if (!mz.ws && mz.loaded) mzConnect(); mzSync(); }
+  else { mzRevive(false); mzSync(); }
 });
-window.addEventListener('focus', function () { if (!mz.ws && mz.loaded) mzConnect(); mzSync(); });
+window.addEventListener('focus', function () { mzRevive(false); mzSync(); });
+window.addEventListener('online', function () { mzRevive(true); });
+window.addEventListener('pageshow', function () { mzRevive(false); });
 (function () {
   function boot() { setTimeout(function () { if (mzHasSavedState()) loadMusic(); else mzFetchSession().then(function (srv) { if (srv) loadMusic(); }); }, 0); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

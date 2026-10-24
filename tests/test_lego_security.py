@@ -98,3 +98,29 @@ class TestAuthRequired:
         ]:
             r = getattr(client, method)(url, json=body) if body is not None else client.get(url)
             assert r.status_code == 401, f'{method} {url}'
+
+
+# ─── a browse root of "/" (the whole machine) must not make every path look "outside Files" ───
+@pytest.mark.parametrize('endpoint', ['trash', 'poof'])
+def test_destructive_actions_work_when_browse_root_is_slash(client, auth_headers, tmp_path, monkeypatch, endpoint):
+    import shared
+    monkeypatch.setenv('DECLOUD_BROWSE_ROOT', '/')
+    victim = tmp_path / 'pics' / 'old.jpg'
+    victim.parent.mkdir()
+    victim.write_bytes(b'jpg')
+    rel = str(victim).lstrip('/')
+    r = client.post('/api/lego/' + endpoint, json={'path': rel}, headers=auth_headers)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    assert not victim.exists()
+    if endpoint == 'trash':
+        assert (shared.FILES_DIR / 'file types' / 'trash' / 'old.jpg').read_bytes() == b'jpg'
+
+
+def test_trash_still_refuses_paths_outside_a_narrower_root(client, auth_headers, tmp_path, monkeypatch):
+    root = tmp_path / 'root'; root.mkdir()
+    sibling = tmp_path / 'root2'; sibling.mkdir()                      # shares the prefix of the root's name
+    (sibling / 'x.txt').write_text('x')
+    monkeypatch.setenv('DECLOUD_BROWSE_ROOT', str(root))
+    r = client.post('/api/lego/trash', json={'path': '../root2/x.txt'}, headers=auth_headers)
+    assert r.status_code in (400, 403)
+    assert (sibling / 'x.txt').exists()

@@ -234,6 +234,72 @@ def get_book_text():
         return jsonify({'error': str(e)}), 500
 
 # ─── API: Book Settings ───────────────────────────────────────
+# ─── API: page images (keeps pictures/layout; for comics & illustrated books) ──
+PAGE_DIR = BASE_DIR / 'page_cache'
+
+def _book_pdf(book_id):
+    """The library PDF whose stem is book_id (compared, never globbed)."""
+    if not shared.is_safe_book_ref(book_id) or not shared.BOOKS_DIR.exists():
+        return None
+    for f in shared.BOOKS_DIR.rglob('*.pdf'):
+        if f.stem == book_id:
+            return f
+    return None
+
+@bp.route('/api/books/pages')
+def book_pages():
+    """Page count + whether the PDF is mostly pictures (so text extraction would lose it)."""
+    pdf = _book_pdf(request.args.get('book', ''))
+    if not pdf:
+        return jsonify({'error': 'no pdf'}), 404
+    try:
+        import fitz
+        doc = fitz.open(str(pdf))
+        n = len(doc)
+        if not n:
+            return jsonify({'error': 'empty'}), 404
+        step = max(1, n // 12)
+        sample = [doc[i] for i in range(0, n, step)][:12]
+        chars = sum(len(p.get_text()) for p in sample) / len(sample)
+        imgs = sum(1 for p in sample if p.get_images()) / len(sample)
+        r = doc[0].rect
+        doc.close()
+        return jsonify({'pages': n, 'ratio': round(r.height / r.width, 4),
+                        'illustrated': chars < 700 or (imgs >= .5 and chars < 1500)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/api/books/page')
+def book_page():
+    """One PDF page as a JPEG (cached on disk). Query: book, n (0-based), w (px)."""
+    pdf = _book_pdf(request.args.get('book', ''))
+    if not pdf:
+        return '', 404
+    try:
+        n = int(request.args.get('n', 0))
+        w = max(300, min(1600, int(request.args.get('w', 900))))
+    except ValueError:
+        return '', 400
+    PAGE_DIR.mkdir(exist_ok=True)
+    out = PAGE_DIR / f'{pdf.stem}_{int(pdf.stat().st_mtime)}_{n}_{w}.jpg'
+    if not out.exists():
+        try:
+            import fitz
+            doc = fitz.open(str(pdf))
+            if n < 0 or n >= len(doc):
+                return '', 404
+            page = doc[n]
+            pix = page.get_pixmap(matrix=fitz.Matrix(w / page.rect.width, w / page.rect.width))
+            tmp = out.with_suffix('.tmp')
+            tmp.write_bytes(pix.tobytes('jpeg', jpg_quality=82))
+            tmp.replace(out)
+            doc.close()
+        except Exception:
+            return '', 500
+    resp = send_file(str(out), mimetype='image/jpeg')
+    resp.headers['Cache-Control'] = 'private, max-age=86400'
+    return resp
+
 @bp.route('/api/book/<book_id>/settings', methods=['GET', 'POST'])
 def book_settings(book_id):
     settings_file = AUDIO_DIR / f'{book_id}_settings.json'

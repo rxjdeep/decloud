@@ -152,12 +152,18 @@ function updateClock() {
   document.getElementById('clock').textContent =
     now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
 }
+function updateDate() {
+  var el = document.getElementById('clock-date');
+  if (el) el.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+updateDate();
 setInterval(updateClock, 1000);
+setInterval(updateDate, 60000);
 updateClock();
 
 // ─── Status Chips (Kali-style) + Sparklines ────────────────
-const STAT_HISTORY = { cpu: [], ram: [], gpu: [], disk: [] };
-const CHIP_GRAPH_MODE = { cpu: false, ram: false, gpu: false, disk: false };
+const STAT_HISTORY = { cpu: [], ram: [], gpu: [], disk: [], ssd: [] };
+const CHIP_GRAPH_MODE = { cpu: false, ram: false, gpu: false, disk: false, ssd: false };
 const MAX_HISTORY = 30;
 
 function pushHistory(key, val) {
@@ -213,6 +219,7 @@ function buildStatusChips() {
     { key: 'ram',  label: 'RAM' },
     { key: 'gpu',  label: 'GPU' },
     { key: 'disk', label: 'DISK' },
+    { key: 'ssd',  label: 'SSD' },
     { key: 'net',  label: 'NET' },
   ];
   container.innerHTML = chips.map(function(c) {
@@ -241,7 +248,7 @@ function updateChipGraph(key) {
   var data = STAT_HISTORY[key];
   if (!data || data.length < 2) return;
   var stroke = getComputedStyle(document.documentElement).getPropertyValue('--sparkline-stroke').trim();
-  var labels = { cpu: 'CPU', ram: 'RAM', gpu: 'GPU', disk: 'Disk' };
+  var labels = { cpu: 'CPU', ram: 'RAM', gpu: 'GPU', disk: 'Disk', ssd: 'SSD' };
   var currentVal = data[data.length - 1];
   el.innerHTML = buildSparkline(data, 72, 32, stroke, labels[key] || key, currentVal);
 }
@@ -264,6 +271,15 @@ async function loadQuickStats() {
     setChipValue('ram', ram);
     setChipValue('gpu', gpuPct);
     setChipValue('disk', disk);
+    var ext = (d.disks || [])[0];
+    var ssdChip = document.getElementById('chip-ssd');
+    if (ssdChip) ssdChip.style.display = ext ? '' : 'none';
+    if (ext) {
+      var sp = Math.round(ext.percent || 0);
+      pushHistory('ssd', sp);
+      setChipValue('ssd', sp);
+      ssdChip.title = ext.name + ': ' + ext.used_gb + ' / ' + ext.total_gb + ' GB';
+    }
 
     var netEl = document.getElementById('chip-val-net');
     if (netEl) {
@@ -279,7 +295,7 @@ async function loadQuickStats() {
       });
     }
 
-    ['cpu','ram','gpu','disk'].forEach(function(key) {
+    ['cpu','ram','gpu','disk','ssd'].forEach(function(key) {
       if (CHIP_GRAPH_MODE[key]) updateChipGraph(key);
     });
   } catch {}
@@ -395,7 +411,7 @@ function openApp(id) {
   closeAISpread();
   showScreen(app.screen);
   if (id === 'audiobooks') loadBooks();
-  if (id === 'music') { if (typeof mzApplyRoute === 'function') mzApplyRoute([]); navSet('music'); loadMusic(); }
+  if (id === 'music') { var back = typeof mzLastRouteParts === 'function' ? mzLastRouteParts() : []; if (typeof mzApplyRoute === 'function') mzApplyRoute(back); navSet(back.length ? 'music/' + back.join('/') : 'music'); loadMusic(); }
   if (id === 'files') { loadLego(); }
   if (id === 'gallery') glOpen();
   if (id === 'logs') loadLogs();
@@ -411,8 +427,15 @@ function openApp(id) {
 // ─── Screen Management ───────────────────────────────────
 function showScreen(id) {
   if (typeof navShow === 'function') navShow(id);
+  var wasActive = document.querySelector('.screen.active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id)?.classList.add('active');
+  var scr = document.getElementById(id);
+  scr?.classList.add('active');
+  if (scr) {                                       // slide like the Android back gesture: new screens come in from the right, going back reveals the previous one from the left
+    scr.classList.remove('nav-fwd', 'nav-back');
+    if (wasActive !== scr && wasActive && !document.body.classList.contains('desktop-mode')) scr.classList.add(id === 'home-screen' || (typeof nav !== 'undefined' && nav.dir === 'back') ? 'nav-back' : 'nav-fwd');
+  }
+  if (typeof mzSp !== 'undefined' && mzSp && mzSp.barsSync) mzSp.barsSync();       // the status bar colour follows the music pages, and goes back elsewhere
   // Track app usage
   var appMap = { 'book-screen': 'books', 'music-screen': 'music', 'lego-screen': 'files', 'gallery-screen': 'gallery', 'logs-screen': 'logs', 'ollama-screen': 'ai-chat', 'comfy-screen': 'ai-gen', 'agents-screen': 'agents', 'project-screen': 'projects', 'system-screen': 'system', 'terminal-screen': 'terminal', 'osint-screen': 'privacy', 'universe-screen': 'universe', 'journal-screen': 'journal', 'legos-screen': 'legos', 'settings-screen': 'settings' };
   if (appMap[id] && typeof trackAppOpen === 'function') trackAppOpen(appMap[id]);  // hash restore runs before telemetry.js loads
@@ -536,3 +559,38 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+
+
+// ─── Now playing card (phone home) ─────────────────────────
+var homeNpKey = '';
+function homeNpToggle() {
+  if (typeof mzCur === 'function' && mzCur() && typeof togglePlayMusic === 'function') togglePlayMusic();
+  else openApp('music');
+}
+function homeNpUpdate() {
+  var card = document.getElementById('home-np');
+  if (!card || !card.offsetParent || typeof mzCur !== 'function') return;
+  var t = mzCur(), playing = false;
+  if (t) {
+    if (mz.remote && mz.rs) playing = !!mz.rs.st.playing;
+    else playing = !!(typeof musicAudio !== 'undefined' && musicAudio && !musicAudio.paused);
+  }
+  var key = (t ? t.f : '') + '|' + playing;
+  if (key === homeNpKey) return;
+  homeNpKey = key;
+  var art = document.getElementById('home-np-art');
+  if (t) {
+    art.innerHTML = mzArt(t, 160, '');
+    document.getElementById('home-np-label').textContent = playing ? 'Now playing' : 'Paused';
+    document.getElementById('home-np-title').textContent = t.t;
+    document.getElementById('home-np-artist').textContent = t.ar || '';
+  } else {
+    art.innerHTML = '<div class="home-np-ph"></div>';
+    document.getElementById('home-np-label').textContent = 'Music';
+    document.getElementById('home-np-title').textContent = 'Nothing playing';
+    document.getElementById('home-np-artist').textContent = 'Tap to open your library';
+  }
+  document.getElementById('home-np-icon').innerHTML = typeof MZ_ICON !== 'undefined' ? (playing ? MZ_ICON.pause : MZ_ICON.play) : '';
+  card.classList.toggle('playing', playing);
+}
+setInterval(homeNpUpdate, 1000);

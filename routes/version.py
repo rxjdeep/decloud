@@ -8,9 +8,23 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 CHANGELOG = [
+    {
+        "version": "0.6.0",
+        "date": "2026-10-25",
+        "changes": [
+            "Music: lyrics, artist photos and banners, Spotify-style player and search; phone backup app",
+            "Lyrics under the cover (synced line, romaji for Japanese, LRCLIB fallback) and a desktop lyrics page",
+            "Artist photos and banners from Spotify, SoundCloud and Deezer with a picker in the artist menu",
+            "Now Playing laid out like Spotify, file format line and details sheet, player is no longer a history step",
+            "Playlist delete with Undo, long-press menus on albums/artists/playlists, drag to reorder on desktop, swipe a row to queue",
+            "Desktop add-to-playlist card, home screen Now Playing card, SSD usage chip, page-image mode for illustrated PDFs",
+            "Phone backup intake (routes/backup.py) and the DeCloud Backup app with a Holo look",
+            "Library cached on the phone for an instant music screen, Music reopens where you left it",
+        ]
+    },
     {
         "version": "0.5.0",
         "date": "2026-10-23",

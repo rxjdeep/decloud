@@ -20,7 +20,7 @@ A self-hosted web app (and installable PWA) that turns the computer under your d
 
 ## Contents
 
-[Highlights](#highlights) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Remote access](#remote-access) · [Terminal two-step code](#terminal-two-step-code) · [Configuration](#configuration) · [Security](#security) · [Integrations](#integrations) · [Operating it](#operating-it) · [Development](#development) · [License](#license)
+[Highlights](#highlights) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Remote access](#remote-access) · [Android apps](#android-apps) · [Phone backup](#phone-backup) · [Terminal two-step code](#terminal-two-step-code) · [Configuration](#configuration) · [Security](#security) · [Integrations](#integrations) · [Operating it](#operating-it) · [Development](#development) · [License](#license)
 
 ---
 
@@ -124,6 +124,31 @@ tailscale funnel 8899          # https://<machine>.<tailnet>.ts.net
 - `cloudflared` works too if you prefer it.
 
 Open the URL, sign in with your password, and choose **Add to Home Screen** to install it as an app.
+
+## Android apps
+
+Two small native apps live in `android/` (plain Java, no libraries, built in a throwaway Docker container). They are separate: separate package names, installed and updated on their own, and neither touches the other.
+
+- **DeCloud** (`android/shell`, about 30 KB): a WebView on your server, drawn edge to edge under transparent system bars. Lock-screen music controls keep playing with the screen off (a media service runs only while something plays); swiping the app from recents pauses the music and ends the app. It also handles downloads, uploads, the Voice microphone and long-press shortcuts. Build with `./scripts/build_android.sh shell`, install with `./scripts/install_app.sh`.
+- **DeCloud Backup** (`android/pusher`, about 30 KB): pushes new photos, screenshots, downloads and documents to the server, described next. Build with `./scripts/build_android.sh pusher`, install with `./scripts/install_pusher.sh`.
+
+## Phone backup
+
+DeCloud Backup runs through Android's own `JobScheduler`: the system wakes it shortly after new media appears, with the battery not low, and the schedule survives reboots. There is no daemon, no polling and nothing to restart. Between runs the app does not exist as a process. On mobile data it sends files up to a size limit (25 MB by default) and asks through a notification before sending larger ones.
+
+The server side is off until you set a token (`routes/backup.py`). The phone's token is separate from your login and can only add files: it cannot list, read, overwrite or delete anything.
+
+```bash
+# .env
+DECLOUD_BACKUP_TOKEN=<24+ random characters>     # python3 -c "import secrets; print(secrets.token_urlsafe(36))"
+DECLOUD_BACKUP_URL=https://your-box.example.ts.net
+DECLOUD_BACKUP_DIR=/path/to/backups              # Camera/, Screenshots/, Downloads/, Documents/ are created inside
+
+./scripts/build_android.sh pusher    # builds the APK in a throwaway Docker container; nothing is installed on the server
+./scripts/install_pusher.sh    # installs it through a shell you already have on the phone (pm install + appops)
+```
+
+Files are stored as they arrive (never overwritten, written as `.part` then renamed, the phone's modified time kept). The APK has the URL and token compiled in, so keep it private; rotate the token by rebuilding and running the installer again.
 
 ## Terminal two-step code
 

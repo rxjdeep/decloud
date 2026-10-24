@@ -47,6 +47,9 @@ Thumbs.db
 # Cache (generated at runtime, never commit)
 audio_cache/
 thumb_cache/
+page_cache/
+artist_art/
+lyrics_cache/
 text_cache/
 voice_clips/
 voices/
@@ -83,3 +86,7 @@ music_session.json
 totp.json
 audit.log
 audit.log.1
+
+# phone app build output (contains the server token)
+android/pusher/build/
+*.jks

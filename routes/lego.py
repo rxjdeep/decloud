@@ -280,6 +280,12 @@ def lego_random_image():
     })
 
 
+def _inside(path, root):
+    """True if path is root or somewhere below it. Real-path containment, not a string prefix: with a root of '/' the prefix
+    '/' + '/' is '//' and nothing matches, which made every file look "outside Files"."""
+    return path == root or path.is_relative_to(root)
+
+
 @bp.route('/api/lego/trash', methods=['POST'])
 def lego_trash():
     """Move a file to /file types/trash/ inside Files."""
@@ -292,7 +298,7 @@ def lego_trash():
     files_root_resolved = _root()
     target_resolved = target.resolve()
 
-    if not str(target_resolved).startswith(str(files_root_resolved) + '/') and target_resolved != files_root_resolved:
+    if not _inside(target_resolved, files_root_resolved):
         return jsonify({'error': 'path outside Files'}), 403
     if not target_resolved.is_file():
         return jsonify({'error': 'can only trash files'}), 400
@@ -314,7 +320,11 @@ def lego_trash():
     try:
         _shutil.move(str(target_resolved), str(dest))
         audit.log('file_trash', str(target_resolved))
-        return jsonify({'ok': True, 'moved_to': str(dest.relative_to(_root()))})
+        try:
+            moved_to = str(dest.relative_to(_root()))
+        except ValueError:                                  # the trash folder lives outside a narrower browse root
+            moved_to = str(dest)
+        return jsonify({'ok': True, 'moved_to': moved_to})
     except Exception as e:
         return jsonify({'error': f'trash error: {str(e)}'}), 500
 
@@ -337,7 +347,7 @@ def lego_shred():
     target_resolved = target.resolve()
 
     # Must be inside Files (strict prefix match)
-    if not str(target_resolved).startswith(str(files_root_resolved) + '/') and target_resolved != files_root_resolved:
+    if not _inside(target_resolved, files_root_resolved):
         return jsonify({'error': 'path outside Files'}), 403
 
     # Must be a file, not a directory
@@ -377,7 +387,7 @@ def lego_poof():
     target_resolved = target.resolve()
 
     # Must be inside Files (strict prefix match)
-    if not str(target_resolved).startswith(str(files_root_resolved) + '/') and target_resolved != files_root_resolved:
+    if not _inside(target_resolved, files_root_resolved):
         return jsonify({'error': 'path outside Files'}), 403
 
     # Must be a file
@@ -424,7 +434,7 @@ def lego_mark_done():
     target_resolved = target.resolve()
 
     # Must be inside Files
-    if not str(target_resolved).startswith(str(files_root_resolved) + '/') and target_resolved != files_root_resolved:
+    if not _inside(target_resolved, files_root_resolved):
         return jsonify({'error': 'path outside Files'}), 403
 
     # Must be a directory

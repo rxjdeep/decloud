@@ -58,6 +58,7 @@ let readerText = '';
 let bookmarks = [];
 let fontSizeLevel = 1;
 let bookmarkPanelOpen = false;
+let bookPages = null;        // {pages, ratio, illustrated} when the book is a PDF
 
 // ─── Server position sync (cross-device resume) ───────────────
 let _posPushAt = 0;  // epoch ms of last server push (10s throttle)
@@ -94,6 +95,15 @@ async function openBook(bookId, title) {
     const data = await res.json();
     readerChapters = data.chapters || [];
   } catch { readerChapters = []; }
+
+  // Page images (PDF only)
+  bookPages = null;
+  try {
+    const pr = await fetch(`/api/books/pages?book=${encodeURIComponent(bookId)}`);
+    if (pr.ok) bookPages = await pr.json();
+  } catch {}
+  document.getElementById('pages-mode-btn').style.display = bookPages ? '' : 'none';
+  buildPagesPane();
 
   // Fetch audio data
   var hasAudio = false;
@@ -142,7 +152,7 @@ async function openBook(bookId, title) {
   try { savedAudio = JSON.parse(localStorage.getItem('playback_' + bookId) || 'null'); } catch {}
 
   var savedReaderBookmark = bookmarks.find(function(b) { return b.isResume; });
-  var lastMode = localStorage.getItem('mode_' + bookId) || 'reader';
+  var lastMode = localStorage.getItem('mode_' + bookId) || (bookPages && bookPages.illustrated ? 'pages' : 'reader');
 
   // ── Cross-device resume: server position wins if newer than local ──
   // (so a phone and laptop continue from the same spot)
@@ -191,7 +201,7 @@ async function openBook(bookId, title) {
     if (hasAudio) buildChapterDropdown(0);
   }
 
-  setReaderMode('reader');
+  setReaderMode(lastMode === 'pages' && bookPages ? 'pages' : 'reader');
   loadChapterText(readerChapterIdx);
   showScreen('reader-screen');
 
@@ -321,11 +331,15 @@ function changeFontSize(delta) {
 }
 
 function setReaderMode(mode) {
-  const isReader = mode === 'reader';
+  if (mode === 'pages' && !bookPages) mode = 'reader';
+  const isReader = mode === 'reader', isPages = mode === 'pages';
   document.getElementById('reader-pane').style.display = isReader ? 'block' : 'none';
-  document.getElementById('audio-pane').style.display = isReader ? 'none' : 'block';
+  document.getElementById('pages-pane').style.display = isPages ? 'block' : 'none';
+  document.getElementById('audio-pane').style.display = mode === 'audio' ? 'block' : 'none';
   document.getElementById('reader-mode-btn').classList.toggle('active', isReader);
-  document.getElementById('audio-mode-btn').classList.toggle('active', !isReader);
+  document.getElementById('pages-mode-btn').classList.toggle('active', isPages);
+  document.getElementById('audio-mode-btn').classList.toggle('active', mode === 'audio');
+  if (isPages) pagesRestore();
 
   // Persist last used mode for auto-resume
   if (currentBook) localStorage.setItem('mode_' + currentBook, mode);
@@ -333,7 +347,7 @@ function setReaderMode(mode) {
   // Show/hide chapter nav (reader uses prev/next, audio uses dropdown)
   document.getElementById('chapter-nav').style.display = isReader ? 'flex' : 'none';
 
-  if (!isReader && audioData?.has_audio) {
+  if (mode === 'audio' && audioData?.has_audio) {
     // Switching to audio mode - load current audio chapter
     selectAudioChapter(audioChapterIdx);
   } else if (isReader) {
@@ -1071,3 +1085,43 @@ document.addEventListener('click', e => {
 });
 
 // ─── Lego File Browser ──────────────────────────────────
+
+
+// ─── Pages mode: the PDF's own pages as images (keeps the pictures) ───
+var _pagesTimer = null;
+function buildPagesPane() {
+  var list = document.getElementById('pages-list');
+  list.innerHTML = '';
+  if (!bookPages) return;
+  var w = Math.min(1400, Math.round(Math.max(window.innerWidth, 360) * (window.devicePixelRatio || 1) / 100) * 100);
+  var base = '/api/books/page?book=' + encodeURIComponent(currentBook) + '&w=' + w + '&n=';
+  var html = '';
+  for (var i = 0; i < bookPages.pages; i++) {
+    html += '<div class="pg" style="aspect-ratio:1/' + bookPages.ratio + '"><img loading="lazy" decoding="async" alt="Page ' + (i + 1) + '" src="' + base + i + '"></div>';
+  }
+  list.innerHTML = html;
+  pagesCount(0);
+}
+function pagesCount(i) {
+  document.getElementById('pages-count').textContent = bookPages ? 'Page ' + (i + 1) + ' / ' + bookPages.pages : '';
+}
+function pagesCurrent() {
+  var els = document.getElementById('pages-list').children, mid = window.innerHeight * 0.4;
+  for (var i = 0; i < els.length; i++) { if (els[i].getBoundingClientRect().bottom > mid) return i; }
+  return els.length - 1;
+}
+function pagesRestore() {
+  var i = parseInt(localStorage.getItem('page_' + currentBook) || '0', 10) || 0;
+  var el = document.getElementById('pages-list').children[i];
+  setTimeout(function () { if (el) el.scrollIntoView({ block: 'start' }); pagesCount(i); }, 50);
+}
+document.addEventListener('scroll', function () {
+  var pane = document.getElementById('pages-pane');
+  if (!pane || pane.style.display === 'none' || !bookPages) return;
+  clearTimeout(_pagesTimer);
+  _pagesTimer = setTimeout(function () {
+    var i = pagesCurrent();
+    pagesCount(i);
+    try { localStorage.setItem('page_' + currentBook, i); } catch (e) {}
+  }, 150);
+}, true);

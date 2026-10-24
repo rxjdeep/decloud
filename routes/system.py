@@ -94,6 +94,17 @@ def system_info():
         disk = psutil.disk_usage('/')
         disk_total_gb = disk.total / (1024 ** 3)
 
+        extra = []
+        try:
+            for part in psutil.disk_partitions():
+                if part.mountpoint.startswith(('/media/', '/mnt/')) and not any(e['mp'] == part.mountpoint for e in extra):
+                    u = psutil.disk_usage(part.mountpoint)
+                    extra.append({'mp': part.mountpoint, 'name': part.mountpoint.rstrip('/').rsplit('/', 1)[-1],
+                                  'percent': u.percent, 'total_gb': round(u.total / 1024 ** 3, 1),
+                                  'used_gb': round(u.used / 1024 ** 3, 1)})
+        except Exception:
+            pass
+
         return jsonify({
             'hostname': platform.node(),
             'os': osinfo['name'],
@@ -111,6 +122,7 @@ def system_info():
             'swap_percent': swap.percent,
             'disk_percent': disk.percent,
             'disk_total_gb': round(disk_total_gb, 1),
+            'disks': extra,
             'battery': battery,
             'uptime': f'{hours}h {mins}m',
             'temps': temps,

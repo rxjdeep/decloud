@@ -23,3 +23,8 @@ pillow-heif==1.5.0
 piper-tts==1.6.0
 # Whisper for speech-to-text (CTRanslate2 backend, no torch)
 faster-whisper==1.2.1
+
+# Japanese lyrics shown as romaji (word splitting + spelling)
+janome==0.5.0
+pykakasi==2.3.0
+jaconv==0.5.0

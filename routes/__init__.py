@@ -81,3 +81,6 @@ def register_blueprints(app, sock):
 
         from .music import register as register_music
         register_music(sock)
+
+    from .backup import bp as backup_bp
+    app.register_blueprint(backup_bp)

@@ -31,6 +31,8 @@ function loadAbout() {
 }
 
 function loadSettings() {
+  if (window.DeCloudApp) { var ao = document.getElementById('app-only-group'), pw = document.getElementById('pwa-window-group'); if (ao) ao.style.display = ''; if (pw) pw.style.display = 'none'; }     // inside the Android app
+  var fst = document.getElementById('fullscreen-toggle'); if (fst) fst.checked = fsWanted();
   // Load current theme
   fetch('/api/settings/theme').then(function(r) { return r.json(); }).then(function(d) {
     var theme = d.theme || 'auto';
@@ -96,6 +98,20 @@ function savePaths() {
     }
   });
 }
+
+// Fullscreen: the only way a web app on Android gets rid of the status and navigation bars (a transparent theme-color is read as black).
+// It has to start from a tap, so the saved choice is re-applied on the first tap after the app opens.
+function fsWanted() { try { return localStorage.getItem('decloud_fs') === '1'; } catch (_) { return false; } }
+function fsEnter() {
+  var el = document.documentElement;
+  if (document.fullscreenElement || !el.requestFullscreen) return;
+  try { var p = el.requestFullscreen({ navigationUI: 'hide' }); if (p && p.catch) p.catch(function () {}); } catch (_) {}
+}
+function setFullscreenPref(on) {
+  try { localStorage.setItem('decloud_fs', on ? '1' : '0'); } catch (_) {}
+  if (on) fsEnter(); else if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+}
+document.addEventListener('pointerup', function () { if (fsWanted() && !document.fullscreenElement) fsEnter(); }, true);
 
 function setTheme(theme) {
   document.querySelectorAll('.theme-option').forEach(function(btn) {

@@ -46,9 +46,14 @@ async function termUnlock(e) {
 }
 function termOpen() {
   termGate(function () {
-    if (!xterm) initXterm();
-    if (xtermFit) { xtermFit.fit(); sendResize(); }
-    if (xterm) xterm.focus();
+    loadVendor('xterm').then(function () {                       // the terminal library is fetched the first time it is opened
+      if (!xterm) initXterm();
+      if (xtermFit) { xtermFit.fit(); sendResize(); }
+      if (xterm) xterm.focus();
+    }).catch(function () {
+      const c = document.getElementById('xterm-container');
+      if (c) c.textContent = 'Terminal library failed to load. Reload the page (pull to refresh).';
+    });
   });
 }
 

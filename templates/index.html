@@ -7,13 +7,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="DeCloud">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#0a0a0f">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-  <link rel="stylesheet" href="/static/css/app.css?v=165">
-  <link rel="stylesheet" href="/static/css/onboarding.css?v=165">
-  <link rel="stylesheet" href="/static/css/gallery.css?v=165">
+  <link rel="stylesheet" href="/static/css/app.css?v=270">
+  <link rel="stylesheet" href="/static/css/onboarding.css?v=270">
+  <link rel="stylesheet" href="/static/css/gallery.css?v=270">
   <link rel="stylesheet" href="/static/vendor/xterm/xterm.min.css">
   <title>DeCloud</title>
 </head>
@@ -50,6 +49,7 @@
   <div class="top-bar">
     <div class="top-bar-left">
       <div class="clock" id="clock"></div>
+      <div class="clock-date" id="clock-date"></div>
     </div>
     <button class="notif-bell" id="notif-bell" onclick="toggleNotifications()" aria-label="Notifications">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -73,6 +73,17 @@
   </div>
 
   <div class="app-grid" id="app-grid"></div>
+
+  <!-- Now playing (phone) -->
+  <div class="home-np" id="home-np" onclick="openApp('music')" role="button" aria-label="Open Music">
+    <div class="home-np-art" id="home-np-art"></div>
+    <div class="home-np-text">
+      <div class="home-np-label" id="home-np-label">Music</div>
+      <div class="home-np-title" id="home-np-title">Nothing playing</div>
+      <div class="home-np-artist" id="home-np-artist"></div>
+    </div>
+    <button class="home-np-btn" id="home-np-btn" onclick="event.stopPropagation(); homeNpToggle()" aria-label="Play/Pause"><svg id="home-np-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor"></svg></button>
+  </div>
 </div>
 
 <!-- ═══ MUSIC PLAYER ═══ -->
@@ -84,6 +95,7 @@
       <button class="ml-max" onclick="mzFullscreen()" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 12 12" width="8" height="8"><path d="M3 9V5.2L6.8 9H3zM9 3v3.8L5.2 3H9z" fill="currentColor"/></svg></button>
     </div>
     <header class="wm-top">
+      <button class="sp-sback" onclick="mzSp.sfExit()" aria-label="Back" title="Back"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5M11 5l-7 7 7 7"/></svg></button>
       <div class="wm-navbtns">
         <button class="wm-orb" onclick="history.back()" aria-label="Back" title="Back"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"/></svg></button>
         <button class="wm-orb" onclick="history.forward()" aria-label="Forward" title="Forward"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg></button>
@@ -107,6 +119,7 @@
       <div class="wm-split" id="wm-split" role="separator" aria-orientation="vertical" tabindex="0" title="Drag to resize · double-click to reset"></div>
     </div>
     <footer class="wm-transport">
+      <div class="wm-split bar" id="wm-bsplit" role="separator" aria-orientation="horizontal" aria-label="Resize the player bar" tabindex="0" title="Drag to resize · double-click to reset"></div>
       <button class="sp-npclose" onclick="mzNPClose()" aria-label="Close player"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
       <div class="sp-minifill"><i id="sp-minifill"></i></div>
       <div class="wm-now" id="wm-now" onclick="mzNowTap(event)">
@@ -137,6 +150,7 @@
         <button class="wm-ctl" id="wm-mute" onclick="mzToggleMute()" aria-label="Mute" title="Mute"></button>
         <input type="range" id="wm-vol" min="0" max="100" value="100" aria-label="Volume">
         <button class="wm-ctl" id="wm-devbtn" onclick="mzDevicesMenu(event)" aria-label="Connect to a device" title="Connect to a device"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="10" rx="1.5"/><line x1="6" y1="18" x2="12" y2="18"/><line x1="9" y1="14" x2="9" y2="18"/><rect x="16" y="9" width="6" height="11" rx="1.5"/></svg></button>
+        <button class="wm-ctl wm-lyrbtn" id="wm-lyrbtn" onclick="mzSp.lyricsToggle()" aria-label="Lyrics" title="Lyrics"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h10M4 15h16M4 20h8"/></svg></button>
         <button class="wm-ctl wm-npbtn" id="wm-npbtn" onclick="mzGo('now')" aria-label="Now Playing" title="Now Playing"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>
       </div>
     </footer>
@@ -147,15 +161,17 @@
     </nav>
     <div class="sp-np" id="sp-np" aria-hidden="true">
       <div class="sp-np-grab"></div>
+      <div class="sp-np-scroll" id="sp-np-scroll"><div class="sp-np-main">
       <div class="sp-np-head">
         <button class="sp-np-btn" onclick="mzNPClose()" aria-label="Close player"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-        <div class="sp-np-from"><small>PLAYING FROM ALBUM</small><b id="sp-np-from"></b></div>
-        <button class="sp-np-btn" id="sp-np-more" aria-label="More"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+        <div class="sp-np-from"><small>Playing from album</small><b id="sp-np-from"></b></div>
+        <button class="sp-np-btn" id="sp-np-more" aria-label="More"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></button>
       </div>
       <div class="sp-np-artwrap"><div class="sp-np-art" id="sp-np-art"></div></div>
+      <div class="sp-npl" id="sp-npl"><span></span></div>
       <div class="sp-np-meta">
         <div class="sp-np-text"><b id="sp-np-title"></b><span id="sp-np-artist"></span></div>
-        <button class="sp-np-heart" id="sp-np-heart" onclick="mzToggleFav()" aria-label="Favorite"></button>
+        <button class="sp-np-heart" id="sp-np-heart" onclick="mzSp.addMenu(event)" aria-label="Add to playlist"></button>
       </div>
       <div class="sp-np-seek">
         <input type="range" id="sp-np-seek" min="0" max="1000" value="0" step="1" aria-label="Seek">
@@ -171,8 +187,21 @@
       <div class="sp-np-foot">
         <button onclick="mzDevicesMenu(event)" id="sp-np-dev" aria-label="Connect to a device"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="10" rx="1.5"/><line x1="6" y1="18" x2="12" y2="18"/><line x1="9" y1="14" x2="9" y2="18"/><rect x="16" y="9" width="6" height="11" rx="1.5"/></svg></button>
         <span id="sp-np-remote"></span>
+        <div class="sp-np-qual" id="sp-np-qual" data-act="sp-qual" role="button" tabindex="0" hidden></div>
         <button onclick="mzSp.npQueue()" aria-label="Queue"><svg viewBox="0 0 16 16" width="22" height="22" fill="currentColor"><path d="M15 15H1v-1.5h14V15zm0-4.5H1V9h14v1.5zm-14-7A2.5 2.5 0 0 1 3.5 1h9a2.5 2.5 0 0 1 0 5h-9A2.5 2.5 0 0 1 1 3.5zm2.5-1a1 1 0 0 0 0 2h9a1 1 0 1 0 0-2h-9z"/></svg></button>
       </div>
+      </div><div class="sp-np-cards" id="sp-np-cards"></div></div>
+    </div>
+    <div class="sp-q" id="sp-q" aria-hidden="true">
+      <div class="sp-q-head" id="sp-q-head">
+        <div class="sp-np-grab"></div>
+        <div class="sp-q-bar">
+          <button class="sp-np-btn" onclick="mzSp.qClose()" aria-label="Back to the player"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <b>Queue</b>
+          <button class="sp-textbtn" data-act="sp-clearq">Clear</button>
+        </div>
+      </div>
+      <div class="sp-q-list" id="sp-q-list"></div>
     </div>
     <div class="wm-help" id="wm-help" role="dialog" aria-label="How to use this player" aria-hidden="true" style="display:none">
       <div class="wm-help-head"><b>How to use this player</b><button onclick="mzToggleHelp(event)" aria-label="Close help">✕</button></div>
@@ -211,6 +240,7 @@
   <!-- Mode toggle: read vs listen -->
   <div class="book-mode-bar" id="reader-mode-bar">
     <button class="mode-btn active" id="reader-mode-btn" onclick="setReaderMode('reader')">Read</button>
+    <button class="mode-btn" id="pages-mode-btn" onclick="setReaderMode('pages')" style="display:none">Pages</button>
     <button class="mode-btn" id="audio-mode-btn" onclick="setReaderMode('audio')">Listen</button>
   </div>
 
@@ -226,6 +256,12 @@
     <button class="chapter-nav-btn" id="prev-ch-btn" onclick="openPrevChapter()"><span class="nav-arrow prev"></span> Prev</button>
     <span class="chapter-nav-label" id="chapter-label">Ch 1</span>
     <button class="chapter-nav-btn" id="next-ch-btn" onclick="openNextChapter()">Next <span class="nav-arrow next"></span></button>
+  </div>
+
+  <!-- PAGES MODE (original page images: comics, illustrated books) -->
+  <div class="pages-pane" id="pages-pane" style="display:none">
+    <div class="pages-count" id="pages-count"></div>
+    <div class="pages-list" id="pages-list"></div>
   </div>
 
   <!-- E-READER MODE -->
@@ -570,6 +606,26 @@
             <div class="theme-preview auto"></div><span>Auto</span>
           </button>
         </div>
+      </div>
+      <div class="settings-group" id="app-only-group" style="display:none">
+        <div class="settings-label">Android app</div>
+        <div class="settings-row">
+          <span>App log</span>
+          <button class="settings-btn" onclick="DeCloudApp.openLog()">Open</button>
+        </div>
+        <div class="settings-row">
+          <span>DeCloud Backup</span>
+          <button class="settings-btn" onclick="DeCloudApp.openBackup()">Open</button>
+        </div>
+        <div class="settings-note">The log shows page errors and the music controls. DeCloud Backup is a separate app; this opens it if it is installed.</div>
+      </div>
+      <div class="settings-group" id="pwa-window-group">
+        <div class="settings-label">App window</div>
+        <div class="settings-row">
+          <span>Hide Android status and navigation bars</span>
+          <input type="checkbox" id="fullscreen-toggle" onchange="setFullscreenPref(this.checked)">
+        </div>
+        <div class="settings-note">Android won't let an installed web app make its bars transparent, so this goes fullscreen instead. Swipe from the top or bottom edge to peek at the bars; the back gesture leaves fullscreen until your next tap. Applies on this device only.</div>
       </div>
       <div class="settings-group">
         <div class="settings-label">Voice Orb</div>
@@ -1234,42 +1290,37 @@
   </div>
 </div>
 
-<script src="/static/vendor/xterm/xterm.min.js"></script>
-<script src="/static/vendor/xterm/addon-fit.min.js"></script>
-<script src="/static/vendor/three/three.min.js"></script>
-<script src="/static/vendor/qrcode/qrcode.js"></script>
-<script type="module" src="/static/js/cannon-init.js"></script>
 <script src="/static/js/thinking-orbs.js"></script>
-<script src="/static/js/modules/auth.js?v=165"></script>
-<script src="/static/js/modules/onboarding.js?v=165"></script>
-<script src="/static/js/modules/core.js?v=165"></script>
-<script src="/static/js/modules/nav.js?v=165"></script>
-<script src="/static/js/modules/media-session.js?v=165"></script>
-<script src="/static/js/modules/home.js?v=165"></script>
- <script src="/static/js/modules/liquid.js?v=165"></script>
- <script src="/static/js/modules/musicgen.js?v=165"></script>
- <script src="/static/js/modules/models.js?v=165"></script>
-<script src="/static/js/modules/projects.js?v=165"></script>
-<script src="/static/js/modules/audiobooks.js?v=165"></script>
-<script src="/static/js/modules/ui-kit.js?v=165"></script>
-<script src="/static/js/modules/gallery.js?v=165"></script>
-<script src="/static/js/modules/lego.js?v=165"></script>
-<script src="/static/js/modules/logs.js?v=165"></script>
-<script src="/static/js/modules/terminal.js?v=165"></script>
-<script src="/static/js/modules/osint.js?v=165"></script>
-<script src="/static/js/modules/universe.js?v=165"></script>
-<script src="/static/js/modules/system.js?v=165"></script>
-<script src="/static/js/modules/ollama.js?v=165"></script>
-<script src="/static/js/modules/comfy.js?v=165"></script>
-<script src="/static/js/modules/lego3d.js?v=165"></script>
-<script src="/static/js/modules/voice.js?v=165"></script>
-<script src="/static/js/modules/journal.js?v=165"></script>
-<script src="/static/js/modules/legos3d.js?v=165"></script>
-<script src="/static/js/modules/settings.js?v=165"></script>
-<script src="/static/js/modules/telemetry.js?v=165"></script>
-<script src="/static/js/modules/desktop.js?v=165"></script>
-<script src="/static/js/modules/music.js?v=165"></script>
-<script src="/static/js/modules/music-spotify.js?v=165"></script>
+<script src="/static/js/modules/auth.js?v=270"></script>
+<script src="/static/js/modules/onboarding.js?v=270"></script>
+<script src="/static/js/modules/core.js?v=270"></script>
+<script src="/static/js/modules/nav.js?v=270"></script>
+<script src="/static/js/modules/media-session.js?v=270"></script>
+<script src="/static/js/modules/home.js?v=270"></script>
+ <script src="/static/js/modules/liquid.js?v=270"></script>
+ <script src="/static/js/modules/musicgen.js?v=270"></script>
+ <script src="/static/js/modules/models.js?v=270"></script>
+<script src="/static/js/modules/projects.js?v=270"></script>
+<script src="/static/js/modules/audiobooks.js?v=270"></script>
+<script src="/static/js/modules/ui-kit.js?v=270"></script>
+<script src="/static/js/modules/gallery.js?v=270"></script>
+<script src="/static/js/modules/lego.js?v=270"></script>
+<script src="/static/js/modules/logs.js?v=270"></script>
+<script src="/static/js/modules/terminal.js?v=270"></script>
+<script src="/static/js/modules/osint.js?v=270"></script>
+<script src="/static/js/modules/universe.js?v=270"></script>
+<script src="/static/js/modules/system.js?v=270"></script>
+<script src="/static/js/modules/ollama.js?v=270"></script>
+<script src="/static/js/modules/comfy.js?v=270"></script>
+<script src="/static/js/modules/lego3d.js?v=270"></script>
+<script src="/static/js/modules/voice.js?v=270"></script>
+<script src="/static/js/modules/journal.js?v=270"></script>
+<script src="/static/js/modules/legos3d.js?v=270"></script>
+<script src="/static/js/modules/settings.js?v=270"></script>
+<script src="/static/js/modules/telemetry.js?v=270"></script>
+<script src="/static/js/modules/desktop.js?v=270"></script>
+<script src="/static/js/modules/music.js?v=270"></script>
+<script src="/static/js/modules/music-spotify.js?v=270"></script>
 
 <!-- ═══ ONBOARDING OVERLAY ═══ -->
 <div id="onboarding-overlay" class="onboarding-overlay" style="display:none">

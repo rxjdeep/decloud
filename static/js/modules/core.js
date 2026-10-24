@@ -65,11 +65,64 @@ function safeUrl(u) {
   return /^(https?:\/\/|\/(?!\/))/i.test(u) ? u : '#';
 }
 
+// Android's WebView has no Vibration API (Chrome does). Inside the DeCloud app the native bridge stands in for it, so every
+// existing navigator.vibrate(...) call in the player and the UI keeps working unchanged.
+if (typeof navigator.vibrate !== 'function' && window.DeCloudApp && window.DeCloudApp.vibrate) {
+  navigator.vibrate = function(p) {
+    try { window.DeCloudApp.vibrate(JSON.stringify(Array.isArray(p) ? p : [p])); return true; } catch (_) { return false; }
+  };
+}
+
+// Heavy libraries are fetched the first time a screen needs them instead of on every page open (about 1 MB less to download and parse).
+// Bump the ?v= below when a file changes: versioned URLs are cached for a year.
+var VENDOR = {
+  xterm: ['/static/vendor/xterm/xterm.min.js?v=1', '/static/vendor/xterm/addon-fit.min.js?v=1'],
+  qrcode: ['/static/vendor/qrcode/qrcode.js?v=1'],
+  legos: ['/static/vendor/three/three.min.js?v=1', 'module:/static/js/cannon-init.js?v=1']
+};
+var vendorLoads = {};
+function loadScriptOnce(src) {
+  if (vendorLoads[src]) return vendorLoads[src];
+  return vendorLoads[src] = new Promise(function(ok, fail) {
+    var mod = src.indexOf('module:') === 0, el = document.createElement('script');
+    el.src = mod ? src.slice(7) : src;
+    if (mod) el.type = 'module';
+    el.onload = function() { ok(); };
+    el.onerror = function() { delete vendorLoads[src]; fail(new Error('could not load ' + src)); };
+    document.head.appendChild(el);
+  });
+}
+function loadVendor(name) {
+  return (VENDOR[name] || []).reduce(function(p, src) { return p.then(function() { return loadScriptOnce(src); }); }, Promise.resolve());
+}
+
 // ─── Crash Recovery (runs before anything else can break) ──
+// A script that fails to download (flaky tunnel, a restart or service-worker update mid-load) leaves later code calling functions that never
+// loaded. Reload once to fetch it again; the flag keeps a genuinely missing file from looping.
+window.addEventListener('error', function(e) {
+  var t = e.target;
+  if (!t || t.tagName !== 'SCRIPT' || !t.src) return;
+  setTimeout(function() {                          // scripts cancelled by a normal navigation or refresh are not failures
+    if (decloudLeaving) return;
+    try {
+      if (sessionStorage.getItem('decloud_script_retry') === t.src) return;
+      sessionStorage.setItem('decloud_script_retry', t.src);
+    } catch (_) { return; }
+    console.warn('Script failed to load, retrying page:', t.src);
+    location.reload();
+  }, 400);
+}, true);
+var decloudLeaving = false;
+window.addEventListener('pagehide', function() { decloudLeaving = true; });
+window.addEventListener('beforeunload', function() { decloudLeaving = true; });
+window.addEventListener('load', function() { try { sessionStorage.removeItem('decloud_script_retry'); } catch (_) {} });
+
 window.addEventListener('error', function(e) {
   // Ignore errors from Safari's native share sheet / visibility changes
   var msg = (e.message || '').toLowerCase();
   if (msg.includes('share') || msg.includes('visibility') || msg.includes('abort')) return;
+  // An opaque "Script error." (no error object, no line) comes from a foreign script, e.g. a WebView wrapper's injected code: nothing to recover from
+  if (!e.error && !e.lineno && /^script error\.?$/.test(msg.trim())) return;
   console.error('Uncaught error:', e.error || e.message);
   showCrashRecovery(e.error || new Error(e.message));
 });

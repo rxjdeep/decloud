@@ -17,6 +17,8 @@ os.environ.setdefault('DECLOUD_FILES_DIR', str(_TMP / 'files'))
 os.environ['DECLOUD_BROWSE_ROOT'] = ''          # tests browse the sandbox, never a machine-wide root from a real .env
 os.environ['DECLOUD_TOTP_FILE'] = str(_TMP / 'totp.json')
 os.environ['DECLOUD_AUDIT_FILE'] = str(_TMP / 'audit.log')
+os.environ['DECLOUD_SESSIONS_FILE'] = str(_TMP / 'sessions.json')
+os.environ['DECLOUD_NAVIDROME_USER'] = os.environ['DECLOUD_NAVIDROME_PASS'] = ''   # keep the suite off the real Navidrome (it read/wrote it via the .env credentials)   # else the suite overwrites the real logged-in sessions
 os.environ.setdefault('DECLOUD_MUSIC_DIR', str(_TMP / 'music'))
 os.environ.setdefault('DECLOUD_PIPER_DIR', str(_TMP / 'piper'))
 os.environ.setdefault('DECLOUD_HOST', '127.0.0.1')

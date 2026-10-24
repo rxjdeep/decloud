@@ -20,7 +20,7 @@ var NAV_KEY_SCREEN = {};
 Object.keys(NAV_SCREEN_KEY).forEach(function (id) { NAV_KEY_SCREEN[NAV_SCREEN_KEY[id]] = id; });
 NAV_KEY_SCREEN.project = 'project-screen';
 
-var nav = { cur: '', want: '', q: false, applying: false };
+var nav = { cur: '', want: '', q: false, applying: false, dir: '', n: 0 };      // dir: which way the last navigation went ('fwd' | 'back'), for the slide animations
 
 function navSafeDecode(s) { try { return decodeURIComponent(s); } catch (_) { return s; } }
 function navHash() { return location.hash.slice(1).split('/').map(navSafeDecode).join('/'); }
@@ -33,14 +33,23 @@ function navActive(id) { var s = document.getElementById(id); return !!(s && s.c
 // (last wins), so "showScreen('lego-screen'); loadLego(path)" is a single step.
 function navSet(h) {
   if (nav.applying) { nav.cur = h; return; }
+  nav.dir = 'fwd';
   nav.want = h;
   if (!nav.q) { nav.q = true; Promise.resolve().then(navFlush); }
 }
 function navFlush() {
   nav.q = false;
   if (nav.want === nav.cur) return;
+  var wasPlayer = nav.cur === 'music/player';
   nav.cur = nav.want;
+  // The phone's full-screen player is an overlay, not a page: going somewhere from it (an artist, an album) takes over its history entry,
+  // so Back returns to the page the player was opened on, never to the player.
+  if (wasPlayer && nav.cur.indexOf('music/player') !== 0 && nav.cur !== 'music/queue') {
+    history.replaceState({ n: (history.state && history.state.n) || 0 }, '', navUrl(nav.cur));
+    return;
+  }
   history.pushState({ n: ((history.state && history.state.n) || 0) + 1 }, '', navUrl(nav.cur));
+  nav.n = history.state.n;
 }
 // Same logical place, different detail (e.g. paging through photos): no new entry.
 function navReplace(h) {
@@ -117,6 +126,11 @@ function navApply(h, force) {
 }
 
 nav.cur = nav.want = navHash();
+nav.n = (history.state && history.state.n) || 0;
 if (!history.state) { try { history.replaceState({ n: 0 }, '', location.href); } catch (_) {} }
-window.addEventListener('popstate', function () { navApply(navHash()); });
+window.addEventListener('popstate', function () {
+  var n = (history.state && history.state.n) || 0;
+  nav.dir = n < nav.n ? 'back' : 'fwd'; nav.n = n;
+  navApply(navHash());
+});
 window.addEventListener('hashchange', function () { navApply(navHash()); });

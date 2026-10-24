@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.decloud.pusher">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- reads DCIM, Download and Documents; granted once with: appops set io.decloud.pusher MANAGE_EXTERNAL_STORAGE allow -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- to ask before sending large files over mobile data -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application android:label="DeCloud Backup" android:icon="@drawable/ic_launcher" android:allowBackup="false"
+        android:theme="@style/AppTheme">
+
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Android starts this only when its conditions hold; between runs no process of ours exists -->
+        <service android:name=".PushJob" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <!-- the "Send now" button of the large-files notification -->
+        <receiver android:name=".ActionReceiver" android:exported="false" />
+
+        <!-- re-arms the jobs after a reboot or an update (content-trigger jobs cannot be persisted by the system) -->
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

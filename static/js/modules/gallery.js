@@ -38,7 +38,7 @@ function glOpen(tab) {
 // from the router (back/forward, reload): never pushes history itself
 async function glRoute(tab, viewPath) {
   if (!GL_TABS[tab]) tab = 'library';
-  await glLoad(tab, false);
+  await glLoad(tab, false, true);
   if (viewPath) {
     var i = gl.list.findIndex(function (it) { return it.p === viewPath; });
     if (i >= 0) glbOpen(glCtx(i), true);
@@ -51,7 +51,9 @@ function glSetTab(tab) {
   glLoad(tab, false);
 }
 
-async function glLoad(tab, force) {
+async function glLoad(tab, force, keep) {
+  // keep: arriving by back/forward (closing the viewer, say) at a tab that is already on screen; leave the grid and its scroll position alone
+  if (keep && !force && gl.tab === tab && gl.albums[GL_TABS[tab].album] && glEl('gl-grid').childElementCount) { glPaintTabs(); return; }
   var seq = ++gl.loadSeq;
   gl.tab = tab; try { localStorage.setItem('glTab', tab); } catch (_) {}
   glPaintTabs();

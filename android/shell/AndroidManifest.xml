@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.decloud.app">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- the music controls -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- music keeps playing with the screen off: a media-playback service, awake CPU and Wi-Fi only while something plays -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- the haptic taps and the music-driven buzz, which Chrome's vibration API did and a WebView cannot -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- the Voice feature's microphone -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application android:label="@string/app_name" android:icon="@drawable/ic_launcher" android:allowBackup="false"
+        android:usesCleartextTraffic="false" android:theme="@style/AppTheme">
+
+        <!-- DeCloud itself: a WebView on your server -->
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|density|uiMode|fontScale"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity>
+
+        <activity android:name=".LogActivity" android:exported="false" android:label="DeCloud log"
+            android:theme="@android:style/Theme.DeviceDefault.DayNight" />
+
+        <!-- keeps music playing, with lock-screen controls, while the screen is off. Runs only while something plays; swiping the app from recents stops it and ends the app. -->
+        <service android:name=".MediaService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+    </application>
+</manifest>

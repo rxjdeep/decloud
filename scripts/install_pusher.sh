@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Put the phone backup app on an Android phone through a shell you already have on it (an adb-style sshd, `adb shell`, ...).
+# Nothing runs by itself: review it, then run it. Default target is the S23's sshd (same address, port and key as s23_backup.sh).
+#   PHONE=shell@192.168.0.50 PORT=2222 ./scripts/install_pusher.sh
+#   PHONE=s23 PORT= ./scripts/install_pusher.sh                  # an ssh_config alias that already sets the port (empty PORT = pass none)
+#   KEY=~/.ssh/phone-noble ./scripts/install_pusher.sh           # a specific identity file
+set -euo pipefail
+cd "$(dirname "$0")/.."
+APK=android/pusher/build/decloud-pusher.apk
+PHONE="${PHONE:-shell@100.106.99.99}"
+PORT="${PORT-2222}"
+KEY="${KEY:-}"
+PKG=io.decloud.pusher
+[ -f "$APK" ] || { echo "Build it first: ./scripts/build_pusher.sh" >&2; exit 1; }
+
+SSH_OPTS=(${PORT:+-p "$PORT"} ${KEY:+-i "$KEY"})
+SCP_OPTS=(${PORT:+-P "$PORT"} ${KEY:+-i "$KEY"})
+
+# Exempt the app from Doze/standby so Android does not hold its jobs back for hours (it still does nothing unless a job fires). NO_IDLE_WHITELIST=1 skips it.
+IDLE="cmd deviceidle whitelist +$PKG"
+[ "${NO_IDLE_WHITELIST:-}" = 1 ] && IDLE="true"
+
+scp "${SCP_OPTS[@]}" "$APK" "$PHONE:/data/local/tmp/decloud-pusher.apk"
+ssh "${SSH_OPTS[@]}" "$PHONE" "
+  pm install -r /data/local/tmp/decloud-pusher.apk &&
+  appops set $PKG MANAGE_EXTERNAL_STORAGE allow &&
+  { pm grant $PKG android.permission.POST_NOTIFICATIONS 2>/dev/null || true; } &&
+  $IDLE &&
+  am start -n $PKG/.MainActivity &&
+  rm -f /data/local/tmp/decloud-pusher.apk
+"
+[ "$IDLE" != true ] && echo "Doze/standby exemption added; undo with: cmd deviceidle whitelist -$PKG (run on the phone)"
+echo "Installed. The app arms its jobs when opened (just done); after that Android runs them on its own, reboots included."

@@ -129,25 +129,27 @@ function reopenOnboarding() {
  * never leaves the browser.
  */
 function generateOnboardingQRs() {
-  // Tailscale download QR
-  var tailscaleContainer = document.getElementById('qr-tailscale');
-  if (tailscaleContainer && !tailscaleContainer.hasChildNodes()) {
-    var img1 = generateQR('https://tailscale.com/download', 300);
-    if (img1) tailscaleContainer.appendChild(img1);
-  }
-
-  // Phone PWA QR - current origin
-  var phoneContainer = document.getElementById('qr-phone');
-  if (phoneContainer && !phoneContainer.hasChildNodes()) {
-    var img2 = generateQR(window.location.origin, 300);
-    if (img2) phoneContainer.appendChild(img2);
-  }
-
   // Show the URL hint
   var hint = document.getElementById('onboarding-url-hint');
   if (hint) {
     hint.textContent = window.location.origin;
   }
+
+  loadVendor('qrcode').then(function () {                        // the QR library is only fetched when onboarding actually shows
+    // Tailscale download QR
+    var tailscaleContainer = document.getElementById('qr-tailscale');
+    if (tailscaleContainer && !tailscaleContainer.hasChildNodes()) {
+      var img1 = generateQR('https://tailscale.com/download', 300);
+      if (img1) tailscaleContainer.appendChild(img1);
+    }
+
+    // Phone PWA QR - current origin
+    var phoneContainer = document.getElementById('qr-phone');
+    if (phoneContainer && !phoneContainer.hasChildNodes()) {
+      var img2 = generateQR(window.location.origin, 300);
+      if (img2) phoneContainer.appendChild(img2);
+    }
+  }).catch(function () {});
 }
 
 /** Client-side QR as a data-URL <img>; null if the lib failed to load. */
