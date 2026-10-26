@@ -229,9 +229,9 @@ async function loadSystem() {
         <p class="lab-msg" id="lab-msg" role="status"></p>
         <label class="lab-switch"><input type="checkbox" id="lab-shareable" onchange="labSetShareable(this.checked)">
           <span>Let other devices add this computer</span></label>
-        <p class="lab-dim">Turn this on here to add this computer to another DeCloud's lab. When it asks, you'll tap Allow on this screen.</p>
+        <p class="lab-dim">Turn this on here to add this computer to another recl/\\mr's lab. When it asks, you'll tap Allow on this screen.</p>
         <details class="lab-sub">
-          <summary>Computer without DeCloud (Pi, NAS, server)</summary>
+          <summary>Computer without recl/\\mr (Pi, NAS, server)</summary>
           <p class="lab-dim">Run this on that computer. It installs a tiny program that only reports stats, then waits for you to tap Find devices here.</p>
           <pre class="lab-cmd" id="lab-agent-cmd"></pre>
           <button class="lab-btn" onclick="labCopy(document.getElementById('lab-agent-cmd').textContent)">Copy commands</button>
@@ -250,7 +250,7 @@ async function loadSystem() {
       `sudo apt install -y python3-psutil\ncurl -fsSL ${location.origin}/lab-agent.py -o decloud-agent.py\npython3 decloud-agent.py --install-service`;
   }
   try { await labRefresh(); } catch {
-    document.getElementById('lab-card').innerHTML = '<p class="lab-loading">Couldn\'t read this machine\'s stats. Is DeCloud still running?</p>';
+    document.getElementById('lab-card').innerHTML = '<p class="lab-loading">Couldn\'t read this machine\'s stats. Is recl/\\mr still running?</p>';
   }
   const p = LAB?.prefs;
   if (p) { document.getElementById('lab-shareable').checked = p.shareable; document.getElementById('lab-name').value = p.name; document.getElementById('lab-accent').value = p.accent; document.getElementById('lab-services').value = p.services.join(' '); }
@@ -265,7 +265,7 @@ function labRenderDevices() {
   if (!el || !LAB) return;
   const peers = LAB.nodes.slice(1);
   el.innerHTML = peers.length ? peers.map(n => `
-    <div class="lab-dev"><span class="lab-dot ${n.error ? 'off' : ''}"></span><div><b>${escapeHtml(n.name)}</b><span>${escapeHtml(n.error || `${labOs(n.os)} · ${n.kind === 'agent' ? 'agent' : 'DeCloud'}`)}</span></div>
+    <div class="lab-dev"><span class="lab-dot ${n.error ? 'off' : ''}"></span><div><b>${escapeHtml(n.name)}</b><span>${escapeHtml(n.error || `${labOs(n.os)} · ${n.kind === 'agent' ? 'agent' : 'recl/\\mr'}`)}</span></div>
       <button class="lab-btn" data-id="${escapeHtml(n.id)}" data-name="${escapeHtml(n.name)}" onclick="labRemove(this.dataset.id, this.dataset.name)">Remove</button></div>`).join('')
     : '<p class="lab-dim">Only this machine so far. Add another device to see your whole lab on one card.</p>';
 }
@@ -297,9 +297,9 @@ async function labDiscover() {
   msg.textContent = 'Looking for devices on your Wi-Fi…';
   box.innerHTML = '';
   const found = await (await fetch('/api/lab/discover', { method: 'POST' })).json().catch(() => []);
-  msg.textContent = found.length ? '' : 'Nothing found. On the other computer, turn on "Let other devices add this computer" (or run the small program for computers without DeCloud), then try again.';
+  msg.textContent = found.length ? '' : 'Nothing found. On the other computer, turn on "Let other devices add this computer" (or run the small program for computers without recl/\\mr), then try again.';
   box.innerHTML = found.map(f => `
-    <div class="lab-dev"><span class="lab-dot"></span><div><b>${escapeHtml(f.name)}</b><span>${f.kind === 'agent' ? 'Stats program' : 'DeCloud'} · ${escapeHtml(f.ip)}</span></div>
+    <div class="lab-dev"><span class="lab-dot"></span><div><b>${escapeHtml(f.name)}</b><span>${f.kind === 'agent' ? 'Stats program' : 'recl/\\mr'} · ${escapeHtml(f.ip)}</span></div>
       ${f.added ? '<span class="lab-dim">Added</span>' : `<button class="lab-btn primary" data-ip="${escapeHtml(f.ip)}" data-port="${Number(f.port)}" onclick="labPair(this.dataset.ip, +this.dataset.port)">Add</button>`}</div>`).join('');
 }
 
@@ -312,7 +312,7 @@ async function labPair(ip, port) {
   const num = `${d.number.slice(0, 3)} ${d.number.slice(3)}`;
   document.getElementById('lab-found').innerHTML = `<div class="lab-pairing"><div class="lab-num">${num}</div>
     <p>${d.kind === 'agent' ? `In the terminal on <b>${escapeHtml(d.name)}</b>, type <b>y</b> if it shows this number.`
-      : `On <b>${escapeHtml(d.name)}</b>, open DeCloud → Lab and tap <b>Allow</b> if it shows this number.`}</p>
+      : `On <b>${escapeHtml(d.name)}</b>, open recl/\\mr → Lab and tap <b>Allow</b> if it shows this number.`}</p>
     <p class="lab-dim">If the numbers don't match, deny it. Someone may be pretending to be your device.</p></div>`;
   msg.textContent = 'Waiting for you to approve on the other device…';
   for (let i = 0; i < 80; i++) {

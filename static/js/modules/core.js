@@ -1,5 +1,5 @@
 // ===== Module: core =====
-// ═══ DeCloud ═══
+// ═══ recl/\mr ═══
 
 // ─── Auth: wrap all fetch calls with session-token header ────────
 // The session cookie (decloud_session) is set by /api/auth/login and
@@ -65,7 +65,7 @@ function safeUrl(u) {
   return /^(https?:\/\/|\/(?!\/))/i.test(u) ? u : '#';
 }
 
-// Android's WebView has no Vibration API (Chrome does). Inside the DeCloud app the native bridge stands in for it, so every
+// Android's WebView has no Vibration API (Chrome does). Inside the recl/\mr app the native bridge stands in for it, so every
 // existing navigator.vibrate(...) call in the player and the UI keeps working unchanged.
 if (typeof navigator.vibrate !== 'function' && window.DeCloudApp && window.DeCloudApp.vibrate) {
   navigator.vibrate = function(p) {
@@ -138,7 +138,7 @@ function showCrashRecovery(err) {
   overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0f;color:#e0e0e0;font-family:system-ui,sans-serif;padding:24px;text-align:center';
   overlay.innerHTML =
     '<div style="font-size:48px;margin-bottom:16px">X</div>' +
-    '<h2 style="margin:0 0 8px;font-size:20px">DeCloud crashed</h2>' +
+    '<h2 style="margin:0 0 8px;font-size:20px">recl/\\mr crashed</h2>' +
     '<p style="margin:0 0 20px;opacity:0.7;font-size:14px;max-width:320px">Something went wrong loading the dashboard. A Force Refresh will clear the cache and reload.</p>' +
     '<button onclick="forceRefresh()" style="background:#6366f1;color:white;border:none;padding:14px 28px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:12px">Force Refresh</button>' +
     '<details style="margin-top:16px;opacity:0.5;font-size:12px;max-width:400px;word-break:break-word"><summary>Error details</summary><pre style="text-align:left;white-space:pre-wrap;padding:8px">' +

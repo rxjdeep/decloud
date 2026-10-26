@@ -65,7 +65,7 @@ final class Bridge {
     @JavascriptInterface public void openBackup() {
         Web.H.post(new Runnable() { @Override public void run() {
             try { app.startActivity(new Intent().setClassName("io.decloud.pusher", "io.decloud.pusher.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
-            catch (Exception e) { android.widget.Toast.makeText(app, "The DeCloud Backup app is not installed", android.widget.Toast.LENGTH_LONG).show(); }
+            catch (Exception e) { android.widget.Toast.makeText(app, "The Reclamr Backup app is not installed", android.widget.Toast.LENGTH_LONG).show(); }
         } });
     }
 

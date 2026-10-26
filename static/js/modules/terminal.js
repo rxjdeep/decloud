@@ -123,7 +123,7 @@ function initXterm() {
 
   xtermWs.onopen = () => {
     xtermReady = true;
-    xterm.writeln('\x1b[32mConnected to DeCloud terminal\x1b[0m');
+    xterm.writeln('\x1b[32mConnected to recl/\\mr terminal\x1b[0m');
     sendResize();
   };
 

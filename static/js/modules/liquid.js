@@ -1,5 +1,5 @@
 // ===== Module: liquid =====
-// DeCloud motion layer - REAL elements only. No goo filters, no clones:
+// recl/\mr motion layer - REAL elements only. No goo filters, no clones:
 // a goo/metaball effect fundamentally requires rendered copies of the
 // shapes, so this version animates the actual DOM elements instead.
 //

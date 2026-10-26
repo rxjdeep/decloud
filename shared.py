@@ -1,4 +1,4 @@
-"""DeCloud - shared state and helpers."""
+"""Reclamr - shared state and helpers."""
 from flask import Flask, send_from_directory, jsonify, request, send_file, Response, stream_with_context
 from flask_sock import Sock
 import os, sys, json, subprocess, platform, psutil, uuid, re, time, threading, secrets, hmac, shutil
@@ -67,7 +67,7 @@ def _load_env_file():
 _load_env_file()
 
 # ─── Authentication ─────────────────────────────────────────────
-# DeCloud requires a passcode (DECLOUD_PIN) to access the app. If not
+# Reclamr requires a passcode (DECLOUD_PIN) to access the app. If not
 # set, the app runs in open mode (for local-only development).
 #
 # Security model:
@@ -696,7 +696,7 @@ STT_ENGINES = {
 # Persisted in settings.json (non-secret) + .env (cloud API key only).
 # The voice agent reads these at request time so swaps apply immediately.
 VOICE_DEFAULTS = {
-    'agent_name': 'DeCloud',         # user-named companion (set in onboarding)
+    'agent_name': 'Reclamr',         # user-named companion (set in onboarding)
     'stt': 'whisper-base',           # engine id from STT_ENGINES
     'tts': 'piper-lessac-medium',    # engine id from TTS_ENGINES
     'voice_access': 'basic',         # 'talk' | 'basic' | 'full'

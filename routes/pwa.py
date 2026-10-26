@@ -35,7 +35,7 @@ min-height:100vh;margin:0;text-align:center;padding:24px}
 @keyframes spin{to{transform:rotate(360deg)}}
 p{opacity:0.7;font-size:14px}</style></head><body>
 <div class="dot">🔄</div>
-<h2>Clearing DeCloud cache...</h2>
+<h2>Clearing Reclamr cache...</h2>
 <p id="status">Working...</p>
 <script>
 (async function(){

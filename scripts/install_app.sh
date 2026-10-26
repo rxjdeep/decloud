@@ -23,4 +23,4 @@ ssh "${SSH_OPTS[@]}" "$PHONE" "
   am start -n $PKG/.MainActivity &&
   rm -f /data/local/tmp/decloud.apk
 "
-echo "Installed DeCloud ($PKG). DeCloud Backup was not touched."
+echo "Installed Reclamr ($PKG). Reclamr Backup was not touched."

@@ -1,9 +1,9 @@
 """Lab overview: this machine + paired devices on one screen.
 
-Paired devices (full DeCloud with sharing on, or the standalone agent) run
+Paired devices (full Reclamr with sharing on, or the standalone agent) run
 lab_report.LabServer: pinned HTTPS + Bluetooth-style pairing. This module is
 the hub side (discover, pair, poll) plus the device side's approval prompts
-and on/off switch. DeCloud itself stays localhost-only; the lab port opens
+and on/off switch. Reclamr itself stays localhost-only; the lab port opens
 only while "Let other devices add this computer" is on.
 """
 import os
@@ -70,7 +70,7 @@ def sync_server():
                 _server = lab_report.LabServer(state(), platform.node(), lambda: lab_report.report(_prefs(load_settings())['services']),
                                                _approve, port=LAB_PORT).start()
             except OSError as e:
-                print(f'[DeCloud] Lab sharing could not open port {LAB_PORT}: {e}')
+                print(f'[Reclamr] Lab sharing could not open port {LAB_PORT}: {e}')
                 return False
         elif not want and _server:
             _server.stop()

@@ -1,5 +1,5 @@
 // DeCloud Service Worker
-const CACHE_NAME = 'decloud-v302';
+const CACHE_NAME = 'decloud-v306';
 
 self.addEventListener('install', e => {
   self.skipWaiting(); // activate immediately

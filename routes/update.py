@@ -304,7 +304,7 @@ def perform_update(ref):
         # 1. Git install required
         if not _git_available():
             return 409, {
-                'error': 'updates require a git installation of DeCloud '
+                'error': 'updates require a git installation of Reclamr '
                          '(this install has no git repository)',
                 'code': 'NOT_GIT',
             }

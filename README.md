@@ -4,6 +4,8 @@
 
 **Reclaim your data big tech is so hungry for, in a browser tab.**
 
+<sub>Called Reclamr in files and commands. A fork of DeCloud by Vitali, kept under the original MIT licence and copyright notice.</sub>
+
 A self-hosted web app (and installable PWA) that turns the computer under your desk into a photo library, file manager, music player, audiobook reader and control panel. Open it from your phone, laptop or TV. No accounts, no subscriptions, and your files never leave your machine.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -12,7 +14,7 @@ A self-hosted web app (and installable PWA) that turns the computer under your d
 ![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8)
 ![Tests](https://img.shields.io/badge/tests-138%20passing-brightgreen)
 
-<img src="docs/screenshots/gallery.jpg" alt="DeCloud Gallery: a photo library with day sections" width="860">
+<img src="docs/screenshots/gallery.jpg" alt="Project Recl/\mr Gallery: a photo library with day sections" width="860">
 
 </div>
 

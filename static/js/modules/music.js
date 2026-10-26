@@ -963,7 +963,7 @@ function mzDevicesMenu(e) {
     var me0 = mzMe(), items = mz.devices.map(function (d) {
       return { label: d.label + (d.id === me0 ? ' · this device' : ''), sub: d.active ? 'Playing' : '', on: d.active, run: function () { mzTransfer(d.id); } };
     });
-    if (mz.devices.length < 2) items.push({ info: true, label: 'Open DeCloud on another device to control playback between them.' });
+    if (mz.devices.length < 2) items.push({ info: true, label: 'Open recl/\\mr on another device to control playback between them.' });
     mzSp.menuSheet({ title: 'Connect to a device', items: items });
     return;
   }
@@ -973,7 +973,7 @@ function mzDevicesMenu(e) {
     var label = d.label + (d.id === me ? ' · this device' : '');
     h += '<button data-act="xfer" data-v="' + escapeHtml(d.id) + '">' + (d.active ? '<span class="dot-on">●</span> ' : '<span class="dot-off">○</span> ') + escapeHtml(label) + (d.active ? '<small> · playing</small>' : '') + '</button>';
   });
-  if (mz.devices.length < 2) h += '<div class="wm-menu-h" style="text-transform:none;letter-spacing:0;padding-top:8px">Open DeCloud on another device to control playback between them.</div>';
+  if (mz.devices.length < 2) h += '<div class="wm-menu-h" style="text-transform:none;letter-spacing:0;padding-top:8px">Open recl/\\mr on another device to control playback between them.</div>';
   m.innerHTML = h; m.style.display = '';
   var r = e.currentTarget.getBoundingClientRect(), mr = m.getBoundingClientRect();
   m.style.left = Math.max(4, Math.min(r.right - mr.width, window.innerWidth - mr.width - 4)) + 'px';
@@ -1621,7 +1621,7 @@ function mzThemeMenu(e) {
   if (mzUseSheet()) {
     var th = [{ label: 'Glossy Black', on: mz.theme === 'glossy', run: function () { mzSetTheme('glossy'); } }, { label: 'Spotify', on: mz.theme === 'spotify', run: function () { mzSetTheme('spotify'); } }];
     if (typeof navigator.vibrate === 'function' && (mz.coarse || /Android/i.test(navigator.userAgent))) { th.push({ sep: true }); th.push({ label: 'Vibration feedback', on: mz.prefs.haptics !== false, run: function () { mzToggleHaptics(); } }); }
-    th.push({ sep: true }); th.push({ label: 'Back to DeCloud', run: function () { goHome(); } });
+    th.push({ sep: true }); th.push({ label: 'Back to recl/\\mr', run: function () { goHome(); } });
     th.unshift({ label: 'Streaming quality', sub: mzQualityLabel(), run: function () { setTimeout(mzQualityMenu, 330); } }, { sep: true });
     mzSp.menuSheet({ title: 'Settings', items: th });
     return;
@@ -1631,7 +1631,7 @@ function mzThemeMenu(e) {
   m.innerHTML = '<div class="wm-menu-h">Theme</div>' + it('glossy', 'Glossy Black') + it('spotify', 'Spotify') +
     (typeof navigator.vibrate === 'function' && (mz.coarse || /Android/i.test(navigator.userAgent)) ? '<hr><button data-act="haptics">' + (mz.prefs.haptics === false ? '\u2003' : '✓ ') + 'Vibration feedback</button>' : '') +
     '<hr><button data-act="quality">Streaming quality…</button>' +
-    '<hr><button data-act="exit">Back to DeCloud</button>';
+    '<hr><button data-act="exit">Back to recl/\\mr</button>';
   m.style.display = '';
   var r = e.currentTarget.getBoundingClientRect(), mr = m.getBoundingClientRect();
   m.style.left = Math.max(4, Math.min(r.right - mr.width, window.innerWidth - mr.width - 4)) + 'px';

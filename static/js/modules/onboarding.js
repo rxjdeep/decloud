@@ -1,5 +1,5 @@
 // ===== Module: onboarding =====
-// First-run walkthrough for new DeCloud users.
+// First-run walkthrough for new recl/\mr users.
 // Shows on first open (localStorage 'decloud_onboarded'), walks through
 // Tailscale setup, phone PWA install, and app configuration.
 

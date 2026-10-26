@@ -604,6 +604,10 @@ var mzSp = (function () {
     if (lastSig && sig !== lastSig) {                               // a different page: slide it in the way the navigation went
       content.classList.remove('sp-v-fwd', 'sp-v-back'); void content.offsetWidth;
       content.classList.add(nav.dir === 'back' ? 'sp-v-back' : 'sp-v-fwd');
+      content.addEventListener('animationend', function done(ev) {                // the slide is over: stop holding the page as a separate graphics layer
+        if (ev.target !== content) return;
+        content.classList.remove('sp-v-fwd', 'sp-v-back'); content.removeEventListener('animationend', done);
+      });
     }
     lastSig = sig;
     content.innerHTML = (mz.error ? '<div class="sp-notice">' + esc(mz.error) + '</div>' : '') + vw.html;
@@ -611,8 +615,26 @@ var mzSp = (function () {
     tint(mzEl('sp-page'), vw.tint, vw.hue || 230);
     mzMarkPlaying();
     SP.markCtx(); SP.dselSync();
+    coversAhead(content);
     barsSoon();
   };
+  // Covers load about two screens ahead of the scroll, not when a row is nearly on screen, so they are already there when you get to them.
+  // (The browser's own lazy loading waits much closer to the screen; flipping an image to eager makes it load at once.)
+  var coverIO = null;
+  function coversAhead(root) {
+    if (coverIO) coverIO.disconnect();
+    if (!('IntersectionObserver' in window)) return;
+    coverIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var img = en.target; coverIO.unobserve(img);
+        if (img.complete) return;
+        img.loading = 'eager';
+        img.addEventListener('load', function () { if (img.decode) img.decode().catch(function () {}); }, { once: true });      // decoded now, not when it scrolls in
+      });
+    }, { root: root, rootMargin: '1600px 0px' });
+    Array.prototype.forEach.call(root.querySelectorAll('img[loading="lazy"]'), function (img) { coverIO.observe(img); });
+  }
   SP.miniTint = function (t) {
     var w = document.querySelector('#music-screen .wm'); if (!w) return;
     w.style.setProperty('--sp-mini', 'hsl(' + t.h + ' 22% 22%)');

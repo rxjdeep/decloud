@@ -3,7 +3,7 @@
 // with title, artist, artwork, progress bar, and play/pause/seek controls
 
 var mediaSessionActive = false;
-var appMeta = null, appPlaying = false;       // what the DeCloud Android app is told, whether or not the browser has a Media Session
+var appMeta = null, appPlaying = false;       // what the recl/\mr Android app is told, whether or not the browser has a Media Session
 
 // Which player do the OS media controls (KDE systray, lock screen, headset keys) belong to?
 // The one that is playing; if none is, the one that last published its metadata.
@@ -21,7 +21,7 @@ function mediaTarget() {
 var mediaActions = {};
 
 function initMediaSession() {
-  // Android's WebView may not have navigator.mediaSession; the handlers are still kept so the DeCloud app's own notification can press them.
+  // Android's WebView may not have navigator.mediaSession; the handlers are still kept so the recl/\mr app's own notification can press them.
   var ms = 'mediaSession' in navigator ? navigator.mediaSession : null;
   function on(action, fn) { mediaActions[action] = fn; if (ms) { try { ms.setActionHandler(action, fn); } catch (e) { /* action not supported by this browser */ } } }
 
@@ -89,7 +89,7 @@ function getActiveAudio() {
 // Called by audiobook player when a chapter starts playing
 function updateMediaSessionBook(bookTitle, chapterTitle, coverUrl) {
   mediaSessionLast = 'book';
-  appMeta = { title: chapterTitle || 'Unknown Chapter', artist: bookTitle || 'Audiobook', album: 'DeCloud Audiobooks', art: coverUrl || '' };
+  appMeta = { title: chapterTitle || 'Unknown Chapter', artist: bookTitle || 'Audiobook', album: 'recl/\\mr Audiobooks', art: coverUrl || '' };
   if (!mediaSessionActive) { appMediaPush(true); return; }
 
   var artwork = [];
@@ -103,7 +103,7 @@ function updateMediaSessionBook(bookTitle, chapterTitle, coverUrl) {
   navigator.mediaSession.metadata = new MediaMetadata({
     title: chapterTitle || 'Unknown Chapter',
     artist: bookTitle || 'Audiobook',
-    album: 'DeCloud Audiobooks',
+    album: 'recl/\\mr Audiobooks',
     artwork: artwork
   });
 
@@ -114,7 +114,7 @@ function updateMediaSessionBook(bookTitle, chapterTitle, coverUrl) {
 // Called by music player when a song starts playing
 function updateMediaSessionMusic(songName, artistName, coverUrl) {
   mediaSessionLast = 'music';
-  appMeta = { title: songName || 'Unknown Track', artist: artistName || 'DeCloud Music', album: 'DeCloud Music', art: coverUrl || '' };
+  appMeta = { title: songName || 'Unknown Track', artist: artistName || 'recl/\\mr Music', album: 'recl/\\mr Music', art: coverUrl || '' };
   if (!mediaSessionActive) { appMediaPush(true); return; }
 
   var artwork = [];
@@ -127,8 +127,8 @@ function updateMediaSessionMusic(songName, artistName, coverUrl) {
 
   navigator.mediaSession.metadata = new MediaMetadata({
     title: songName || 'Unknown Track',
-    artist: artistName || 'DeCloud Music',
-    album: 'DeCloud Music',
+    artist: artistName || 'recl/\\mr Music',
+    album: 'recl/\\mr Music',
     artwork: artwork
   });
 

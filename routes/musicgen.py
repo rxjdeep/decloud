@@ -1,8 +1,8 @@
 """Music generation routes (local MiniMax Music 3 via ComfyUI).
 
 The heavy lifting happens in the user's own ComfyUI (the same local
-server DeCloud already uses for image generation), running the open
-weights of MiniMax Music 3. DeCloud queues the user's workflow, polls
+server Reclamr already uses for image generation), running the open
+weights of MiniMax Music 3. Reclamr queues the user's workflow, polls
 for completion, copies the finished audio into its own library, and
 keeps a local history index so past songs are always browsable.
 

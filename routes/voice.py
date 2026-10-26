@@ -200,7 +200,7 @@ def voice_intent():
         if not text:
             return jsonify({'error': 'No text provided'}), 400
 
-        agent_name = shared.get_voice_config().get('agent_name', 'DeCloud')
+        agent_name = shared.get_voice_config().get('agent_name', 'Reclamr')
         access = shared.get_voice_config().get('voice_access', 'basic')
 
         access_hint = {
@@ -210,13 +210,13 @@ def voice_intent():
         }[access]
 
         # Conversational system prompt. The agent talks naturally but returns
-        # a JSON object ONLY when it needs to control DeCloud. Built with a
+        # a JSON object ONLY when it needs to control Reclamr. Built with a
         # plain string + replace because the JSON examples contain braces.
-        system_prompt = """You are {agent_name}, the voice assistant for DeCloud, a self-hosted personal cloud app (music, audiobooks, files, AI chat, a terminal, and a system monitor).
+        system_prompt = """You are {agent_name}, the voice assistant for Reclamr, a self-hosted personal cloud app (music, audiobooks, files, AI chat, a terminal, and a system monitor).
 
 You are speaking out loud, so be natural and conversational. Prefer short answers, but give real detail and substance when it helps, don't be terse or one-word. No markdown, no lists, no emojis, no follow-up questions. Just talk like a warm, capable person.
 
-You can also control DeCloud. If the user asks you to DO something (play a song, open a book, navigate to a screen, run a command, search files), respond with a SINGLE JSON object describing the action, nothing else. Otherwise, just reply in plain conversational text.
+You can also control Reclamr. If the user asks you to DO something (play a song, open a book, navigate to a screen, run a command, search files), respond with a SINGLE JSON object describing the action, nothing else. Otherwise, just reply in plain conversational text.
 
 Your current access level is "{access}": {access_hint}
 
@@ -516,7 +516,7 @@ def voice_chat():
 
 
 SIMPLE_SYSTEM = (
-    "You are {name}, the voice assistant for DeCloud, a self-hosted personal "
+    "You are {name}, the voice assistant for Reclamr, a self-hosted personal "
     "cloud app. You're speaking out loud, so be natural and conversational. "
     "Prefer short answers, but give real detail and substance when it helps. "
     "No markdown, no lists, no emojis, no follow-up questions. Just talk like "
@@ -525,7 +525,7 @@ SIMPLE_SYSTEM = (
 
 
 def _simple_llm_chat(text, timeout=120):
-    agent_name = shared.get_voice_config().get('agent_name', 'DeCloud')
+    agent_name = shared.get_voice_config().get('agent_name', 'Reclamr')
     system = SIMPLE_SYSTEM.replace('{name}', agent_name)
     history = shared.load_voice_history()
     messages = [{"role": "system", "content": system}]

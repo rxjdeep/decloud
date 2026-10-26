@@ -9,7 +9,7 @@
     <!-- to ask before sending large files over mobile data -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <application android:label="DeCloud Backup" android:icon="@drawable/ic_launcher" android:allowBackup="false"
+    <application android:label="Reclamr Backup" android:icon="@drawable/ic_launcher" android:allowBackup="false"
         android:theme="@style/AppTheme">
 
         <activity android:name=".MainActivity" android:exported="true">

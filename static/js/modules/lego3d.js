@@ -66,7 +66,7 @@ function decloudInit() {
   setInterval(refreshProjectCards, 120000);
   setInterval(refreshNotifications, 60000);
 }
-try { decloudInit(); } catch(e) { console.error('DeCloud init error:', e); showCrashRecovery(e); }
+try { decloudInit(); } catch(e) { console.error('recl/\\mr init error:', e); showCrashRecovery(e); }
 
 // Restore screen from URL hash on load/refresh
 function restoreFromHash() {

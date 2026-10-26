@@ -176,7 +176,7 @@ function loadVoicePanel() {
 
     // Name
     var nameInput = document.getElementById('voicecfg-name');
-    if (nameInput) nameInput.value = cfg.agent_name || 'DeCloud';
+    if (nameInput) nameInput.value = cfg.agent_name || 'Reclamr';
 
     // Brain (Hermes vs LLM fallback)
     var hermes = d.hermes || {};
@@ -577,7 +577,7 @@ async function performUpdate() {
   var go = document.getElementById('update-go-btn');
   var ref = go ? go.getAttribute('data-ref') : '';
   if (!ref) return;
-  if (!confirm('Update DeCloud to ' + ref + '?\n\nThe new version is downloaded, verified, and test-booted before anything restarts. Your passcode, settings, books, and files are untouched. If the new version fails to start, DeCloud reverts automatically.')) return;
+  if (!confirm('Update recl/\\mr to ' + ref + '?\n\nThe new version is downloaded, verified, and test-booted before anything restarts. Your passcode, settings, books, and files are untouched. If the new version fails to start, recl/\\mr reverts automatically.')) return;
   var status = document.getElementById('update-status');
   if (status) status.textContent = 'Updating to ' + ref + '… (this can take a minute)';
   try {
@@ -601,7 +601,7 @@ async function performUpdate() {
 }
 
 async function performRollback() {
-  if (!confirm('Revert to the version from before the last update? DeCloud will restart.')) return;
+  if (!confirm('Revert to the version from before the last update? recl/\\mr will restart.')) return;
   var status = document.getElementById('update-status');
   if (status) status.textContent = 'Reverting…';
   try {
@@ -635,7 +635,7 @@ async function _waitForRestart(toRef) {
     } catch (e) { /* still down */ }
   }
   var status = document.getElementById('update-status');
-  if (status) status.textContent = 'The app is taking a while to come back. Refresh the page in a minute. If it is still down, DeCloud has automatically reverted; check again shortly.';
+  if (status) status.textContent = 'The app is taking a while to come back. Refresh the page in a minute. If it is still down, recl/\\mr has automatically reverted; check again shortly.';
 }
 
 // Expose for inline onclick handlers

@@ -110,7 +110,7 @@ async function modelsDownload(repo, file) {
   const category = known.category || 'chat';
   const parts = entry && entry.parts;
   const label = (parts ? parts[0] : file).split('/').pop();
-  if (!confirm(`Download ${label}${parts && parts.length > 1 ? ` (${parts.length} parts)` : ''} (${repo})?\n\nDeCloud will put it where your apps can find it` +
+  if (!confirm(`Download ${label}${parts && parts.length > 1 ? ` (${parts.length} parts)` : ''} (${repo})?\n\nrecl/\\mr will put it where your apps can find it` +
     (category === 'chat' ? ' and import it into Ollama automatically.' : ' (your ComfyUI models folder).'))) return;
   try {
     const body = { repo, category, import_ollama: category === 'chat' };
