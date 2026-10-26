@@ -10,9 +10,9 @@
   <meta name="theme-color" content="#0a0a0f">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-  <link rel="stylesheet" href="/static/css/app.css?v=306">
-  <link rel="stylesheet" href="/static/css/onboarding.css?v=306">
-  <link rel="stylesheet" href="/static/css/gallery.css?v=306">
+  <link rel="stylesheet" href="/static/css/app.css?v=307">
+  <link rel="stylesheet" href="/static/css/onboarding.css?v=307">
+  <link rel="stylesheet" href="/static/css/gallery.css?v=307">
   <link rel="stylesheet" href="/static/vendor/xterm/xterm.min.css">
   <title>Project Recl/\mr</title>
 </head>
@@ -1292,36 +1292,36 @@
 </div>
 
 <script src="/static/js/thinking-orbs.js"></script>
-<script src="/static/js/modules/auth.js?v=306"></script>
-<script src="/static/js/modules/onboarding.js?v=306"></script>
-<script src="/static/js/modules/core.js?v=306"></script>
-<script src="/static/js/modules/nav.js?v=306"></script>
-<script src="/static/js/modules/media-session.js?v=306"></script>
-<script src="/static/js/modules/home.js?v=306"></script>
- <script src="/static/js/modules/liquid.js?v=306"></script>
- <script src="/static/js/modules/musicgen.js?v=306"></script>
- <script src="/static/js/modules/models.js?v=306"></script>
-<script src="/static/js/modules/projects.js?v=306"></script>
-<script src="/static/js/modules/audiobooks.js?v=306"></script>
-<script src="/static/js/modules/ui-kit.js?v=306"></script>
-<script src="/static/js/modules/gallery.js?v=306"></script>
-<script src="/static/js/modules/lego.js?v=306"></script>
-<script src="/static/js/modules/logs.js?v=306"></script>
-<script src="/static/js/modules/terminal.js?v=306"></script>
-<script src="/static/js/modules/osint.js?v=306"></script>
-<script src="/static/js/modules/universe.js?v=306"></script>
-<script src="/static/js/modules/system.js?v=306"></script>
-<script src="/static/js/modules/ollama.js?v=306"></script>
-<script src="/static/js/modules/comfy.js?v=306"></script>
-<script src="/static/js/modules/lego3d.js?v=306"></script>
-<script src="/static/js/modules/voice.js?v=306"></script>
-<script src="/static/js/modules/journal.js?v=306"></script>
-<script src="/static/js/modules/legos3d.js?v=306"></script>
-<script src="/static/js/modules/settings.js?v=306"></script>
-<script src="/static/js/modules/telemetry.js?v=306"></script>
-<script src="/static/js/modules/desktop.js?v=306"></script>
-<script src="/static/js/modules/music.js?v=306"></script>
-<script src="/static/js/modules/music-spotify.js?v=306"></script>
+<script src="/static/js/modules/auth.js?v=307"></script>
+<script src="/static/js/modules/onboarding.js?v=307"></script>
+<script src="/static/js/modules/core.js?v=307"></script>
+<script src="/static/js/modules/nav.js?v=307"></script>
+<script src="/static/js/modules/media-session.js?v=307"></script>
+<script src="/static/js/modules/home.js?v=307"></script>
+ <script src="/static/js/modules/liquid.js?v=307"></script>
+ <script src="/static/js/modules/musicgen.js?v=307"></script>
+ <script src="/static/js/modules/models.js?v=307"></script>
+<script src="/static/js/modules/projects.js?v=307"></script>
+<script src="/static/js/modules/audiobooks.js?v=307"></script>
+<script src="/static/js/modules/ui-kit.js?v=307"></script>
+<script src="/static/js/modules/gallery.js?v=307"></script>
+<script src="/static/js/modules/lego.js?v=307"></script>
+<script src="/static/js/modules/logs.js?v=307"></script>
+<script src="/static/js/modules/terminal.js?v=307"></script>
+<script src="/static/js/modules/osint.js?v=307"></script>
+<script src="/static/js/modules/universe.js?v=307"></script>
+<script src="/static/js/modules/system.js?v=307"></script>
+<script src="/static/js/modules/ollama.js?v=307"></script>
+<script src="/static/js/modules/comfy.js?v=307"></script>
+<script src="/static/js/modules/lego3d.js?v=307"></script>
+<script src="/static/js/modules/voice.js?v=307"></script>
+<script src="/static/js/modules/journal.js?v=307"></script>
+<script src="/static/js/modules/legos3d.js?v=307"></script>
+<script src="/static/js/modules/settings.js?v=307"></script>
+<script src="/static/js/modules/telemetry.js?v=307"></script>
+<script src="/static/js/modules/desktop.js?v=307"></script>
+<script src="/static/js/modules/music.js?v=307"></script>
+<script src="/static/js/modules/music-spotify.js?v=307"></script>
 
 <!-- ═══ ONBOARDING OVERLAY ═══ -->
 <div id="onboarding-overlay" class="onboarding-overlay" style="display:none">
@@ -1364,6 +1364,10 @@
       <p>Scan this QR code to open recl/\mr on your phone, then Add to Home Screen for the full app experience.</p>
       <div id="qr-phone" style="text-align:center;margin:12px 0"></div>
       <p class="empty-hint" id="onboarding-url-hint" style="text-align:center;font-size:0.8em;word-break:break-all"></p>
+      <div id="qr-local" hidden>
+        <p class="empty-hint">You opened this on <b id="qr-local-origin"></b>, an address only this computer can reach, so a QR code for it would not work on your phone. Start a tunnel first (for example <code>tailscale funnel 8899</code>), then paste the https address it prints:</p>
+        <input type="url" id="qr-url-input" class="settings-input" placeholder="https://your-machine.your-tailnet.ts.net" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
     </div>
 
     <!-- Step 4: Done -->

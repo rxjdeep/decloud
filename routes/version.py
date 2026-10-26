@@ -8,9 +8,17 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.6.5"
+VERSION = "0.6.6"
 
 CHANGELOG = [
+    {
+        "version": "0.6.6",
+        "date": "2026-10-26",
+        "changes": [
+            "Onboarding QR asks for the tunnel address when opened on localhost",
+            "Onboarding: opened on localhost or a home-network address, the phone QR step now explains a tunnel is needed and makes the QR from the tunnel address you paste, instead of a QR for an address a phone cannot reach",
+        ]
+    },
     {
         "version": "0.6.5",
         "date": "2026-10-26",

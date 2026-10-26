@@ -128,11 +128,18 @@ function reopenOnboarding() {
  * Rendered client-side (qrcode-generator from jsdelivr) so the tunnel URL
  * never leaves the browser.
  */
+/** True for addresses a phone cannot reach: localhost and private home-network ranges. */
+function isLocalOnlyHost(host) {
+  return host === 'localhost' || host === '[::1]' || /\.local$/i.test(host) ||
+    /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.0\.0\.0$)/.test(host);
+}
+
 function generateOnboardingQRs() {
+  var local = isLocalOnlyHost(window.location.hostname);
   // Show the URL hint
   var hint = document.getElementById('onboarding-url-hint');
   if (hint) {
-    hint.textContent = window.location.origin;
+    hint.textContent = local ? '' : window.location.origin;
   }
 
   loadVendor('qrcode').then(function () {                        // the QR library is only fetched when onboarding actually shows
@@ -143,12 +150,23 @@ function generateOnboardingQRs() {
       if (img1) tailscaleContainer.appendChild(img1);
     }
 
-    // Phone PWA QR - current origin
+    // Phone PWA QR: the address this page was opened on, which is the tunnel address when you came in through one.
+    // On localhost that address is useless to a phone, so ask for the tunnel address instead.
     var phoneContainer = document.getElementById('qr-phone');
-    if (phoneContainer && !phoneContainer.hasChildNodes()) {
-      var img2 = generateQR(window.location.origin, 300);
-      if (img2) phoneContainer.appendChild(img2);
+    if (!phoneContainer) return;
+    if (!local) {
+      if (!phoneContainer.hasChildNodes()) { var img2 = generateQR(window.location.origin, 300); if (img2) phoneContainer.appendChild(img2); }
+      return;
     }
+    var box = document.getElementById('qr-local'), input = document.getElementById('qr-url-input'), shown = document.getElementById('qr-local-origin');
+    if (!box || !input) return;
+    box.hidden = false; if (shown) shown.textContent = window.location.origin;
+    input.addEventListener('input', function () {
+      phoneContainer.textContent = '';
+      var u; try { u = new URL(input.value.trim()); } catch (_) { return; }
+      if ((u.protocol !== 'https:' && u.protocol !== 'http:') || isLocalOnlyHost(u.hostname)) return;
+      var img = generateQR(u.origin, 300); if (img) phoneContainer.appendChild(img);
+    });
   }).catch(function () {});
 }
 
