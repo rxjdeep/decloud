@@ -8,9 +8,18 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.6.4"
+VERSION = "0.6.5"
 
 CHANGELOG = [
+    {
+        "version": "0.6.5",
+        "date": "2026-10-26",
+        "changes": [
+            "README screenshots without the old name",
+            "README: the Logs screenshot is the real Logs page again and the phone strip shows it too",
+            "no image shows the old name",
+        ]
+    },
     {
         "version": "0.6.4",
         "date": "2026-10-26",
