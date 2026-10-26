@@ -40,3 +40,7 @@ Specifically ported: the goo-rim threshold table, the two spring
 polylines, the grab chain geometry, the squircle path, the goo filter
 graph, and the open/close choreography timings. React and GSAP from the
 original were replaced with a small self-contained tween engine.
+
+## Michroma (font)
+
+`static/vendor/fonts/michroma-400.woff2` (the latin subset) is Michroma by Vernon Adams, from Google Fonts, used for the home-screen title. SIL Open Font License 1.1: https://openfontlicense.org
