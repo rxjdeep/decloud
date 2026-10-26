@@ -176,7 +176,7 @@ function loadVoicePanel() {
 
     // Name
     var nameInput = document.getElementById('voicecfg-name');
-    if (nameInput) nameInput.value = cfg.agent_name || 'Reclamr';
+    if (nameInput) nameInput.value = cfg.agent_name || 'Reclmr';
 
     // Brain (Hermes vs LLM fallback)
     var hermes = d.hermes || {};

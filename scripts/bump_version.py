@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = ROOT / 'routes' / 'version.py'
-DECLOUD_FILE = ROOT / 'decloud'
+DECLOUD_FILE = ROOT / 'reclmr'
 
 
 def read_version():

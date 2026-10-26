@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APK=android/shell/build/decloud.apk
-envval() { grep -E "^$1=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' || true; }
+envval() { grep -E "^(RECLMR|DECLOUD)_${1#DECLOUD_}=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' || true; }      # RECLMR_NAME or the older DECLOUD_NAME
 PHONE="${PHONE:-$(envval DECLOUD_PHONE)}"          # your phone's shell address, kept in .env (not in the repo)
 [ -n "$PHONE" ] || { echo "Set DECLOUD_PHONE=shell@<phone address> in .env, or run with PHONE=shell@<address>." >&2; exit 1; }
 PORT="${PORT-2222}"
@@ -25,4 +25,4 @@ ssh "${SSH_OPTS[@]}" "$PHONE" "
   am start -n $PKG/.MainActivity &&
   rm -f /data/local/tmp/decloud.apk
 "
-echo "Installed Reclamr ($PKG). Reclamr Backup was not touched."
+echo "Installed reclmr ($PKG). reclmr Backup was not touched."

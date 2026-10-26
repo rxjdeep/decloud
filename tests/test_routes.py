@@ -183,3 +183,14 @@ def test_lab_peer_report_is_sanitized():
     assert c['cpu_percent'] == 0 and c['cores'] == 0 and c['temp'] is None and c['kind'] == 'decloud'
     assert c['storage']['total'] == 0 and c['gpus'][0]['vram_gb'] is None
     assert c['running']['models'] == ['ok'] and c['running']['containers'] == []
+
+
+def test_reclmr_env_names_alias_the_old_ones(monkeypatch):
+    import shared
+    monkeypatch.delenv('DECLOUD_ALIAS_PROBE', raising=False)
+    monkeypatch.setenv('RECLMR_ALIAS_PROBE', 'yes')
+    shared._alias_reclmr_env()
+    assert shared.os.environ['DECLOUD_ALIAS_PROBE'] == 'yes'
+    monkeypatch.setenv('DECLOUD_ALIAS_PROBE', 'old')      # an existing DECLOUD_ value wins
+    shared._alias_reclmr_env()
+    assert shared.os.environ['DECLOUD_ALIAS_PROBE'] == 'old'

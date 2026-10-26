@@ -8,9 +8,21 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.6.6"
+VERSION = "0.6.7"
 
 CHANGELOG = [
+    {
+        "version": "0.6.7",
+        "date": "2026-10-27",
+        "changes": [
+            "reclmr: README and commands renamed",
+            "README: every mention is now reclmr",
+            "settings use the RECLMR_ prefix (the older DECLOUD_ names keep working)",
+            "Command: ./reclmr (the old ./decloud still works)",
+            "Installer: new installs create the reclmr service, existing installs keep theirs",
+            "Android apps are labelled reclmr and reclmr Backup",
+        ]
+    },
     {
         "version": "0.6.6",
         "date": "2026-10-26",
@@ -49,8 +61,8 @@ CHANGELOG = [
         "version": "0.6.2",
         "date": "2026-10-26",
         "changes": [
-            "Renamed to Project Reclamr, smoother scrolling, covers load ahead",
-            "Name: Project Reclamr (written Recl/mr with the A drawn as a slash pair) in the page, install name and README, Reclamr on Android launchers, fork credit to DeCloud",
+            "Renamed to Project Reclmr, smoother scrolling, covers load ahead",
+            "Name: Project Recl/\\mr (reclmr in files and commands) in the page, install name and README, reclmr on the Android launchers, fork credit to DeCloud",
             "Scrolling: covers load two screens ahead, the page layer is released after each slide, correct row height estimate",
             "Android: left-edge back setting is restored reliably, permission re-granted on every install",
         ]
@@ -78,7 +90,7 @@ CHANGELOG = [
             "Now Playing laid out like Spotify, file format line and details sheet, player is no longer a history step",
             "Playlist delete with Undo, long-press menus on albums/artists/playlists, drag to reorder on desktop, swipe a row to queue",
             "Desktop add-to-playlist card, home screen Now Playing card, SSD usage chip, page-image mode for illustrated PDFs",
-            "Phone backup intake (routes/backup.py) and the Reclamr Backup app with a Holo look",
+            "Phone backup intake (routes/backup.py) and the Reclmr Backup app with a Holo look",
             "Library cached on the phone for an instant music screen, Music reopens where you left it",
         ]
     },
@@ -112,7 +124,7 @@ CHANGELOG = [
             "System screen is now My Lab: one iPhone-sized card for this machine plus paired devices, with Neofetch, Rack and Constellation styles and a screenshot mode",
             "Add devices Bluetooth-style: Find devices on my Wi-Fi, tap Add, check both screens show the same 6-digit number, tap Allow",
             "Device stats travel over HTTPS pinned to each device's own certificate; keys only unlock stats and can be reset anytime",
-            "Reclamr stays localhost-only unless you turn on Let other devices add this computer",
+            "Reclmr stays localhost-only unless you turn on Let other devices add this computer",
             "Headless boxes (Pi, NAS, Proxmox) run a tiny stats-only agent: one command, approves in the terminal, starts on boot",
             "Shows Docker/Podman containers, loaded Ollama models, chosen systemd services and top processes",
             "Fix: opening a #screen link no longer crashes before telemetry loads",

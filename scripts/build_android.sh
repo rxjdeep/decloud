@@ -20,7 +20,7 @@ case "$MODULE" in
 esac
 [ -d "android/$MODULE" ] || { echo "android/$MODULE not found" >&2; exit 1; }
 
-envval() { grep -E "^$1=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' || true; }
+envval() { grep -E "^(RECLMR|DECLOUD)_${1#DECLOUD_}=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' || true; }      # RECLMR_NAME or the older DECLOUD_NAME
 URL="${DECLOUD_BACKUP_URL:-$(envval DECLOUD_BACKUP_URL)}"
 TOKEN="${DECLOUD_BACKUP_TOKEN:-$(envval DECLOUD_BACKUP_TOKEN)}"
 [ -n "$URL" ] || { echo "Set DECLOUD_BACKUP_URL (the public address of this DeCloud) in .env first." >&2; exit 1; }

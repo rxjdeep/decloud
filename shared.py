@@ -1,4 +1,4 @@
-"""Reclamr - shared state and helpers."""
+"""Reclmr - shared state and helpers."""
 from flask import Flask, send_from_directory, jsonify, request, send_file, Response, stream_with_context
 from flask_sock import Sock
 import os, sys, json, subprocess, platform, psutil, uuid, re, time, threading, secrets, hmac, shutil
@@ -66,8 +66,18 @@ def _load_env_file():
 
 _load_env_file()
 
+
+def _alias_reclmr_env():
+    """RECLMR_* settings work everywhere the older DECLOUD_* names do (an existing DECLOUD_* value wins)."""
+    for _k, _v in list(os.environ.items()):
+        if _k.startswith('RECLMR_') and ('DECLOUD_' + _k[7:]) not in os.environ:
+            os.environ['DECLOUD_' + _k[7:]] = _v
+
+
+_alias_reclmr_env()
+
 # ─── Authentication ─────────────────────────────────────────────
-# Reclamr requires a passcode (DECLOUD_PIN) to access the app. If not
+# Reclmr requires a passcode (DECLOUD_PIN) to access the app. If not
 # set, the app runs in open mode (for local-only development).
 #
 # Security model:
@@ -696,7 +706,7 @@ STT_ENGINES = {
 # Persisted in settings.json (non-secret) + .env (cloud API key only).
 # The voice agent reads these at request time so swaps apply immediately.
 VOICE_DEFAULTS = {
-    'agent_name': 'Reclamr',         # user-named companion (set in onboarding)
+    'agent_name': 'Reclmr',         # user-named companion (set in onboarding)
     'stt': 'whisper-base',           # engine id from STT_ENGINES
     'tts': 'piper-lessac-medium',    # engine id from TTS_ENGINES
     'voice_access': 'basic',         # 'talk' | 'basic' | 'full'

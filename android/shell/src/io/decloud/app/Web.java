@@ -156,7 +156,7 @@ final class Web {
             if (!r.isForMainFrame()) return;
             Log.add(ctx, "page failed: " + e.getDescription() + " (" + r.getUrl() + ")");
             String html = "<body style='background:#0a0a0f;color:#e6e6ea;font-family:sans-serif;text-align:center;padding:30vh 24px 0'>"
-                + "<h2>Can't reach Reclamr</h2><p style='opacity:.7'>" + android.text.TextUtils.htmlEncode(String.valueOf(e.getDescription())) + "</p>"
+                + "<h2>Can't reach reclmr</h2><p style='opacity:.7'>" + android.text.TextUtils.htmlEncode(String.valueOf(e.getDescription())) + "</p>"
                 + "<p><a href='" + Config.BASE_URL + "' style='color:#8ab4ff;font-size:18px'>Try again</a></p></body>";
             v.loadDataWithBaseURL(Config.BASE_URL, html, "text/html", "utf-8", null);
         }

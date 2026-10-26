@@ -36,7 +36,7 @@ A self-hosted web app (and installable PWA) that turns the computer under your d
 | 🖥️ **Terminal** | A real PTY terminal in the browser, locked behind an authenticator-app code. |
 | 📊 **Lab and Logs** | Live stats for every machine you own, plus an audit trail of sign-ins and deletions. |
 
-Every app is optional. DeCloud works with zero configuration, and anything that needs an outside service degrades gracefully with a helpful message.
+Every app is optional. reclmr works with zero configuration, and anything that needs an outside service degrades gracefully with a helpful message.
 
 ## Screenshots
 
@@ -81,7 +81,7 @@ Every app is optional. DeCloud works with zero configuration, and anything that 
 ### 📁 Files
 - Places sidebar, path bar, list and icon views, sortable columns, search, and full keyboard navigation (arrows, Enter, Backspace, Delete).
 - Right-click or long-press menus: open, download, move to Trash, Poof, Shred.
-- Opens in your home folder. Set `DECLOUD_BROWSE_ROOT=/` to browse the entire machine.
+- Opens in your home folder. Set `RECLMR_BROWSE_ROOT=/` to browse the entire machine.
 - Photos and videos open in the same viewer as the Gallery.
 - **Swipe cleanup** lets you triage a folder Tinder-style: left for Trash, right for Poof.
 
@@ -108,8 +108,8 @@ Every app is optional. DeCloud works with zero configuration, and anything that 
 **Requirements:** Linux or macOS (Linux recommended for GPU features), Python 3.10+, and [Tailscale](https://tailscale.com) if you want remote access. Windows is supported for everything except the interactive terminal (see [Windows](#windows)).
 
 ```bash
-git clone https://github.com/rxjdeep/decloud.git ~/decloud
-cd ~/decloud
+git clone https://github.com/rxjdeep/decloud.git ~/reclmr
+cd ~/reclmr
 ./install.sh
 ```
 
@@ -119,13 +119,13 @@ Already have a copy and just want to run it?
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-# set DECLOUD_PIN in .env first, otherwise there is no sign-in
+# set RECLMR_PIN in .env first, otherwise there is no sign-in
 .venv/bin/python app.py        # http://127.0.0.1:8899
 ```
 
 ## Remote access
 
-DeCloud binds to **localhost only**. To reach it from your phone, put a tunnel in front of it. The supported way is [Tailscale Funnel](https://tailscale.com/kb/1223/funnel):
+reclmr binds to **localhost only**. To reach it from your phone, put a tunnel in front of it. The supported way is [Tailscale Funnel](https://tailscale.com/kb/1223/funnel):
 
 ```bash
 tailscale funnel 8899          # https://<machine>.<tailnet>.ts.net
@@ -142,20 +142,20 @@ Open the URL, sign in with your password, and choose **Add to Home Screen** to i
 
 Two small native apps live in `android/` (plain Java, no libraries, built in a throwaway Docker container). They are separate: separate package names, installed and updated on their own, and neither touches the other.
 
-- **DeCloud** (`android/shell`, about 30 KB): a WebView on your server, drawn edge to edge under transparent system bars. Lock-screen music controls keep playing with the screen off (a media service runs only while something plays); swiping the app from recents pauses the music and ends the app. It also handles downloads, uploads, the Voice microphone and long-press shortcuts. Build with `./scripts/build_android.sh shell`, install with `./scripts/install_app.sh`.
-- **DeCloud Backup** (`android/pusher`, about 30 KB): pushes new photos, screenshots, downloads and documents to the server, described next. Build with `./scripts/build_android.sh pusher`, install with `./scripts/install_pusher.sh`.
+- **reclmr** (`android/shell`, about 30 KB): a WebView on your server, drawn edge to edge under transparent system bars. Lock-screen music controls keep playing with the screen off (a media service runs only while something plays); swiping the app from recents pauses the music and ends the app. It also handles downloads, uploads, the Voice microphone and long-press shortcuts. Build with `./scripts/build_android.sh shell`, install with `./scripts/install_app.sh`.
+- **reclmr Backup** (`android/pusher`, about 30 KB): pushes new photos, screenshots, downloads and documents to the server, described next. Build with `./scripts/build_android.sh pusher`, install with `./scripts/install_pusher.sh`.
 
 ## Phone backup
 
-DeCloud Backup runs through Android's own `JobScheduler`: the system wakes it shortly after new media appears, with the battery not low, and the schedule survives reboots. There is no daemon, no polling and nothing to restart. Between runs the app does not exist as a process. On mobile data it sends files up to a size limit (25 MB by default) and asks through a notification before sending larger ones.
+reclmr Backup runs through Android's own `JobScheduler`: the system wakes it shortly after new media appears, with the battery not low, and the schedule survives reboots. There is no daemon, no polling and nothing to restart. Between runs the app does not exist as a process. On mobile data it sends files up to a size limit (25 MB by default) and asks through a notification before sending larger ones.
 
 The server side is off until you set a token (`routes/backup.py`). The phone's token is separate from your login and can only add files: it cannot list, read, overwrite or delete anything.
 
 ```bash
 # .env
-DECLOUD_BACKUP_TOKEN=<24+ random characters>     # python3 -c "import secrets; print(secrets.token_urlsafe(36))"
-DECLOUD_BACKUP_URL=https://your-box.example.ts.net
-DECLOUD_BACKUP_DIR=/path/to/backups              # Camera/, Screenshots/, Downloads/, Documents/ are created inside
+RECLMR_BACKUP_TOKEN=<24+ random characters>     # python3 -c "import secrets; print(secrets.token_urlsafe(36))"
+RECLMR_BACKUP_URL=https://your-box.example.ts.net
+RECLMR_BACKUP_DIR=/path/to/backups              # Camera/, Screenshots/, Downloads/, Documents/ are created inside
 
 ./scripts/build_android.sh pusher    # builds the APK in a throwaway Docker container; nothing is installed on the server
 ./scripts/install_pusher.sh    # installs it through a shell you already have on the phone (pm install + appops)
@@ -184,28 +184,30 @@ Everything is configured through environment variables in `.env` (see [`.env.exa
 
 | Variable | Default | Description |
 |---|---|---|
-| `DECLOUD_PORT` | `8899` | Port to listen on |
-| `DECLOUD_HOST` | `127.0.0.1` | Bind address. Leave it on loopback and use a tunnel |
-| `DECLOUD_PIN` | *(generated by the installer)* | Your sign-in password (8 to 64 characters). Leave it unset only for local experiments, because then there is no sign-in |
-| `DECLOUD_FILES_DIR` | `~` | Base folder for Files, and the folder that contains `Camera` and `Screenshots` for the Gallery |
-| `DECLOUD_BROWSE_ROOT` | *(= `DECLOUD_FILES_DIR`)* | Set to `/` to let Files browse the whole machine |
-| `DECLOUD_BOOKS_DIR` | `~/Books` | Audiobook library |
-| `DECLOUD_MUSIC_DIR` | `~/Music` | Music folder (file-tag fallback) |
-| `DECLOUD_NAVIDROME_URL` | `http://127.0.0.1:4533/navidrome` | Navidrome / Subsonic server |
-| `DECLOUD_NAVIDROME_USER`, `DECLOUD_NAVIDROME_PASS` | | Navidrome credentials (used server-side only) |
+| `RECLMR_PORT` | `8899` | Port to listen on |
+| `RECLMR_HOST` | `127.0.0.1` | Bind address. Leave it on loopback and use a tunnel |
+| `RECLMR_PIN` | *(generated by the installer)* | Your sign-in password (8 to 64 characters). Leave it unset only for local experiments, because then there is no sign-in |
+| `RECLMR_FILES_DIR` | `~` | Base folder for Files, and the folder that contains `Camera` and `Screenshots` for the Gallery |
+| `RECLMR_BROWSE_ROOT` | *(= `RECLMR_FILES_DIR`)* | Set to `/` to let Files browse the whole machine |
+| `RECLMR_BOOKS_DIR` | `~/Books` | Audiobook library |
+| `RECLMR_MUSIC_DIR` | `~/Music` | Music folder (file-tag fallback) |
+| `RECLMR_NAVIDROME_URL` | `http://127.0.0.1:4533/navidrome` | Navidrome / Subsonic server |
+| `RECLMR_NAVIDROME_USER`, `RECLMR_NAVIDROME_PASS` | | Navidrome credentials (used server-side only) |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama endpoint |
-| `DECLOUD_LLM_MODEL` | `llama3.2` | Default chat model |
+| `RECLMR_LLM_MODEL` | `llama3.2` | Default chat model |
 | `COMFY_URL` | `http://localhost:8188` | ComfyUI endpoint |
-| `DECLOUD_PIPER_DIR` | `~/.local/share/piper` | Piper voice models |
-| `DECLOUD_MODELS_DIR`, `DECLOUD_COMFY_MODELS_DIR` | `~/Models`, `~/ComfyUI/models` | Where the Model Advisor downloads to |
-| `DECLOUD_TOTP_FILE`, `DECLOUD_AUDIT_FILE` | `totp.json`, `audit.log` | Locations of the terminal secret and audit trail |
-| `DECLOUD_UPDATE_REPO` | `rxjdeep/decloud` | GitHub repo the self-updater checks |
+| `RECLMR_PIPER_DIR` | `~/.local/share/piper` | Piper voice models |
+| `RECLMR_MODELS_DIR`, `RECLMR_COMFY_MODELS_DIR` | `~/Models`, `~/ComfyUI/models` | Where the Model Advisor downloads to |
+| `RECLMR_TOTP_FILE`, `RECLMR_AUDIT_FILE` | `totp.json`, `audit.log` | Locations of the terminal secret and audit trail |
+| `RECLMR_UPDATE_REPO` | `rxjdeep/decloud` | GitHub repo the self-updater checks |
 
-Optional integrations: `DECLOUD_OSINT_DIR` (privacy scanner), `DECLOUD_JOURNAL_DIR` (Obsidian vault with voice notes), `DECLOUD_HERMES_HOME` (agents panel).
+The older `DECLOUD_*` names (from before the rename) keep working. If both spellings of one setting are in the same `.env`, the `DECLOUD_` one is used, so pick one prefix.
+
+Optional integrations: `RECLMR_OSINT_DIR` (privacy scanner), `RECLMR_JOURNAL_DIR` (Obsidian vault with voice notes), `RECLMR_HERMES_HOME` (agents panel).
 
 ## Security
 
-DeCloud is designed to be exposed to the internet through a tunnel, so the defaults are strict.
+reclmr is designed to be exposed to the internet through a tunnel, so the defaults are strict.
 
 - **Authentication:** password login. The password is used once; afterwards the app uses an opaque session token (HttpOnly, SameSite=Strict, 30-day expiry), never the password. Logins are throttled with exponential backoff.
 - **Second factor for the shell:** TOTP with replay protection and lockout (see above). The terminal socket refuses connections without it.
@@ -228,17 +230,17 @@ Please report vulnerabilities privately (GitHub Security tab) rather than in a p
 Install [Navidrome](https://www.navidrome.org), point it at your music, then add to `.env`:
 
 ```env
-DECLOUD_NAVIDROME_URL=http://127.0.0.1:4533/navidrome
-DECLOUD_NAVIDROME_USER=you
-DECLOUD_NAVIDROME_PASS=your-navidrome-password
+RECLMR_NAVIDROME_URL=http://127.0.0.1:4533/navidrome
+RECLMR_NAVIDROME_USER=you
+RECLMR_NAVIDROME_PASS=your-navidrome-password
 ```
 
-DeCloud proxies streams, artwork, stars and scrobbles server-side, so your Navidrome credentials never reach the browser.
+reclmr proxies streams, artwork, stars and scrobbles server-side, so your Navidrome credentials never reach the browser.
 
 For shuffle and repeat in the KDE or GNOME media widget, run the companion on your desktop:
 
 ```bash
-curl -O https://<your-decloud>/static/tools/decloud-mpris.py
+curl -O https://<your-reclmr>/static/tools/decloud-mpris.py
 python3 decloud-mpris.py --install-service
 ```
 </details>
@@ -254,8 +256,8 @@ ollama pull llama3.2
 Open **My Lab** to see which models fit your machine. **Get** downloads them to the right place, and chat models are imported into Ollama automatically.
 
 ```env
-DECLOUD_MODELS_DIR=~/Models
-DECLOUD_COMFY_MODELS_DIR=~/ComfyUI/models
+RECLMR_MODELS_DIR=~/Models
+RECLMR_COMFY_MODELS_DIR=~/ComfyUI/models
 ```
 </details>
 
@@ -271,10 +273,10 @@ DECLOUD_COMFY_MODELS_DIR=~/ComfyUI/models
 ## Operating it
 
 ```bash
-./decloud start | stop | restart | status | qr | version
-systemctl --user status decloud       # service state
-systemctl --user restart decloud      # after editing .env
-journalctl --user -u decloud -f       # live logs
+./reclmr start | stop | restart | status | qr | version
+systemctl --user status reclmr       # service state
+systemctl --user restart reclmr      # after editing .env
+journalctl --user -u reclmr -f       # live logs
 ```
 
 **Updates:** Settings > About > *Check for updates*. The updater shows the exact version and asks first, refuses to touch a tree with local edits, test-boots the new version on a scratch port before restarting, rolls back automatically on failure, and offers a one-click revert. `.env`, your books and settings are never touched.

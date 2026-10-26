@@ -190,10 +190,10 @@ def get_agents():
             'jobs': jobs,
         })
 
-    # This workstation (Reclamr) is always present and always-on.
+    # This workstation (Reclmr) is always present and always-on.
     agents.append({
         'id': 'decloud',
-        'name': 'Reclamr',
+        'name': 'Reclmr',
         'profile': 'local',
         'platforms': [],
         'platform': 'this machine',

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reclamr - your personal cloud, accessible from anywhere.
+"""Reclmr - your personal cloud, accessible from anywhere.
 
 SECURE ARCHITECTURE:
   - App binds to 127.0.0.1 by default (never exposed to the network)
@@ -35,7 +35,7 @@ except Exception as _boot_error:
         try:
             from routes.update import rollback_on_failed_boot
             if rollback_on_failed_boot():
-                print('[Reclamr] startup failed after a recent update, '
+                print('[Reclmr] startup failed after a recent update, '
                       'rolled back to the previous version. Restarting…',
                       flush=True)
         except Exception:
@@ -54,23 +54,23 @@ if __name__ == '__main__':
     #   - No need for local SSL certs (tunnel handles HTTPS)
     bind_host = os.environ.get('DECLOUD_HOST', '127.0.0.1')
 
-    print(f'[Reclamr] Running on http://localhost:{PORT}')
+    print(f'[Reclmr] Running on http://localhost:{PORT}')
     if bind_host not in ('127.0.0.1', 'localhost', '::1'):
         print('*' * 70)
-        print(f'[Reclamr] WARNING: bound to {bind_host}, NOT localhost-only!')
-        print('[Reclamr] Anyone on the same network can reach this app. Only')
-        print('[Reclamr] do this when a passcode is set AND you know what you')
-        print('[Reclamr] are doing (e.g. Tailscale Serve on the tailnet IP).')
+        print(f'[Reclmr] WARNING: bound to {bind_host}, NOT localhost-only!')
+        print('[Reclmr] Anyone on the same network can reach this app. Only')
+        print('[Reclmr] do this when a passcode is set AND you know what you')
+        print('[Reclmr] are doing (e.g. Tailscale Serve on the tailnet IP).')
         print('*' * 70)
     else:
-        print('[Reclamr] Bound to localhost only. Zero exposed ports.')
-    print('[Reclamr] For remote/phone access, start a tunnel:')
-    print(f'[Reclamr]   tailscale funnel {PORT}')
-    print(f'[Reclamr]   (or: cloudflared tunnel --url http://localhost:{PORT})')
-    print('[Reclamr] The tunnel provides trusted HTTPS automatically.')
+        print('[Reclmr] Bound to localhost only. Zero exposed ports.')
+    print('[Reclmr] For remote/phone access, start a tunnel:')
+    print(f'[Reclmr]   tailscale funnel {PORT}')
+    print(f'[Reclmr]   (or: cloudflared tunnel --url http://localhost:{PORT})')
+    print('[Reclmr] The tunnel provides trusted HTTPS automatically.')
 
     import audit
-    audit.log('server_start', 'Reclamr started on %s:%s' % (bind_host, PORT))
+    audit.log('server_start', 'Reclmr started on %s:%s' % (bind_host, PORT))
     from routes.lab import sync_server
     sync_server()  # opens the lab port only if "Let other devices add this computer" is on
 

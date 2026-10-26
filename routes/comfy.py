@@ -83,7 +83,7 @@ def comfy_start():
     strategy, argv = _comfy_strategy()
     if not argv:
         return jsonify({
-            'error': 'ComfyUI is not installed where Reclamr can find it. '
+            'error': 'ComfyUI is not installed where Reclmr can find it. '
                      'Install ComfyUI, or set DECLOUD_COMFY_CMD in .env to '
                      'the command that starts it.',
             'code': 'NOT_INSTALLED',
@@ -114,7 +114,7 @@ def comfy_start():
 
 @bp.route('/api/comfy/stop', methods=['POST'])
 def comfy_stop():
-    """Stop ComfyUI if Reclamr started it (or a systemd unit exists)."""
+    """Stop ComfyUI if Reclmr started it (or a systemd unit exists)."""
     strategy, _ = _comfy_strategy()
     if strategy == 'systemd':
         subprocess.run(['systemctl', '--user', 'stop', 'comfyui'],
@@ -136,7 +136,7 @@ def comfy_stop():
         except (OSError, ValueError) as e:
             return jsonify({'error': f'could not stop ComfyUI: {e}'}), 500
 
-    return jsonify({'error': 'ComfyUI was started outside Reclamr. Stop it '
+    return jsonify({'error': 'ComfyUI was started outside Reclmr. Stop it '
                              'with systemctl or the terminal'}), 409
 
 

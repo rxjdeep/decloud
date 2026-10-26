@@ -36,7 +36,7 @@
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
-        <activity android:name=".LogActivity" android:exported="false" android:label="Reclamr log"
+        <activity android:name=".LogActivity" android:exported="false" android:label="reclmr log"
             android:theme="@android:style/Theme.DeviceDefault.DayNight" />
 
         <!-- keeps music playing, with lock-screen controls, while the screen is off. Runs only while something plays; swiping the app from recents stops it and ends the app. -->

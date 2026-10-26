@@ -1,14 +1,15 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# DeCloud — Uninstaller
+# reclmr — Uninstaller
 # Removes the service, tunnel, venv, and config files.
-# Your books/files/music are NOT touched — only DeCloud's own files.
+# Your books/files/music are NOT touched — only reclmr's own files.
 # Works on: Linux (systemd), macOS (launchd), WSL
 # ═══════════════════════════════════════════════════════════════
 set -e
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVICE_NAME="decloud"
+SERVICE_NAME="reclmr"
+[ -f "$HOME/.config/systemd/user/decloud.service" ] && SERVICE_NAME="decloud"
 
 # Detect OS
 OS_TYPE="linux"
@@ -19,7 +20,7 @@ elif [[ "$(uname -r)" == *microsoft* ]] || [[ "$(uname -r)" == *Microsoft* ]]; t
 fi
 
 echo "╔══════════════════════════════════════════════╗"
-echo "║   DeCloud — Uninstaller                      ║"
+echo "║   reclmr — Uninstaller                      ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 
@@ -108,5 +109,5 @@ echo "║   ✓ Uninstall complete!                      ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 echo "Your books, files, and music were NOT touched."
-echo "To fully remove DeCloud, delete this folder:"
+echo "To fully remove reclmr, delete this folder:"
 echo "  rm -rf $APP_DIR"

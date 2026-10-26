@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# DeCloud — Installer
+# reclmr — Installer
 # Works on: Linux (systemd), macOS (launchd), WSL
 # One command: curl -sSL <repo>/install.sh | bash
 # Or: ./install.sh
@@ -8,7 +8,8 @@
 set -e
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVICE_NAME="decloud"
+SERVICE_NAME="reclmr"
+[ -f "$HOME/.config/systemd/user/decloud.service" ] && SERVICE_NAME="decloud"      # an existing install keeps its service name
 
 # ─── Detect OS ──────────────────────────────────────────────────
 OS_TYPE="linux"
@@ -19,7 +20,7 @@ elif [[ "$(uname -r)" == *microsoft* ]] || [[ "$(uname -r)" == *Microsoft* ]]; t
 fi
 
 echo "╔══════════════════════════════════════════════╗"
-echo "║   DeCloud — Installer                        ║"
+echo "║   reclmr — Installer                        ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 echo "Detected: $OS_TYPE ($(uname -s) $(uname -r))"
@@ -113,7 +114,7 @@ fi
 # own machine and requires your own tailnet. We deliberately do NOT use
 # third-party relays (localhost.run, localhost tunnel via SSH) — those
 # forward plaintext HTTP through someone else's box, which contradicts
-# DeCloud's privacy story. cloudflared (your own Cloudflare account) is the
+# reclmr's privacy story. cloudflared (your own Cloudflare account) is the
 # fallback.
 TUNNEL_TOOL=""
 
@@ -154,15 +155,15 @@ if [ ! -f .env ]; then
     # Generate a random 8-digit passcode for app access (longer = harder
     # to brute-force; the app warns if you shorten it below 8 characters)
     PIN=$($PYBIN -c "import secrets; print(''.join(str(secrets.randbelow(10)) for _ in range(8)))")
-    # Idempotent: replace any existing DECLOUD_PIN line, else append.
-    if grep -q '^DECLOUD_PIN=' .env 2>/dev/null; then
+    # Idempotent: replace any existing PIN line (either name), else append.
+    if grep -qE '^(RECLMR|DECLOUD)_PIN=' .env 2>/dev/null; then
         if [ "$OS_TYPE" = "macos" ]; then
-            sed -i '' "s/^DECLOUD_PIN=.*/DECLOUD_PIN=$PIN/" .env
+            sed -i '' -E "s/^(RECLMR|DECLOUD)_PIN=.*/\1_PIN=$PIN/" .env
         else
-            sed -i "s/^DECLOUD_PIN=.*/DECLOUD_PIN=$PIN/" .env
+            sed -i -E "s/^(RECLMR|DECLOUD)_PIN=.*/\1_PIN=$PIN/" .env
         fi
     else
-        echo "DECLOUD_PIN=$PIN" >> .env
+        echo "RECLMR_PIN=$PIN" >> .env
     fi
     echo "✓ .env created (edit it to customize paths)"
 fi
@@ -171,7 +172,7 @@ fi
 chmod 600 .env 2>/dev/null || true
 
 # ─── Piper TTS voices (downloaded so speech works out of the box) ──
-PIPER_DIR=$(grep '^DECLOUD_PIPER_DIR=' .env 2>/dev/null | cut -d= -f2- | sed 's/^"//;s/"$//')
+PIPER_DIR=$(grep -E '^(RECLMR|DECLOUD)_PIPER_DIR=' .env 2>/dev/null | cut -d= -f2- | sed 's/^"//;s/"$//')
 if [ -z "$PIPER_DIR" ]; then
     PIPER_DIR="$HOME/.local/share/piper"
 fi
@@ -199,7 +200,7 @@ _fetch_voice "kathleen" "low"
 
 # ─── Service setup (platform-specific) ──────────────────────────
 echo ""
-PORT=$(grep DECLOUD_PORT .env 2>/dev/null | cut -d= -f2 || echo "8899")
+PORT=$(grep -E "^(RECLMR|DECLOUD)_PORT=" .env 2>/dev/null | tail -n1 | cut -d= -f2 || echo "8899")
 
 if [ "$OS_TYPE" = "macos" ]; then
     echo "→ Setting up macOS LaunchAgent..."
@@ -242,7 +243,7 @@ elif [ "$OS_TYPE" = "wsl" ]; then
     pkill -f "python.*app.py" 2>/dev/null || true
     nohup "$APP_DIR/.venv/bin/python" "$APP_DIR/app.py" > "$APP_DIR/decloud.log" 2>&1 &
     echo $! > "$APP_DIR/decloud.pid"
-    echo "✓ DeCloud started (PID: $(cat "$APP_DIR/decloud.pid"))"
+    echo "✓ reclmr started (PID: $(cat "$APP_DIR/decloud.pid"))"
 
 else
     # Linux: systemd user service
@@ -255,7 +256,7 @@ else
 
     cat > "$SERVICE_FILE" << SVCEOF
 [Unit]
-Description=DeCloud
+Description=reclmr
 After=network-online.target
 Wants=network-online.target
 
@@ -285,18 +286,19 @@ SVCEOF
     echo "✓ Service installed and started"
 fi
 
-# ─── Start DeCloud (app + Tailscale funnel together) ─────────────
+# ─── Start reclmr (app + Tailscale funnel together) ─────────────
 echo ""
-echo "→ Starting DeCloud..."
-chmod +x "$APP_DIR/decloud"
+echo "→ Starting reclmr..."
+chmod +x "$APP_DIR/reclmr"
 
-# Put `decloud` on PATH (~/.local/bin) so `decloud update` / `decloud status`
+# Put `reclmr` on PATH (~/.local/bin) so `reclmr update` / `reclmr status`
 # work from any directory. Most distros already include ~/.local/bin in PATH.
 mkdir -p "$HOME/.local/bin"
-ln -sf "$APP_DIR/decloud" "$HOME/.local/bin/decloud"
-echo "✓ 'decloud' command installed to ~/.local/bin (decloud update, status, qr, …)"
+ln -sf "$APP_DIR/reclmr" "$HOME/.local/bin/reclmr"
+[ -e "$HOME/.local/bin/decloud" ] && ln -sf "$APP_DIR/reclmr" "$HOME/.local/bin/decloud"      # the old command name keeps working
+echo "✓ 'reclmr' command installed to ~/.local/bin (reclmr update, status, qr, …)"
 
-# The decloud wrapper starts the app and the Tailscale funnel together
+# The reclmr wrapper starts the app and the Tailscale funnel together
 # (no third-party relays). A non-root user may need `sudo tailscale funnel`.
 "$APP_DIR/decloud" start
 
@@ -319,11 +321,11 @@ else
 fi
 
 # ─── Done ───────────────────────────────────────────────────────
-PIN=$(grep DECLOUD_PIN .env 2>/dev/null | cut -d= -f2 || echo "")
+PIN=$(grep -E "^(RECLMR|DECLOUD)_PIN=" .env 2>/dev/null | tail -n1 | cut -d= -f2 || echo "")
 echo ""
 echo ""
 echo "╔══════════════════════════════════════════════╗"
-echo "║   ✓ DeCloud installed!                       ║"
+echo "║   ✓ reclmr installed!                       ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 echo "🌐 LOCAL ACCESS: http://localhost:${PORT}"
@@ -393,7 +395,7 @@ else
 fi
 
 echo ""
-echo "Manage DeCloud:"
+echo "Manage reclmr:"
 echo "  ./decloud status   — check what's running"
 echo "  ./decloud qr       — show current tunnel URL + QR code"
 echo "  ./decloud restart  — restart app + tunnel (new QR if tunnel changed)"

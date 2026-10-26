@@ -114,7 +114,7 @@ public class MediaService extends Service {
     }
 
     private MediaSession makeSession() {
-        MediaSession s = new MediaSession(this, "Reclamr");
+        MediaSession s = new MediaSession(this, "reclmr");
         s.setCallback(new MediaSession.Callback() {
             @Override public void onPlay() { Web.mediaAction("play", 0); }
             @Override public void onPause() { Web.mediaAction("pause", 0); }

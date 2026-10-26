@@ -20,7 +20,7 @@ def fail(msg):
 
 def main():
     version_file = ROOT / 'routes' / 'version.py'
-    decloud_file = ROOT / 'decloud'
+    decloud_file = ROOT / 'reclmr'
     ok = True
 
     vtext = version_file.read_text()
