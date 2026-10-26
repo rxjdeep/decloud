@@ -1,8 +1,8 @@
 <div align="center">
 
-# DeCloud
+# Project Recl/\mr
 
-**Your own private cloud in a browser tab.**
+**Reclaim your data big tech is so hungry for, in a browser tab.**
 
 A self-hosted web app (and installable PWA) that turns the computer under your desk into a photo library, file manager, music player, audiobook reader and control panel. Open it from your phone, laptop or TV. No accounts, no subscriptions, and your files never leave your machine.
 
