@@ -8,9 +8,18 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.6.2"
+VERSION = "0.6.3"
 
 CHANGELOG = [
+    {
+        "version": "0.6.3",
+        "date": "2026-10-26",
+        "changes": [
+            "Install scripts read the phone address from .env",
+            "Install scripts take the phone address from DECLOUD_PHONE in .env instead of a built-in default",
+            ".env.example documents DECLOUD_PHONE",
+        ]
+    },
     {
         "version": "0.6.2",
         "date": "2026-10-26",

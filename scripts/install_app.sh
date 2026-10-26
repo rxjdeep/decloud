@@ -6,7 +6,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APK=android/shell/build/decloud.apk
-PHONE="${PHONE:-shell@100.106.99.99}"
+envval() { grep -E "^$1=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' || true; }
+PHONE="${PHONE:-$(envval DECLOUD_PHONE)}"          # your phone's shell address, kept in .env (not in the repo)
+[ -n "$PHONE" ] || { echo "Set DECLOUD_PHONE=shell@<phone address> in .env, or run with PHONE=shell@<address>." >&2; exit 1; }
 PORT="${PORT-2222}"
 KEY="${KEY:-}"
 PKG=io.decloud.app

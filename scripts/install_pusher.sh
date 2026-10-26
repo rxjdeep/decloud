@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Put the phone backup app on an Android phone through a shell you already have on it (an adb-style sshd, `adb shell`, ...).
-# Nothing runs by itself: review it, then run it. Default target is the S23's sshd (same address, port and key as s23_backup.sh).
+# Nothing runs by itself: review it, then run it. The phone's address comes from DECLOUD_PHONE in .env (or PHONE=...); the port defaults to 2222.
 #   PHONE=shell@192.168.0.50 PORT=2222 ./scripts/install_pusher.sh
 #   PHONE=s23 PORT= ./scripts/install_pusher.sh                  # an ssh_config alias that already sets the port (empty PORT = pass none)
 #   KEY=~/.ssh/phone-noble ./scripts/install_pusher.sh           # a specific identity file
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APK=android/pusher/build/decloud-pusher.apk
-PHONE="${PHONE:-shell@100.106.99.99}"
+envval() { grep -E "^$1=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' || true; }
+PHONE="${PHONE:-$(envval DECLOUD_PHONE)}"          # your phone's shell address, kept in .env (not in the repo)
+[ -n "$PHONE" ] || { echo "Set DECLOUD_PHONE=shell@<phone address> in .env, or run with PHONE=shell@<address>." >&2; exit 1; }
 PORT="${PORT-2222}"
 KEY="${KEY:-}"
 PKG=io.decloud.pusher
