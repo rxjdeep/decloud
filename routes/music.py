@@ -237,7 +237,7 @@ def _save_state(st):
 # ─── Navidrome / Subsonic (primary metadata source) ──────────────────────
 # Tags, covers, stars and play counts come from Navidrome (more accurate than
 # reading files). Credentials stay server-side; streams and covers are proxied
-# so the browser only ever talks to DeCloud. Without credentials the file-tag
+# so the browser only ever talks to reclmr. Without credentials the file-tag
 # index above is used instead.
 _nd_cache = {'ts': 0, 'data': None}
 _nd_lock = threading.Lock()
@@ -245,9 +245,9 @@ _ND_TTL = 20
 
 
 def _nd_conf():
-    user = os.environ.get('DECLOUD_NAVIDROME_USER', '')
-    pw = os.environ.get('DECLOUD_NAVIDROME_PASS', '')
-    base = os.environ.get('DECLOUD_NAVIDROME_URL', 'http://127.0.0.1:4533/navidrome').rstrip('/')
+    user = os.environ.get('RECLMR_NAVIDROME_USER', '')
+    pw = os.environ.get('RECLMR_NAVIDROME_PASS', '')
+    base = os.environ.get('RECLMR_NAVIDROME_URL', 'http://127.0.0.1:4533/navidrome').rstrip('/')
     return (base, user, pw) if user and pw else None
 
 
@@ -255,7 +255,7 @@ def _nd_params(conf, extra=None):
     base, user, pw = conf
     salt = secrets.token_hex(6)
     p = {'u': user, 't': hashlib.md5((pw + salt).encode()).hexdigest(), 's': salt,
-         'v': '1.16.1', 'c': 'decloud', 'f': 'json'}
+         'v': '1.16.1', 'c': 'reclmr', 'f': 'json'}
     p.update(extra or {})
     return p
 
@@ -636,7 +636,7 @@ _PASS_HEADERS = ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Rang
 
 
 def _nd_proxy(endpoint, params, extra_headers=None, cache=None, ctype=None):
-    """Stream a Navidrome response through DeCloud (Range-aware)."""
+    """Stream a Navidrome response through reclmr (Range-aware)."""
     conf = _nd_conf()
     headers = dict(extra_headers or {})
     rng = request.headers.get('Range')
@@ -681,7 +681,7 @@ _tc_slots = threading.BoundedSemaphore(2)               # at most two songs are 
 
 def _tc_limit():
     try:
-        return int(os.environ.get('DECLOUD_TRANSCODE_CACHE_MB', '2048')) * 1024 * 1024
+        return int(os.environ.get('RECLMR_TRANSCODE_CACHE_MB', '2048')) * 1024 * 1024
     except ValueError:
         return 2048 * 1024 * 1024
 
@@ -822,7 +822,7 @@ def music_artist_info(aid):
 # Navidrome serves a generic stand-in picture for an artist it found no photo for: the same few bytes for every such artist. At 48 px they are
 # these two (95 and 14 of the artists in one library). Treating them as "no photo" lets the page fall back to the album cover instead of showing a generic image.
 _AR_PLACEHOLDER = {'fcec14e686ad5159a8ed7c51936116d7', '00b7856aa138fc3996c344801c56ed3b'} | {
-    h.strip().lower() for h in os.environ.get('DECLOUD_PLACEHOLDER_ARTIST_MD5', '').split(',') if h.strip()}
+    h.strip().lower() for h in os.environ.get('RECLMR_PLACEHOLDER_ARTIST_MD5', '').split(',') if h.strip()}
 _ar_photo = {}
 
 
@@ -1151,7 +1151,7 @@ def _lrclib(title, artist, album, dur):
     """Best match from lrclib.net: synced lyrics if it has them, else plain ones. [] when nothing fits.
     Songs tagged with an English title often have both the sung lyrics and an English translation on the site (same times, same length);
     when a result carries an original-script title (スローモーションリプレイ), the sung-language lyrics win over the translation."""
-    hdr = {'User-Agent': 'DeCloud (self-hosted music player)'}
+    hdr = {'User-Agent': 'reclmr (self-hosted music player)'}
     hits, ok = [], False
     for url, params in (('https://lrclib.net/api/get', {'track_name': title, 'artist_name': artist, 'album_name': album, 'duration': int(dur)}),
                         ('https://lrclib.net/api/search', {'track_name': title, 'artist_name': artist}),

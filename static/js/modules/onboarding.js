@@ -1,6 +1,6 @@
 // ===== Module: onboarding =====
 // First-run walkthrough for new recl/\mr users.
-// Shows on first open (localStorage 'decloud_onboarded'), walks through
+// Shows on first open (localStorage 'reclmr_onboarded'), walks through
 // Tailscale setup, phone PWA install, and app configuration.
 
 var ONBOARDING_STEPS = 5; // 0=welcome, 1=features, 2=security, 3=phone, 4=done
@@ -10,7 +10,7 @@ function initOnboarding() {
   var overlay = document.getElementById('onboarding-overlay');
   if (!overlay) return;
   // Only show if not yet onboarded
-  if (localStorage.getItem('decloud_onboarded') === '1') {
+  if (localStorage.getItem('reclmr_onboarded') === '1') {
     overlay.style.display = 'none';
     return;
   }
@@ -103,7 +103,7 @@ function finishOnboarding(skipped) {
       body: JSON.stringify({ agent_name: name })
     }).catch(function() {});
   }
-  localStorage.setItem('decloud_onboarded', '1');
+  localStorage.setItem('reclmr_onboarded', '1');
   var overlay = document.getElementById('onboarding-overlay');
   if (overlay) {
     overlay.style.display = 'none';
@@ -115,7 +115,7 @@ function finishOnboarding(skipped) {
  * Clears the flag and re-initializes.
  */
 function reopenOnboarding() {
-  localStorage.removeItem('decloud_onboarded');
+  localStorage.removeItem('reclmr_onboarded');
   // If currently in settings, go home first
   if (typeof goHome === 'function') {
     goHome();

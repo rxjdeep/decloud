@@ -9,7 +9,6 @@ set -e
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="reclmr"
-[ -f "$HOME/.config/systemd/user/decloud.service" ] && SERVICE_NAME="decloud"
 
 # Detect OS
 OS_TYPE="linux"
@@ -36,7 +35,7 @@ fi
 
 # ─── Stop and remove service ────────────────────────────────────
 if [ "$OS_TYPE" = "macos" ]; then
-    PLIST_FILE="$HOME/Library/LaunchAgents/com.decloud.app.plist"
+    PLIST_FILE="$HOME/Library/LaunchAgents/com.reclmr.app.plist"
     if [ -f "$PLIST_FILE" ]; then
         echo "→ Removing LaunchAgent..."
         launchctl unload "$PLIST_FILE" 2>/dev/null || true
@@ -47,10 +46,10 @@ if [ "$OS_TYPE" = "macos" ]; then
     fi
 
 elif [ "$OS_TYPE" = "wsl" ]; then
-    if [ -f "$APP_DIR/decloud.pid" ]; then
+    if [ -f "$APP_DIR/reclmr.pid" ]; then
         echo "→ Stopping WSL background process..."
-        kill "$(cat "$APP_DIR/decloud.pid")" 2>/dev/null || true
-        rm -f "$APP_DIR/decloud.pid"
+        kill "$(cat "$APP_DIR/reclmr.pid")" 2>/dev/null || true
+        rm -f "$APP_DIR/reclmr.pid"
         echo "✓ Process stopped"
     else
         pkill -f "python.*app.py" 2>/dev/null && echo "✓ Process killed" || echo "• No process found (skip)"
@@ -95,8 +94,8 @@ rm -rf "$APP_DIR/text_cache" 2>/dev/null || true
 rm -rf "$APP_DIR/voice_clips" 2>/dev/null || true
 rm -rf "$APP_DIR/voices" 2>/dev/null || true
 rm -rf "$APP_DIR/telemetry" 2>/dev/null || true
-rm -rf "$APP_DIR/decloud.log" 2>/dev/null || true
-rm -rf "$APP_DIR/decloud.pid" 2>/dev/null || true
+rm -rf "$APP_DIR/reclmr.log" 2>/dev/null || true
+rm -rf "$APP_DIR/reclmr.pid" 2>/dev/null || true
 rm -rf "$APP_DIR/tunnel.log" 2>/dev/null || true
 rm -rf "$APP_DIR/tunnel.pid" 2>/dev/null || true
 rm -rf "$APP_DIR/__pycache__" 2>/dev/null || true

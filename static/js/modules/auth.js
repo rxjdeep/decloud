@@ -12,7 +12,7 @@ const _LOGIN_PIN_MAX = 10;  // keypad supports 6–10 digits; longer passcodes v
     const d = await r.json();
     if (d.authenticated) {
       // Already authenticated - stash the CSRF token for state-changing calls
-      if (d.csrf) sessionStorage.setItem('decloud_csrf', d.csrf);
+      if (d.csrf) sessionStorage.setItem('reclmr_csrf', d.csrf);
       hideLoginScreen();
     } else {
       // Need to log in
@@ -107,10 +107,10 @@ async function submitLogin() {
       // fallback and the CSRF token for state-changing requests.
       // The PIN must never live in browser storage.
       if (d.session) {
-        sessionStorage.setItem('decloud_session', d.session);
+        sessionStorage.setItem('reclmr_session', d.session);
       }
       if (d.csrf) {
-        sessionStorage.setItem('decloud_csrf', d.csrf);
+        sessionStorage.setItem('reclmr_csrf', d.csrf);
       }
       // Success - reload to get the main app with auth cookie set
       window.location.reload();
@@ -149,8 +149,8 @@ async function logout() {
   } catch (e) {
     console.warn('Logout request failed:', e);
   }
-  sessionStorage.removeItem('decloud_session');
-  sessionStorage.removeItem('decloud_csrf');
+  sessionStorage.removeItem('reclmr_session');
+  sessionStorage.removeItem('reclmr_csrf');
   window.location.reload();
 }
 

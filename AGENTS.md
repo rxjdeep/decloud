@@ -1,4 +1,4 @@
-# DeCloud — Agent Guide
+# reclmr — Agent Guide
 
 Self-hosted PWA dashboard (Flask + vanilla JS + a `textual` TUI). Read this
 whole file before changing code — it is written so a junior agent (or an
@@ -27,11 +27,11 @@ LLM with a short context window) can iterate without breaking things.
 ## Environment setup (once per machine)
 
 ```bash
-git clone https://github.com/rxjdeep/decloud && cd decloud
+git clone https://github.com/rxjdeep/reclmr && cd reclmr
 uv venv .venv                       # or: python3 -m venv .venv
 uv pip install -r requirements.txt          # core app
 uv pip install -r requirements-dev.txt      # pytest (dev only)
-uv pip install -r requirements-tui.txt      # textual (for `decloud tui`)
+uv pip install -r requirements-tui.txt      # textual (for `reclmr tui`)
 ```
 
 ## Project map (where things live)
@@ -44,7 +44,7 @@ uv pip install -r requirements-tui.txt      # textual (for `decloud tui`)
 | Frontend | `static/js/modules/*.js` | vanilla JS, no build step; inline `onclick`s in `templates/index.html` call GLOBAL functions |
 | HTML | `templates/index.html` | single page |
 | CSS | `static/css/app.css` | theme vars in `:root` / `[data-theme]` |
-| CLI + TUI | `scripts/decloud_*.py` + `decloud` | update CLI, TUI dashboard |
+| CLI + TUI | `scripts/reclmr_*.py` + `reclmr` | update CLI, TUI dashboard |
 | Tests | `tests/` | auth, CSRF, WS, allowlist, traversal |
 | Version truth | `routes/version.py` | `VERSION` + `CHANGELOG[0]` |
 
@@ -60,7 +60,7 @@ inline handlers.
 ```bash
 .venv/bin/python -m pytest -q                        # full suite (must be green)
 node --check static/js/modules/<file>.js             # JS syntax per changed file
-bash -n decloud install.sh                           # shell syntax
+bash -n reclmr install.sh                           # shell syntax
 .venv/bin/python scripts/check_version.py            # version consistency
 ```
 
@@ -68,11 +68,11 @@ Realistic end-to-end checks (do these for feature work):
 
 ```bash
 # 1. Boot check
-python app.py &  # or: systemctl --user restart decloud
+python app.py &  # or: systemctl --user restart reclmr
 curl -s http://localhost:8899/ -o /dev/null -w "%{http_code}\n"   # expect 200
 
 # 2. Exercise the API you changed (needs a session)
-PIN=$(grep '^DECLOUD_PIN=' .env | cut -d= -f2- | tr -d '[:space:]')
+PIN=$(grep '^RECLMR_PIN=' .env | cut -d= -f2- | tr -d '[:space:]')
 SESS=$(curl -s -X POST localhost:8899/api/auth/login -H 'Content-Type: application/json' \
   -d "{\"pin\":\"$PIN\"}" | python -c "import sys,json;print(json.load(sys.stdin)['session'])")
 curl -s localhost:8899/api/<your-endpoint> -H "Authorization: Bearer $SESS"
@@ -81,9 +81,9 @@ curl -s localhost:8899/api/<your-endpoint> -H "Authorization: Bearer $SESS"
 #    See tests/tui_smoke.py pattern; or minimal:
 timeout 60 .venv/bin/python - <<'EOF'
 import asyncio
-from scripts.decloud_tui import DeCloudTUI
+from scripts.reclmr_tui import ReclmrTUI
 async def main():
-    app = DeCloudTUI()
+    app = ReclmrTUI()
     async with app.run_test(size=(110, 38)) as pilot:
         await pilot.pause()
         await asyncio.sleep(4)
@@ -115,7 +115,7 @@ uvx pip-audit -r requirements.txt        # CVE scan — must come back clean
 
 ## Release protocol (every push that changes code)
 
-1. Bump with the helper (it updates `routes/version.py` AND the `decloud`
+1. Bump with the helper (it updates `routes/version.py` AND the `reclmr`
    script, and adds a dated changelog entry):
    ```bash
    .venv/bin/python scripts/bump_version.py patch -m "one-line summary" -c "bullet one;bullet two"
@@ -125,7 +125,7 @@ uvx pip-audit -r requirements.txt        # CVE scan — must come back clean
 3. `git push origin main` — that's it. The CI `version-check` job fails if the
    three version spots disagree, and the **Release workflow auto-creates the
    `v<version>` git tag + GitHub release** (that's what the in-app updater and
-   `decloud update` consume). **Never tag manually.**
+   `reclmr update` consume). **Never tag manually.**
 
 ## Definition of Done (checklist before you report "done")
 

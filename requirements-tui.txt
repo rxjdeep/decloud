@@ -1,3 +1,3 @@
-# ─── TUI dashboard (optional — only needed for `decloud tui`) ───
+# ─── TUI dashboard (optional — only needed for `reclmr tui`) ───
 # Install: uv pip install -r requirements-tui.txt
 textual==8.2.8

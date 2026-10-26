@@ -5,7 +5,7 @@ import psutil
 
 bp = Blueprint('devices', __name__)
 
-APP_PORT = int(__import__('os').environ.get('DECLOUD_PORT', '8899'))
+APP_PORT = int(__import__('os').environ.get('RECLMR_PORT', '8899'))
 
 
 def _tailscale_status():

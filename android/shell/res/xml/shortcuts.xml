@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut android:shortcutId="music" android:shortcutShortLabel="@string/sc_music" android:icon="@drawable/ic_launcher">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.decloud.app" android:targetClass="io.decloud.app.MainActivity">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.reclmr.app" android:targetClass="io.reclmr.app.MainActivity">
             <extra android:name="hash" android:value="music" />
         </intent>
     </shortcut>
     <shortcut android:shortcutId="liked" android:icon="@drawable/ic_launcher" android:shortcutShortLabel="@string/sc_liked">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.decloud.app" android:targetClass="io.decloud.app.MainActivity">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.reclmr.app" android:targetClass="io.reclmr.app.MainActivity">
             <extra android:name="hash" android:value="music/favorites" />
         </intent>
     </shortcut>
     <shortcut android:shortcutId="search" android:icon="@drawable/ic_launcher" android:shortcutShortLabel="@string/sc_search">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.decloud.app" android:targetClass="io.decloud.app.MainActivity">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.reclmr.app" android:targetClass="io.reclmr.app.MainActivity">
             <extra android:name="hash" android:value="music/search" />
         </intent>
     </shortcut>
     <shortcut android:shortcutId="gallery" android:shortcutShortLabel="@string/sc_gallery" android:icon="@drawable/ic_launcher">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.decloud.app" android:targetClass="io.decloud.app.MainActivity">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.reclmr.app" android:targetClass="io.reclmr.app.MainActivity">
             <extra android:name="hash" android:value="gallery" />
         </intent>
     </shortcut>
     <shortcut android:shortcutId="files" android:shortcutShortLabel="@string/sc_files" android:icon="@drawable/ic_launcher">
-        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.decloud.app" android:targetClass="io.decloud.app.MainActivity">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.reclmr.app" android:targetClass="io.reclmr.app.MainActivity">
             <extra android:name="hash" android:value="lego" />
         </intent>
     </shortcut>

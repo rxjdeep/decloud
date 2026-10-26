@@ -39,7 +39,7 @@ function showUniverseEmpty() {
       <div class="empty-icon">🌌</div>
       <h3>Your Universe is empty</h3>
       <p>Universe maps people and entities from your files into an interactive knowledge graph.</p>
-      <p class="empty-hint">Set DECLOUD_OSINT_DIR in .env to point to your data folder</p>
+      <p class="empty-hint">Set RECLMR_OSINT_DIR in .env to point to your data folder</p>
       <p class="empty-hint">Then add files with names, emails, or org info to scan</p>
     `;
     parent.appendChild(empty);

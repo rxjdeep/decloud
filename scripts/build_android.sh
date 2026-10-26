@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
 # Build one of the two Android apps inside a throwaway Docker container: nothing is installed on this machine.
-#   ./scripts/build_android.sh shell    android/shell:  DeCloud itself, a WebView on your server with lock-screen music controls  -> decloud.apk
-#   ./scripts/build_android.sh pusher   android/pusher: DeCloud Backup, pushes new photos and files to the server             -> decloud-pusher.apk
+#   ./scripts/build_android.sh shell    android/shell:  reclmr itself, a WebView on your server with lock-screen music controls  -> reclmr.apk
+#   ./scripts/build_android.sh pusher   android/pusher: reclmr Backup, pushes new photos and files to the server             -> reclmr-pusher.apk
 # They are separate apps with separate package names; installing one never touches the other.
 #
-#   DECLOUD_BACKUP_URL    public address of this DeCloud, e.g. https://box.example.ts.net   (.env)  both apps
-#   DECLOUD_BACKUP_TOKEN  the same token the server uses (24+ characters)                    (.env)  backup app only
+#   RECLMR_BACKUP_URL    public address of this reclmr, e.g. https://box.example.ts.net   (.env)  both apps
+#   RECLMR_BACKUP_TOKEN  the same token the server uses (24+ characters)                    (.env)  backup app only
 #
 # The URL (and for the backup app the token) is compiled in, so keep the APKs private.
-# Signing key: ~/.decloud-android/ (created on first run; keep it, an update must be signed with the same key).
+# Signing key: ~/.reclmr-android/ (created on first run; keep it, an update must be signed with the same key).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 MODULE="${1:-pusher}"
 case "$MODULE" in
-  pusher) PKGDIR=io/decloud/pusher; APKNAME=decloud-pusher.apk; NEED_TOKEN=1 ;;
-  shell)  PKGDIR=io/decloud/app;    APKNAME=decloud.apk;        NEED_TOKEN=0 ;;
+  pusher) PKGDIR=io/reclmr/pusher; APKNAME=reclmr-pusher.apk; NEED_TOKEN=1 ;;
+  shell)  PKGDIR=io/reclmr/app;    APKNAME=reclmr.apk;        NEED_TOKEN=0 ;;
   *) echo "usage: $0 [pusher|shell]" >&2; exit 1 ;;
 esac
 [ -d "android/$MODULE" ] || { echo "android/$MODULE not found" >&2; exit 1; }
 
-envval() { grep -E "^(RECLMR|DECLOUD)_${1#DECLOUD_}=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' || true; }      # RECLMR_NAME or the older DECLOUD_NAME
-URL="${DECLOUD_BACKUP_URL:-$(envval DECLOUD_BACKUP_URL)}"
-TOKEN="${DECLOUD_BACKUP_TOKEN:-$(envval DECLOUD_BACKUP_TOKEN)}"
-[ -n "$URL" ] || { echo "Set DECLOUD_BACKUP_URL (the public address of this DeCloud) in .env first." >&2; exit 1; }
-[ "$NEED_TOKEN" = 0 ] || [ "${#TOKEN}" -ge 24 ] || { echo "The backup app also needs a 24+ character DECLOUD_BACKUP_TOKEN in .env." >&2; exit 1; }
-case "$URL" in https://*) ;; *) echo "DECLOUD_BACKUP_URL must start with https://" >&2; exit 1;; esac
+envval() { grep -E "^$1=" .env 2>/dev/null | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//' || true; }
+URL="${RECLMR_BACKUP_URL:-$(envval RECLMR_BACKUP_URL)}"
+TOKEN="${RECLMR_BACKUP_TOKEN:-$(envval RECLMR_BACKUP_TOKEN)}"
+[ -n "$URL" ] || { echo "Set RECLMR_BACKUP_URL (the public address of this reclmr) in .env first." >&2; exit 1; }
+[ "$NEED_TOKEN" = 0 ] || [ "${#TOKEN}" -ge 24 ] || { echo "The backup app also needs a 24+ character RECLMR_BACKUP_TOKEN in .env." >&2; exit 1; }
+case "$URL" in https://*) ;; *) echo "RECLMR_BACKUP_URL must start with https://" >&2; exit 1;; esac
 URL="${URL%/}"
 
-KEYS="${DECLOUD_ANDROID_KEYS:-$HOME/.decloud-android}"
+KEYS="${RECLMR_ANDROID_KEYS:-$HOME/.reclmr-android}"
 mkdir -p "$KEYS"; chmod 700 "$KEYS"
 [ -f "$KEYS/pass" ] || { umask 077; head -c 24 /dev/urandom | base64 | tr -d '/+=\n' > "$KEYS/pass"; }
 
@@ -47,7 +47,7 @@ mkdir -p "$GEN/$PKGDIR"
 chmod -R a+rX "$GEN"
 
 docker run --rm \
-  -v decloud-android-sdk:/sdk \
+  -v reclmr-android-sdk:/sdk \
   -v "$PWD/android/$MODULE:/src:ro" \
   -v "$GEN:/gen:ro" \
   -v "$KEYS:/keys" \
@@ -82,9 +82,9 @@ $BT/aapt2 link -o $W/base.apk -I $JAR --manifest /src/AndroidManifest.xml --min-
 $BT/zipalign -f -p 4 $W/base.apk $W/aligned.apk
 
 if [ ! -f /keys/pusher.jks ]; then
-  echo ">> creating the signing key (kept in ~/.decloud-android)"
+  echo ">> creating the signing key (kept in ~/.reclmr-android)"
   keytool -genkeypair -keystore /keys/pusher.jks -storepass:file /keys/pass -keypass:file /keys/pass \
-    -alias pusher -keyalg RSA -keysize 3072 -validity 36500 -dname "CN=DeCloud pusher" >/dev/null
+    -alias pusher -keyalg RSA -keysize 3072 -validity 36500 -dname "CN=reclmr pusher" >/dev/null
 fi
 $BT/apksigner sign --ks /keys/pusher.jks --ks-pass file:/keys/pass --out /out/$APKNAME $W/aligned.apk
 $BT/apksigner verify /out/$APKNAME

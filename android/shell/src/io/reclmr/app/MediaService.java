@@ -1,4 +1,4 @@
-package io.decloud.app;
+package io.reclmr.app;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -27,7 +27,7 @@ import java.net.URL;
  * off, publishes the lock-screen / notification controls, and holds the CPU and Wi-Fi awake for the stream.
  */
 public class MediaService extends Service {
-    private static final String CHANNEL = "playback", UPDATE = "io.decloud.app.UPDATE";
+    private static final String CHANNEL = "playback", UPDATE = "io.reclmr.app.UPDATE";
     private static final int ID = 2;
     static volatile boolean running;
     static volatile boolean shuffle;
@@ -171,9 +171,9 @@ public class MediaService extends Service {
 
     private void locks(boolean on) {
         if (on) {
-            if (wake == null) wake = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "decloud:play");
+            if (wake == null) wake = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "reclmr:play");
             if (!wake.isHeld()) wake.acquire(6 * 3600_000L);                // never forever, even if something goes wrong
-            if (wifi == null) wifi = getSystemService(WifiManager.class).createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "decloud:play");
+            if (wifi == null) wifi = getSystemService(WifiManager.class).createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "reclmr:play");
             if (!wifi.isHeld()) wifi.acquire();
         } else {
             if (wake != null && wake.isHeld()) wake.release();

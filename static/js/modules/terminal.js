@@ -114,7 +114,7 @@ function initXterm() {
   // token as a query parameter for tunnel scenarios. Same-origin
   // connections still send the cookie automatically.
   const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const sess = sessionStorage.getItem('decloud_session') || '';
+  const sess = sessionStorage.getItem('reclmr_session') || '';
   const wsUrl = `${wsProto}//${location.host}/api/terminal/ws` +
     (sess ? `?token=${encodeURIComponent(sess)}` : '');
   xtermWs = new WebSocket(wsUrl);

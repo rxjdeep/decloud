@@ -1,17 +1,17 @@
-# DeCloud — Windows lifecycle wrapper (PowerShell)
-# Usage: .\decloud.ps1 start|stop|status|restart|qr
+# reclmr — Windows lifecycle wrapper (PowerShell)
+# Usage: .\reclmr.ps1 start|stop|status|restart|qr
 
 param([string]$Command = "status")
 
 $AppDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $AppDir
 
-$TaskName = "DeCloud"
-$Port = if ($env:DECLOUD_PORT) { $env:DECLOUD_PORT } else { "8899" }
+$TaskName = "reclmr"
+$Port = if ($env:RECLMR_PORT) { $env:RECLMR_PORT } else { "8899" }
 
 function Get-Passcode {
     if (Test-Path ".env") {
-        $line = Select-String -Path .env -Pattern '^DECLOUD_PIN=' | Select-Object -First 1
+        $line = Select-String -Path .env -Pattern '^RECLMR_PIN=' | Select-Object -First 1
         if ($line) { return $line.Line.Substring(12) }
     }
     return "(not set — open mode)"
@@ -21,7 +21,7 @@ switch ($Command) {
     "start" {
         if ((Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
             Start-ScheduledTask -TaskName $TaskName
-            Write-Host "DeCloud scheduled task started."
+            Write-Host "reclmr scheduled task started."
         } else {
             Write-Host "No scheduled task found — run .\setup.ps1 first."
             Write-Host "Fallback: start the app directly in this window:"
@@ -40,7 +40,7 @@ switch ($Command) {
         Get-Process python -ErrorAction SilentlyContinue | Where-Object {
             $_.Path -like "$AppDir*"
         } | Stop-Process -Force -ErrorAction SilentlyContinue
-        Write-Host "DeCloud stopped."
+        Write-Host "reclmr stopped."
     }
     "restart" {
         & $MyInvocation.MyCommand.Path stop
@@ -53,11 +53,11 @@ switch ($Command) {
         Write-Host "Passcode: $(Get-Passcode)"
     }
     default {
-        Write-Host "DeCloud on Windows"
-        Write-Host "  .\decloud.ps1 start    - start the app"
-        Write-Host "  .\decloud.ps1 stop     - stop the app"
-        Write-Host "  .\decloud.ps1 restart  - restart the app"
-        Write-Host "  .\decloud.ps1 status   - show status (default)"
-        Write-Host "  .\decloud.ps1 qr       - show access info"
+        Write-Host "reclmr on Windows"
+        Write-Host "  .\reclmr.ps1 start    - start the app"
+        Write-Host "  .\reclmr.ps1 stop     - stop the app"
+        Write-Host "  .\reclmr.ps1 restart  - restart the app"
+        Write-Host "  .\reclmr.ps1 status   - show status (default)"
+        Write-Host "  .\reclmr.ps1 qr       - show access info"
     }
 }

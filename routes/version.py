@@ -8,9 +8,22 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.6.8"
+VERSION = "0.7.0"
 
 CHANGELOG = [
+    {
+        "version": "0.7.0",
+        "date": "2026-10-27",
+        "changes": [
+            "Renamed everywhere to reclmr: files, settings, apps",
+            "Name: every file, folder, setting, cookie, storage key and Android package now says reclmr (nothing says the old name except the LICENSE copyright line the MIT licence requires)",
+            "Settings: RECLMR_* only. Rename the DECLOUD_* keys in your .env",
+            "Command and service: ./reclmr and the reclmr service",
+            "Android: new package IDs io.reclmr.app and io.reclmr.pusher (uninstall the old apps",
+            "sign in again)",
+            "Sign in again once: the session cookie has a new name",
+        ]
+    },
     {
         "version": "0.6.8",
         "date": "2026-10-27",
@@ -25,9 +38,9 @@ CHANGELOG = [
         "changes": [
             "reclmr: README and commands renamed",
             "README: every mention is now reclmr",
-            "settings use the RECLMR_ prefix (the older DECLOUD_ names keep working)",
-            "Command: ./reclmr (the old ./decloud still works)",
-            "Installer: new installs create the reclmr service, existing installs keep theirs",
+            "settings use the RECLMR_ prefix",
+            "Command: ./reclmr",
+            "Installer: installs create the reclmr service",
             "Android apps are labelled reclmr and reclmr Backup",
         ]
     },
@@ -61,8 +74,8 @@ CHANGELOG = [
         "date": "2026-10-26",
         "changes": [
             "Install scripts read the phone address from .env",
-            "Install scripts take the phone address from DECLOUD_PHONE in .env instead of a built-in default",
-            ".env.example documents DECLOUD_PHONE",
+            "Install scripts take the phone address from RECLMR_PHONE in .env instead of a built-in default",
+            ".env.example documents RECLMR_PHONE",
         ]
     },
     {
@@ -70,7 +83,7 @@ CHANGELOG = [
         "date": "2026-10-26",
         "changes": [
             "Renamed to Project Reclmr, smoother scrolling, covers load ahead",
-            "Name: Project Recl/\\mr (reclmr in files and commands) in the page, install name and README, reclmr on the Android launchers, fork credit to DeCloud",
+            "Name: Project Recl/\\mr (reclmr in files and commands) in the page, install name and README, reclmr on the Android launchers, fork credit to reclmr",
             "Scrolling: covers load two screens ahead, the page layer is released after each slide, correct row height estimate",
             "Android: left-edge back setting is restored reliably, permission re-granted on every install",
         ]
@@ -108,7 +121,7 @@ CHANGELOG = [
         "changes": [
             "Gallery, Files browser, Logs, two-step Terminal, XSS hardening",
             "Gallery: iOS/Google-Photos style library with viewer",
-            "Files: Finder/Nautilus style browser over the whole machine (opt-in via DECLOUD_BROWSE_ROOT)",
+            "Files: Finder/Nautilus style browser over the whole machine (opt-in via RECLMR_BROWSE_ROOT)",
             "Terminal needs a TOTP code (scripts/totp_setup.py)",
             "Logs screen with audit trail",
             "CSP: no CDN, no inline scripts, many XSS sinks escaped",
@@ -170,21 +183,21 @@ CHANGELOG = [
         "version": "0.2.0",
         "date": "2026-09-06",
         "changes": [
-            "TUI dashboard: 'decloud tui'",
-            "'decloud tui' opens a brutalist terminal dashboard (system, voice, music, devices, logs)",
+            "TUI dashboard: 'reclmr tui'",
+            "'reclmr tui' opens a brutalist terminal dashboard (system, voice, music, devices, logs)",
             "Update panel + 'U' action reuse the verified updater",
             "works even when the app is offline",
             "Optional 'textual' dependency via requirements-tui.txt (friendly one-line hint if missing)",
-            "Passcode login handled in-TUI and the session is stored in ~/.config/decloud",
+            "Passcode login handled in-TUI and the session is stored in ~/.config/reclmr",
         ]
     },
     {
         "version": "0.1.0",
         "date": "2026-09-06",
         "changes": [
-            "Terminal updates: 'decloud update' CLI",
-            "'decloud update' command (check / update / rollback) shares the in-app updater's verified logic",
-            "install.sh symlinks decloud into ~/.local/bin so it's on PATH",
+            "Terminal updates: 'reclmr update' CLI",
+            "'reclmr update' command (check / update / rollback) shares the in-app updater's verified logic",
+            "install.sh symlinks reclmr into ~/.local/bin so it's on PATH",
         ]
     },
     {
@@ -194,7 +207,7 @@ CHANGELOG = [
             "One-click updates: auto-release pipeline, semver compare, supervised restarts",
             "Updater only offers genuine upgrades (semver compare. No more downgrade offers)",
             "GitHub Action auto-creates a git tag + release for each version bump (no manual tagging)",
-            "Manual ./decloud starts now supervise the app so self-update restarts work without systemd",
+            "Manual ./reclmr starts now supervise the app so self-update restarts work without systemd",
             "install.sh warns when the install is not a git checkout (updates need git)",
         ]
     },
@@ -256,7 +269,7 @@ CHANGELOG = [
             "Books: cover generator uses cross-platform fonts",
             "AI chat: consistent default model, input caps, real error messages from summarize/Q&A",
             "Cross-platform: real OS detection (Debian/Fedora/macOS/Windows)",
-            "Windows: setup.ps1 installer + decloud.ps1 lifecycle wrapper; terminal degrades gracefully",
+            "Windows: setup.ps1 installer + reclmr.ps1 lifecycle wrapper; terminal degrades gracefully",
             "Tests: 74 security tests (auth, CSRF, WebSocket, allowlist, traversal, symlinks) + CI on Ubuntu/macOS/Windows",
         ]
     },

@@ -23,7 +23,7 @@ from shared import BASE_DIR, load_settings, save_settings
 bp = Blueprint('lab', __name__)
 _pool = ThreadPoolExecutor(max_workers=8)
 STYLES = ('neofetch', 'rack', 'constellation')
-LAB_PORT = int(os.environ.get('DECLOUD_LAB_PORT', lab_report.AGENT_PORT))
+LAB_PORT = int(os.environ.get('RECLMR_LAB_PORT', lab_report.AGENT_PORT))
 _state = None
 _server = None
 _server_lock = threading.Lock()
@@ -117,7 +117,7 @@ def reset_key():
 def agent_file():
     # Public on purpose: it's this repo's own source, fetched by `curl` on the device being added.
     return send_file(Path(lab_report.__file__), mimetype='text/x-python', as_attachment=True,
-                     download_name='decloud-agent.py')
+                     download_name='reclmr-agent.py')
 
 
 # ─── Hub side ────────────────────────────────────────────────────
@@ -142,7 +142,7 @@ def _clean(r):
     lst = lambda k: [x for x in run.get(k, []) if isinstance(x, (dict, str))][:30] if isinstance(run.get(k), list) else []
     st = r.get('storage') if isinstance(r.get('storage'), dict) else {}
     return {
-        'kind': 'agent' if r.get('kind') == 'agent' else 'decloud',
+        'kind': 'agent' if r.get('kind') == 'agent' else 'reclmr',
         'hostname': _str(r.get('hostname'), 64), 'os': _str(r.get('os')), 'kernel': _str(r.get('kernel')),
         'arch': _str(r.get('arch'), 20), 'cpu_name': _str(r.get('cpu_name')),
         'cores': int(_num(r.get('cores'))), 'cpu_percent': max(0, min(100, _num(r.get('cpu_percent')))),

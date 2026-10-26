@@ -1,8 +1,8 @@
 """Phone backup intake: the phone pushes new files here (see android/pusher).
 
-Off unless DECLOUD_BACKUP_TOKEN is set (24+ characters). The phone uses that token, not a login
+Off unless RECLMR_BACKUP_TOKEN is set (24+ characters). The phone uses that token, not a login
 session, so a leaked phone credential can only add files: it cannot read, list, overwrite or delete.
-Files land under DECLOUD_BACKUP_DIR (default <files dir>/Backups/s23) in four fixed folders."""
+Files land under RECLMR_BACKUP_DIR (default <files dir>/Backups/s23) in four fixed folders."""
 from flask import Blueprint, jsonify, request
 import fcntl, hashlib, hmac, os, secrets, shutil, threading, time
 from pathlib import Path
@@ -23,17 +23,17 @@ _fails = {}
 
 
 def _token():
-    return os.environ.get('DECLOUD_BACKUP_TOKEN', '').strip()
+    return os.environ.get('RECLMR_BACKUP_TOKEN', '').strip()
 
 
 def _root():
-    p = os.environ.get('DECLOUD_BACKUP_DIR')
+    p = os.environ.get('RECLMR_BACKUP_DIR')
     return Path(p).expanduser() if p else Path(shared.FILES_DIR) / 'Backups' / 's23'
 
 
 def _max_file():
     try:
-        return int(os.environ.get('DECLOUD_BACKUP_MAX_MB', '20480')) * 1024 * 1024
+        return int(os.environ.get('RECLMR_BACKUP_MAX_MB', '20480')) * 1024 * 1024
     except ValueError:
         return 20480 * 1024 * 1024
 

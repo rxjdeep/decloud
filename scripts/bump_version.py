@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Bump DeCloud's version + changelog consistently across all three spots.
+"""Bump reclmr's version + changelog consistently across all three spots.
 
 Usage:
     python scripts/bump_version.py <patch|minor|major> -m "one-line summary" -c "change one;change two"
 
 Keeps in sync:
   1. routes/version.py , VERSION + CHANGELOG[0]
-  2. decloud           , VERSION="x.y.z"
+  2. reclmr           , VERSION="x.y.z"
 Adds a changelog entry dated today. `-c` is a semicolon-separated list of
 bullets; `-m` is always the first bullet.
 """
@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = ROOT / 'routes' / 'version.py'
-DECLOUD_FILE = ROOT / 'reclmr'
+RECLMR_FILE = ROOT / 'reclmr'
 
 
 def read_version():
@@ -79,10 +79,10 @@ def main():
     text = re.sub(r'(CHANGELOG = \[\n)', r'\1' + entry, text, count=1)
     VERSION_FILE.write_text(text)
 
-    # 2. decloud script
-    dtext = DECLOUD_FILE.read_text()
+    # 2. reclmr script
+    dtext = RECLMR_FILE.read_text()
     dtext = re.sub(r'^VERSION="[^"]+"', f'VERSION="{new}"', dtext, count=1, flags=re.MULTILINE)
-    DECLOUD_FILE.write_text(dtext)
+    RECLMR_FILE.write_text(dtext)
 
     print(f'Bumped {current} -> {new} ({args.bump})')
     print(f'Changelog entry dated {today} with {len(changes)} bullet(s):')

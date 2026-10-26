@@ -11,7 +11,7 @@ it runs at on this machine:
     too-big     does not fit
 
 Downloads stream into the right place for the apps to find them:
-chat GGUFs go to DECLOUD_MODELS_DIR/chat and can be imported into
+chat GGUFs go to RECLMR_MODELS_DIR/chat and can be imported into
 Ollama automatically (`ollama create`), image/video/music models go
 into the local ComfyUI models tree. Progress is polled from the UI;
 cancel stops and cleans up. The user never touches the machine.
@@ -32,11 +32,11 @@ bp = Blueprint('models', __name__)
 
 # ─── Config ───────────────────────────────────────────────────────
 MODELS_DIR = Path(os.path.expandvars(os.path.expanduser(
-    os.environ.get('DECLOUD_MODELS_DIR', '~/Models'))))
+    os.environ.get('RECLMR_MODELS_DIR', '~/Models'))))
 CHAT_DIR = MODELS_DIR / 'chat'
 # ComfyUI's models root: sibling of its output dir (default layout)
 COMFY_MODELS_DIR = Path(os.path.expandvars(os.path.expanduser(
-    os.environ.get('DECLOUD_COMFY_MODELS_DIR', str(COMFY_OUTPUT.parent / 'models')))))
+    os.environ.get('RECLMR_COMFY_MODELS_DIR', str(COMFY_OUTPUT.parent / 'models')))))
 
 HF_API = 'https://huggingface.co/api/models'
 HF_RESOLVE = 'https://huggingface.co/{repo}/resolve/main/{file}'

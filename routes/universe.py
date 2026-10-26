@@ -1,8 +1,8 @@
 """Universe (people graph) and journal voice routes.
 
 Requires external tools. Set env vars in .env to enable:
-- DECLOUD_JOURNAL_DIR: path to your Obsidian vault (for journal features)
-- DECLOUD_OSINT_DIR: path to osint-tools (for universe scanner)
+- RECLMR_JOURNAL_DIR: path to your Obsidian vault (for journal features)
+- RECLMR_OSINT_DIR: path to osint-tools (for universe scanner)
 """
 import os, sys, subprocess
 from pathlib import Path
@@ -13,14 +13,14 @@ import shared
 
 bp = Blueprint('universe', __name__)
 
-JOURNAL_DIR = os.environ.get('DECLOUD_JOURNAL_DIR', '')
-OSINT_DIR = os.environ.get('DECLOUD_OSINT_DIR', '')
+JOURNAL_DIR = os.environ.get('RECLMR_JOURNAL_DIR', '')
+OSINT_DIR = os.environ.get('RECLMR_OSINT_DIR', '')
 
 def _journal_path():
     """Get the journal directory path, or None if not configured."""
     return Path(JOURNAL_DIR) if JOURNAL_DIR else None
 
-def _not_configured(msg='Journal directory not configured. Set DECLOUD_JOURNAL_DIR in .env'):
+def _not_configured(msg='Journal directory not configured. Set RECLMR_JOURNAL_DIR in .env'):
     return jsonify({'error': msg}), 503
 
 @bp.route('/api/journal/voice', methods=['POST'])
@@ -88,7 +88,7 @@ def _load_universe_scanner():
         return None
 
 def _universe_not_configured():
-    return _not_configured('Universe scanner not configured. Set DECLOUD_OSINT_DIR in .env')
+    return _not_configured('Universe scanner not configured. Set RECLMR_OSINT_DIR in .env')
 
 @bp.route('/api/universe/data')
 def universe_data():

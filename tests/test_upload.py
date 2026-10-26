@@ -58,7 +58,7 @@ def test_upload_missing_folder(client, auth_headers, folder):
 
 
 def test_upload_size_limit(client, auth_headers, folder, monkeypatch):
-    monkeypatch.setenv('DECLOUD_UPLOAD_MAX_MB', '1')
+    monkeypatch.setenv('RECLMR_UPLOAD_MAX_MB', '1')
     assert _put(client, auth_headers, 'big.bin', b'x' * (1024 * 1024 + 1)).status_code == 413
 
 

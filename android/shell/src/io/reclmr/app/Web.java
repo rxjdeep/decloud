@@ -1,4 +1,4 @@
-package io.decloud.app;
+package io.reclmr.app;
 
 import android.app.AlertDialog;
 import android.app.DownloadManager;
@@ -50,11 +50,11 @@ final class Web {
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
-        s.setUserAgentString(s.getUserAgentString() + " DeCloudApp/1");
+        s.setUserAgentString(s.getUserAgentString() + " ReclmrApp/1");
         view.setBackgroundColor(0xFF0A0A0F);
         view.setOverScrollMode(View.OVER_SCROLL_NEVER);
         CookieManager.getInstance().setAcceptCookie(true);
-        view.addJavascriptInterface(new Bridge(app), "DeCloudApp");
+        view.addJavascriptInterface(new Bridge(app), "ReclmrApp");
         view.setWebViewClient(new Client());
         view.setWebChromeClient(new Chrome());
         view.setDownloadListener(new DownloadListener() {
@@ -101,7 +101,7 @@ final class Web {
     static void mediaAction(final String action, final double value) {
         H.post(new Runnable() { @Override public void run() {
             wake();
-            js("window.decloudMediaAction && decloudMediaAction('" + action + "'," + value + ")");
+            js("window.reclmrMediaAction && reclmrMediaAction('" + action + "'," + value + ")");
         } });
     }
 

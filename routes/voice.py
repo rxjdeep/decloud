@@ -405,9 +405,9 @@ def voice_run_command():
 # ─── Hermes-native voice brain (persistent session) ──────────────
 
 def _hermes_bin():
-    """Locate the hermes CLI: $DECLOUD_HERMES_HOME/hermes-agent/venv/bin/hermes
+    """Locate the hermes CLI: $RECLMR_HERMES_HOME/hermes-agent/venv/bin/hermes
     (or ~/.hermes by default), falling back to PATH."""
-    home = os.environ.get('DECLOUD_HERMES_HOME', '').rstrip('/') or os.path.expanduser('~/.hermes')
+    home = os.environ.get('RECLMR_HERMES_HOME', '').rstrip('/') or os.path.expanduser('~/.hermes')
     cand = os.path.join(home, 'hermes-agent', 'venv', 'bin', 'hermes')
     if os.path.exists(cand):
         return cand
@@ -450,10 +450,10 @@ def hermes_chat(text, timeout=180):
     """Drive Hermes natively with a persistent session on the local model."""
     bin_path = _hermes_bin()
     if not bin_path:
-        raise RuntimeError('Hermes is not installed. Set DECLOUD_HERMES_HOME in .env.')
+        raise RuntimeError('Hermes is not installed. Set RECLMR_HERMES_HOME in .env.')
     cfg = shared.get_voice_config()
     model = cfg.get('llm_local_model') or 'gemma4:26b'
-    provider = os.environ.get('DECLOUD_HERMES_PROVIDER', 'custom')
+    provider = os.environ.get('RECLMR_HERMES_PROVIDER', 'custom')
     session_id = _load_hermes_session()
 
     cmd = [bin_path, 'chat', '--query-file', '-', '-Q', '-m', model, '--provider', provider]
@@ -583,7 +583,7 @@ def _whisper_available():
 
 
 def _api_key_status():
-    key = os.environ.get('DECLOUD_LLM_API_KEY', '').strip()
+    key = os.environ.get('RECLMR_LLM_API_KEY', '').strip()
     if not key:
         return {'set': False, 'hint': ''}
     hint = key[:4] + '…' + key[-4:] if len(key) > 8 else '••••'
@@ -628,7 +628,7 @@ def voice_status():
         'hermes': {
             'available': _hermes_available(),
             'bin': _hermes_bin() or '',
-            'home': os.environ.get('DECLOUD_HERMES_HOME', '').rstrip('/') or os.path.expanduser('~/.hermes'),
+            'home': os.environ.get('RECLMR_HERMES_HOME', '').rstrip('/') or os.path.expanduser('~/.hermes'),
         },
         'engines': {
             'stt': [{'id': k, 'name': v['name']} for k, v in STT_ENGINES.items()],
@@ -676,13 +676,13 @@ def voice_config():
     # API key is stored in .env (chmod 600), never in settings.json.
     api_key = (data.get('api_key') or '').strip()
     if api_key:
-        if not shared.set_env_value('DECLOUD_LLM_API_KEY', api_key):
+        if not shared.set_env_value('RECLMR_LLM_API_KEY', api_key):
             return jsonify({'error': 'could not write API key to .env'}), 500
 
     # Hermes home path is stored in .env (points the voice brain at Hermes).
     hermes_home = (data.get('hermes_home') or '').strip()
     if hermes_home:
-        if not shared.set_env_value('DECLOUD_HERMES_HOME', hermes_home):
+        if not shared.set_env_value('RECLMR_HERMES_HOME', hermes_home):
             return jsonify({'error': 'could not write Hermes path to .env'}), 500
 
     if updates and not shared.set_voice_config(updates):
@@ -713,7 +713,7 @@ def _run_ollama_install(job_id):
         return
     _set_job(job_id, 'running', 'Downloading the Ollama installer…')
     try:
-        script_path = os.path.join(tempfile.gettempdir(), 'decloud_ollama_install.sh')
+        script_path = os.path.join(tempfile.gettempdir(), 'reclmr_ollama_install.sh')
         # Best-effort one-click install: downloads the official installer over
         # HTTPS (TLS provides transport integrity). There is no pinned hash -
         # this is the same trust model as the official `curl | sh` docs and is

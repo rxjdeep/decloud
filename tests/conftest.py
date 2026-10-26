@@ -1,4 +1,4 @@
-"""Shared fixtures and environment isolation for the DeCloud test suite.
+"""Shared fixtures and environment isolation for the reclmr test suite.
 
 Environment variables MUST be set before `app` is imported: shared.py
 reads config at import time. Do not import app (or any routes module)
@@ -9,24 +9,24 @@ import pathlib
 import tempfile
 
 # ─── Isolate filesystem access + set a test passcode ──────────────
-_TMP = pathlib.Path(tempfile.mkdtemp(prefix='decloud-test-'))
-os.environ.setdefault('DECLOUD_PIN', '24681357')           # 8-digit test passcode
-os.environ.setdefault('SECRET_KEY', 'decloud-test-secret-key')
-os.environ.setdefault('DECLOUD_BOOKS_DIR', str(_TMP / 'books'))
-os.environ.setdefault('DECLOUD_FILES_DIR', str(_TMP / 'files'))
-os.environ['DECLOUD_BROWSE_ROOT'] = ''          # tests browse the sandbox, never a machine-wide root from a real .env
-os.environ['DECLOUD_TOTP_FILE'] = str(_TMP / 'totp.json')
-os.environ['DECLOUD_AUDIT_FILE'] = str(_TMP / 'audit.log')
-os.environ['DECLOUD_SESSIONS_FILE'] = str(_TMP / 'sessions.json')
-os.environ['DECLOUD_NAVIDROME_USER'] = os.environ['DECLOUD_NAVIDROME_PASS'] = ''   # keep the suite off the real Navidrome (it read/wrote it via the .env credentials)   # else the suite overwrites the real logged-in sessions
-os.environ.setdefault('DECLOUD_MUSIC_DIR', str(_TMP / 'music'))
-os.environ.setdefault('DECLOUD_PIPER_DIR', str(_TMP / 'piper'))
-os.environ.setdefault('DECLOUD_HOST', '127.0.0.1')
-os.environ.setdefault('DECLOUD_MUSICGEN_DIR', str(_TMP / 'musicgen'))
+_TMP = pathlib.Path(tempfile.mkdtemp(prefix='reclmr-test-'))
+os.environ.setdefault('RECLMR_PIN', '24681357')           # 8-digit test passcode
+os.environ.setdefault('SECRET_KEY', 'reclmr-test-secret-key')
+os.environ.setdefault('RECLMR_BOOKS_DIR', str(_TMP / 'books'))
+os.environ.setdefault('RECLMR_FILES_DIR', str(_TMP / 'files'))
+os.environ['RECLMR_BROWSE_ROOT'] = ''          # tests browse the sandbox, never a machine-wide root from a real .env
+os.environ['RECLMR_TOTP_FILE'] = str(_TMP / 'totp.json')
+os.environ['RECLMR_AUDIT_FILE'] = str(_TMP / 'audit.log')
+os.environ['RECLMR_SESSIONS_FILE'] = str(_TMP / 'sessions.json')
+os.environ['RECLMR_NAVIDROME_USER'] = os.environ['RECLMR_NAVIDROME_PASS'] = ''   # keep the suite off the real Navidrome (it read/wrote it via the .env credentials)   # else the suite overwrites the real logged-in sessions
+os.environ.setdefault('RECLMR_MUSIC_DIR', str(_TMP / 'music'))
+os.environ.setdefault('RECLMR_PIPER_DIR', str(_TMP / 'piper'))
+os.environ.setdefault('RECLMR_HOST', '127.0.0.1')
+os.environ.setdefault('RECLMR_MUSICGEN_DIR', str(_TMP / 'musicgen'))
 for _d in ('books', 'files', 'music', 'piper', 'musicgen'):
     (_TMP / _d).mkdir(parents=True, exist_ok=True)
 
-TEST_PASSCODE = os.environ['DECLOUD_PIN']
+TEST_PASSCODE = os.environ['RECLMR_PIN']
 
 import pytest  # noqa: E402
 
@@ -69,4 +69,4 @@ def auth_headers(login):
 
 @pytest.fixture
 def files_dir():
-    return pathlib.Path(os.environ['DECLOUD_FILES_DIR'])
+    return pathlib.Path(os.environ['RECLMR_FILES_DIR'])

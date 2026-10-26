@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-DeCloud includes or derives from the following third-party works.
+reclmr includes or derives from the following third-party works.
 All notices below must be preserved in distributions of this software.
 
 ## liquid-taffy

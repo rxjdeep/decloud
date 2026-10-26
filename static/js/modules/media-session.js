@@ -165,12 +165,12 @@ function setMediaSessionPlaying(playing) {
   appMediaPush(true);
 }
 
-// ─── Native Android app (window.DeCloudApp is injected by the app's WebView) ──
+// ─── Native Android app (window.ReclmrApp is injected by the app's WebView) ──
 // The app draws the lock-screen / notification controls itself, so it is told what is playing and can press the same handlers a browser would.
 var appMedia = { sig: '', pos: 0, at: 0, dur: 0 };
 
 function appMediaPush(force) {
-  var app = window.DeCloudApp;
+  var app = window.ReclmrApp;
   if (!app || !app.nowPlaying || !appMeta) return;
   appModesPush();
   var a = getActiveAudio();
@@ -188,7 +188,7 @@ function appMediaPush(force) {
 // The app keeps the screen on while the full-screen player is open and a song is playing
 var appAwake = false;
 function appAwakeSync() {
-  var app = window.DeCloudApp;
+  var app = window.ReclmrApp;
   if (!app || !app.keepScreenOn) return;
   var w = document.querySelector('#music-screen .wm');
   var want = !!(appPlaying && !document.hidden && w && w.classList.contains('np-open'));
@@ -202,7 +202,7 @@ document.addEventListener('visibilitychange', appAwakeSync);
 // shuffle and repeat, for the app's player buttons. Only music has them: for an audiobook the app is told 'none' and shows neither.
 var appModes = '';
 function appModesPush() {
-  var app = window.DeCloudApp;
+  var app = window.ReclmrApp;
   if (!app || !app.modes || typeof mz === 'undefined') return;
   var music = mediaTarget() === 'music';
   var sh = music && !!mz.shuffle, rp = music ? (mz.repeat || 'off') : 'none';
@@ -214,7 +214,7 @@ mediaActions.shuffle = function() { if (typeof mzToggleShuffle === 'function') m
 mediaActions.repeat = function() { if (typeof mzToggleRepeat === 'function') mzToggleRepeat(); };
 
 // called by the app's notification and lock-screen buttons: play, pause, stop, previoustrack, nexttrack, seekto (value = seconds), shuffle, repeat
-function decloudMediaAction(action, value) {
+function reclmrMediaAction(action, value) {
   var fn = mediaActions[action];
   if (fn) fn(value == null ? {} : { seekTime: value, seekOffset: value });
 }

@@ -1,4 +1,4 @@
-# CLAUDE.md — DeCloud quick reference for agents
+# CLAUDE.md — reclmr quick reference for agents
 
 Read `AGENTS.md` in full before making changes. This file is the short version
 for agents that only read CLAUDE.md.
@@ -22,7 +22,7 @@ for agents that only read CLAUDE.md.
 ```bash
 .venv/bin/python -m pytest -q
 node --check static/js/modules/<file>.js    # per changed JS file
-bash -n decloud install.sh
+bash -n reclmr install.sh
 .venv/bin/python scripts/check_version.py
 uvx pip-audit -r requirements.txt           # if deps changed
 ```
@@ -35,7 +35,7 @@ Boot check: `curl -s http://localhost:8899/ -o /dev/null -w "%{http_code}\n"` �
 - `static/js/modules/*.js` — vanilla JS; inline `onclick`s in
   `templates/index.html` call GLOBAL functions (add a function before using it)
 - `shared.py` — auth/sessions/config/LLM helpers
-- `scripts/decloud_update.py` + `scripts/decloud_tui.py` — terminal updater + TUI
+- `scripts/reclmr_update.py` + `scripts/reclmr_tui.py` — terminal updater + TUI
 - `routes/version.py` — `VERSION` + `CHANGELOG[0]` (single source of truth)
 
 ## Frontend rule

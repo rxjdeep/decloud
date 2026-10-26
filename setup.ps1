@@ -1,17 +1,17 @@
-# DeCloud — Windows installer
+# reclmr — Windows installer
 # Usage (PowerShell, run as the user who will own the service):
 #   powershell -ExecutionPolicy Bypass -File .\setup.ps1
 #
 # Creates a virtual environment, installs dependencies, generates a
 # locked-down .env (8-digit passcode), and registers a logon scheduled
-# task so DeCloud starts with your session.
+# task so reclmr starts with your session.
 
 $ErrorActionPreference = 'Stop'
 $AppDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $AppDir
 
 Write-Host "==============================================" -ForegroundColor Cyan
-Write-Host "   DeCloud - Windows Installer" -ForegroundColor Cyan
+Write-Host "   reclmr - Windows Installer" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Cyan
 
 # ─── 1. Locate Python ─────────────────────────────────────────
@@ -60,7 +60,7 @@ if (-not (Test-Path ".env")) {
     $Passcode = & $VenvPython -c "import secrets; print(''.join(str(secrets.randbelow(10)) for _ in range(8)))"
     (Get-Content .env -Raw) `
         -replace 'change-me-to-a-random-string', $Secret `
-        -replace '^DECLOUD_PIN=.*$', "DECLOUD_PIN=$Passcode" | Set-Content .env -NoNewline
+        -replace '^RECLMR_PIN=.*$', "RECLMR_PIN=$Passcode" | Set-Content .env -NoNewline
     Write-Host "OK .env created" -ForegroundColor Green
 }
 
@@ -69,7 +69,7 @@ Write-Host "-> Locking down .env permissions..."
 icacls "$AppDir\.env" /inheritance:r /grant:r "$env:USERNAME`:F" | Out-Null
 
 # ─── 5. Scheduled task (starts with logon) ─────────────────────
-$TaskName = "DeCloud"
+$TaskName = "reclmr"
 $Action = New-ScheduledTaskAction -Execute $VenvPython `
     -Argument "`"$AppDir\app.py`"" `
     -WorkingDirectory $AppDir
@@ -79,14 +79,14 @@ Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Se
 Write-Host "OK Scheduled task '$TaskName' registered (starts at logon)" -ForegroundColor Green
 
 # ─── 6. Start now ──────────────────────────────────────────────
-Write-Host "-> Starting DeCloud..."
+Write-Host "-> Starting reclmr..."
 Start-ScheduledTask -TaskName $TaskName
 Start-Sleep -Seconds 3
 
 Write-Host ""
-Write-Host "DeCloud is running at http://localhost:8899" -ForegroundColor Green
+Write-Host "reclmr is running at http://localhost:8899" -ForegroundColor Green
 # Read the passcode from .env so re-runs still print the real value.
-$Passcode = ((Get-Content .env | Where-Object { $_ -match '^DECLOUD_PIN=' }) -replace '^DECLOUD_PIN=', '')
+$Passcode = ((Get-Content .env | Where-Object { $_ -match '^RECLMR_PIN=' }) -replace '^RECLMR_PIN=', '')
 Write-Host "Access passcode: $Passcode" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Remote access (optional):" -ForegroundColor Cyan
@@ -96,4 +96,4 @@ Write-Host "  3. Enable Funnel: tailscale funnel 8899"
 Write-Host "     (Funnel gives a public https://...ts.net URL; the passcode"
 Write-Host "      still protects everything behind it.)"
 Write-Host ""
-Write-Host "Management: .\decloud.ps1 start|stop|status|restart" -ForegroundColor Cyan
+Write-Host "Management: .\reclmr.ps1 start|stop|status|restart" -ForegroundColor Cyan

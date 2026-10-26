@@ -5,14 +5,14 @@
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_DIR"
 
-PORT=${RECLMR_PORT:-${DECLOUD_PORT:-8899}}
+PORT=${RECLMR_PORT:-8899}
 TUNNEL_LOG="$APP_DIR/tunnel.log"
 TUNNEL_URL_FILE="$APP_DIR/tunnel.url"
 TUNNEL_PID_FILE="$APP_DIR/tunnel.pid"
 APP_PID_FILE="$APP_DIR/app.pid"
 
 # ─── Version ──────────────────────────────────────────────────────
-VERSION="0.6.8"
+VERSION="0.7.0"
 
 # ─── Helpers ────────────────────────────────────────────────────
 
@@ -49,8 +49,8 @@ start_app() {
     # Supervise the app: if it exits (crash or a self-update restart), bring
     # it right back on the new code — one-click updates work even when
     # systemd/launchd/scheduled-task aren't the thing managing it.
-    setsid env DECLOUD_DIR="$APP_DIR" nohup sh -c '
-        cd "$DECLOUD_DIR" || exit 1
+    setsid env RECLMR_DIR="$APP_DIR" nohup sh -c '
+        cd "$RECLMR_DIR" || exit 1
         . ./.venv/bin/activate 2>/dev/null || true
         while true; do
             python app.py
@@ -165,7 +165,7 @@ show_qr() {
         return 1
     fi
     
-    PASSCODE=$(grep -E "^(RECLMR|DECLOUD)_PIN=" .env 2>/dev/null | tail -n1 | cut -d= -f2 || echo "not set")
+    PASSCODE=$(grep -E "^RECLMR_PIN=" .env 2>/dev/null | tail -n1 | cut -d= -f2 || echo "not set")
 
     echo ""
     echo "📱 reclmr Tunnel"
@@ -244,10 +244,10 @@ case "${1:-}" in
         ;;
     update|upgrade)
         shift
-        exec "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/decloud_update.py" "$@"
+        exec "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/reclmr_update.py" "$@"
         ;;
     tui|dashboard)
-        exec "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/decloud_tui.py"
+        exec "$APP_DIR/.venv/bin/python" "$APP_DIR/scripts/reclmr_tui.py"
         ;;
     *)
         echo "Usage: $0 {start|stop|restart|qr|status|version|update|tui}"

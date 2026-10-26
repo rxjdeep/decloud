@@ -1,4 +1,4 @@
-# DeCloud Security Audit Report
+# reclmr Security Audit Report
 
 **Date:** August 19, 2026
 **Scope:** All tracked files in the repository (post-v0.0.2 hardening)
@@ -8,10 +8,10 @@
 
 ## Executive summary
 
-DeCloud is a self-hosted personal dashboard. After the v0.0.2 hardening
+reclmr is a self-hosted personal dashboard. After the v0.0.2 hardening
 pass, the security model is:
 
-- A passcode (`DECLOUD_PIN`, 8+ characters recommended) is the only
+- A passcode (`RECLMR_PIN`, 8+ characters recommended) is the only
   credential ever sent to the server, and only to `/api/auth/login`.
 - Login mints an **opaque session token** (never the passcode) held in an
   in-memory table with a 30-day TTL; the browser gets it as an HttpOnly,
@@ -33,7 +33,7 @@ pass, the security model is:
 
 | # | Issue | Severity | Status |
 |---|-------|----------|--------|
-| 1 | Passcode stored raw in a `decloud_pin` cookie and accepted as a Bearer credential — one leak = permanent full access (terminal, files, shred) | Critical | **Fixed.** Opaque session tokens with TTL + revocation on logout; raw passcode rejected everywhere |
+| 1 | Passcode stored raw in a `reclmr_pin` cookie and accepted as a Bearer credential — one leak = permanent full access (terminal, files, shred) | Critical | **Fixed.** Opaque session tokens with TTL + revocation on logout; raw passcode rejected everywhere |
 | 2 | 6-digit numeric PIN as the sole barrier to a full shell | Critical | **Improved.** Installer generates 8 digits, passphrases up to 64 chars supported, startup warning below 8 chars; 5/min per-IP login limit + exponential backoff after repeated failures |
 | 3 | `subprocess.run(..., shell=True)` in the quick-command route | High | **Fixed.** Fixed-argv table + python-native `stat`/`file`/`du` equivalents; 15 injection payloads covered by tests |
 | 4 | Default config bound `0.0.0.0` in Dockerfile/`.env.example` while docs claimed localhost-only | High | **Fixed.** 127.0.0.1 defaults everywhere; non-localhost binds print a loud warning |

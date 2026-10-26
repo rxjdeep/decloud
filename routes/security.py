@@ -18,7 +18,7 @@ _locked_until = 0.0
 
 
 def _totp_path():
-    return Path(os.environ.get('DECLOUD_TOTP_FILE') or Path(shared.BASE_DIR) / 'totp.json')
+    return Path(os.environ.get('RECLMR_TOTP_FILE') or Path(shared.BASE_DIR) / 'totp.json')
 
 
 def _load():

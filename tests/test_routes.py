@@ -1,5 +1,5 @@
 """
-Basic route tests for DeCloud.
+Basic route tests for reclmr.
 Run with: python -m pytest tests/ -v
 """
 import pytest
@@ -14,9 +14,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 _TMP = Path(tempfile.gettempdir())
 
 # Set test env vars before importing
-os.environ.setdefault('DECLOUD_PORT', '8899')
-os.environ.setdefault('DECLOUD_BOOKS_DIR', str(_TMP / 'test-books'))
-os.environ.setdefault('DECLOUD_FILES_DIR', str(_TMP / 'test-files'))
+os.environ.setdefault('RECLMR_PORT', '8899')
+os.environ.setdefault('RECLMR_BOOKS_DIR', str(_TMP / 'test-books'))
+os.environ.setdefault('RECLMR_FILES_DIR', str(_TMP / 'test-files'))
 os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-pytest')
 
 # Create test dirs (cross-platform)
@@ -31,7 +31,7 @@ def client():
     """Flask test client, authenticated with the test passcode."""
     app.config['TESTING'] = True
     with app.test_client() as client:
-        client.post('/api/auth/login', json={'pin': os.environ.get('DECLOUD_PIN', '')})
+        client.post('/api/auth/login', json={'pin': os.environ.get('RECLMR_PIN', '')})
         yield client
 
 
@@ -105,11 +105,11 @@ class TestAuth:
     """Authentication endpoints (open-mode behavior via monkeypatch)."""
 
     def test_check_auth_open_mode(self, client, monkeypatch):
-        """In open mode (no DECLOUD_PIN), auth check should pass."""
+        """In open mode (no RECLMR_PIN), auth check should pass."""
         import shared
         import routes.auth as auth_module
-        monkeypatch.setattr(shared, 'DECLOUD_PIN', '')
-        monkeypatch.setattr(auth_module, 'DECLOUD_PIN', '')
+        monkeypatch.setattr(shared, 'RECLMR_PIN', '')
+        monkeypatch.setattr(auth_module, 'RECLMR_PIN', '')
         resp = client.get('/api/auth/check')
         assert resp.status_code == 200
         data = resp.get_json()
@@ -120,8 +120,8 @@ class TestAuth:
         """In open mode, login should succeed without a passcode."""
         import shared
         import routes.auth as auth_module
-        monkeypatch.setattr(shared, 'DECLOUD_PIN', '')
-        monkeypatch.setattr(auth_module, 'DECLOUD_PIN', '')
+        monkeypatch.setattr(shared, 'RECLMR_PIN', '')
+        monkeypatch.setattr(auth_module, 'RECLMR_PIN', '')
         resp = client.post('/api/auth/login', json={'pin': ''})
         assert resp.status_code == 200
 
@@ -180,17 +180,6 @@ def test_lab_peer_report_is_sanitized():
             'storage': {'total': 'NaN', 'volumes': '"'}, 'gpus': [{'name': 'g', 'vram_gb': '"'}],
             'running': {'models': ['ok', {'x': 1}], 'containers': 'nope'}, 'kind': '<script>'}
     c = _clean(evil)
-    assert c['cpu_percent'] == 0 and c['cores'] == 0 and c['temp'] is None and c['kind'] == 'decloud'
+    assert c['cpu_percent'] == 0 and c['cores'] == 0 and c['temp'] is None and c['kind'] == 'reclmr'
     assert c['storage']['total'] == 0 and c['gpus'][0]['vram_gb'] is None
     assert c['running']['models'] == ['ok'] and c['running']['containers'] == []
-
-
-def test_reclmr_env_names_alias_the_old_ones(monkeypatch):
-    import shared
-    monkeypatch.delenv('DECLOUD_ALIAS_PROBE', raising=False)
-    monkeypatch.setenv('RECLMR_ALIAS_PROBE', 'yes')
-    shared._alias_reclmr_env()
-    assert shared.os.environ['DECLOUD_ALIAS_PROBE'] == 'yes'
-    monkeypatch.setenv('DECLOUD_ALIAS_PROBE', 'old')      # an existing DECLOUD_ value wins
-    shared._alias_reclmr_env()
-    assert shared.os.environ['DECLOUD_ALIAS_PROBE'] == 'old'

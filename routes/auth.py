@@ -1,7 +1,7 @@
-"""Authentication routes: passcode login for DeCloud."""
+"""Authentication routes: passcode login for reclmr."""
 from flask import Blueprint, jsonify, request, make_response
 from shared import (
-    app, DECLOUD_PIN, limiter, SESSIONS, SESSION_TTL_SECONDS, MAX_SESSIONS,
+    app, RECLMR_PIN, limiter, SESSIONS, SESSION_TTL_SECONDS, MAX_SESSIONS,
     _LOGIN_ATTEMPTS, _LOGIN_BACKOFF_WINDOW, _LOGIN_BACKOFF_MAX,
     _csrf_for_token, _purge_expired_sessions, save_sessions,
 )
@@ -32,7 +32,7 @@ def _clear_failures(addr: str):
 @limiter.limit("5 per minute")  # Prevent passcode brute-force
 def login():
     """Authenticate with the passcode. Sets a session-token cookie on success."""
-    if not DECLOUD_PIN:
+    if not RECLMR_PIN:
         return jsonify({'ok': True, 'message': 'Open mode. No passcode required'})
 
     addr = _client_addr()
@@ -41,7 +41,7 @@ def login():
     if not isinstance(pin, str) or not pin:
         return jsonify({'error': 'Invalid passcode'}), 401
 
-    if not hmac.compare_digest(pin, DECLOUD_PIN):
+    if not hmac.compare_digest(pin, RECLMR_PIN):
         audit.log('login_fail', 'wrong password', ok=False)
         backoff = _record_failure(addr)
         if backoff > 0:
@@ -68,7 +68,7 @@ def login():
         'csrf': _csrf_for_token(token),
     }))
     resp.set_cookie(
-        'decloud_session', token,
+        'reclmr_session', token,
         httponly=True, samesite='Strict',
         secure=request.is_secure,  # HTTPS only when the request is HTTPS
         max_age=SESSION_TTL_SECONDS,
@@ -79,10 +79,10 @@ def login():
 @bp.route('/api/auth/check', methods=['GET'])
 def check_auth():
     """Check if the current session is authenticated."""
-    if not DECLOUD_PIN:
+    if not RECLMR_PIN:
         return jsonify({'authenticated': True, 'open_mode': True})
 
-    token = request.cookies.get('decloud_session')
+    token = request.cookies.get('reclmr_session')
     if not token:
         auth_header = request.headers.get('Authorization', '')
         if auth_header.startswith('Bearer '):
@@ -99,7 +99,7 @@ def check_auth():
 @bp.route('/api/auth/logout', methods=['POST'])
 def logout():
     """Invalidate the current session token."""
-    token = request.cookies.get('decloud_session')
+    token = request.cookies.get('reclmr_session')
     if not token:
         auth_header = request.headers.get('Authorization', '')
         if auth_header.startswith('Bearer '):
@@ -109,7 +109,7 @@ def logout():
         save_sessions()
         audit.log('logout', 'signed out')
     resp = make_response(jsonify({'ok': True}))
-    resp.delete_cookie('decloud_session')
+    resp.delete_cookie('reclmr_session')
     return resp
 
 
@@ -129,10 +129,10 @@ def change_pin():
 
     # In open mode there is no existing passcode to verify, so an
     # unauthenticated caller could set one and lock the owner out. Refuse.
-    if not shared.DECLOUD_PIN:
-        return jsonify({'error': 'No passcode is set. Configure DECLOUD_PIN in .env first.'}), 400
+    if not shared.RECLMR_PIN:
+        return jsonify({'error': 'No passcode is set. Configure RECLMR_PIN in .env first.'}), 400
 
-    if not hmac.compare_digest(current, shared.DECLOUD_PIN):
+    if not hmac.compare_digest(current, shared.RECLMR_PIN):
         return jsonify({'error': 'Current passcode is incorrect'}), 401
 
     new = new.strip()
@@ -140,17 +140,17 @@ def change_pin():
         return jsonify({'error': 'New passcode must be at least 8 characters'}), 400
     if len(new) > 64:
         return jsonify({'error': 'New passcode is too long (max 64 characters)'}), 400
-    if hmac.compare_digest(new, shared.DECLOUD_PIN):
+    if hmac.compare_digest(new, shared.RECLMR_PIN):
         return jsonify({'error': 'New passcode must be different from the current one'}), 400
 
-    if not shared.set_env_value('DECLOUD_PIN', new):
+    if not shared.set_env_value('RECLMR_PIN', new):
         return jsonify({'error': 'Could not write .env (check permissions)'}), 500
 
     # Update the running process (shared gate + this module's copy) and
     # force every device to sign in again with the new passcode.
-    shared.DECLOUD_PIN = new
-    global DECLOUD_PIN
-    DECLOUD_PIN = new
+    shared.RECLMR_PIN = new
+    global RECLMR_PIN
+    RECLMR_PIN = new
     SESSIONS.clear()
     audit.log('password_changed', 'passcode changed, all sessions signed out')
     save_sessions()

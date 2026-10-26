@@ -321,7 +321,7 @@ function fmUploadOne(file, dir, onProgress) {
   return new Promise(function (resolve, reject) {
     var x = new XMLHttpRequest();
     x.open('PUT', '/api/files/upload?dir=' + encodeURIComponent(dir) + '&name=' + encodeURIComponent(file.name));
-    var tok = sessionStorage.getItem('decloud_session'), csrf = sessionStorage.getItem('decloud_csrf');
+    var tok = sessionStorage.getItem('reclmr_session'), csrf = sessionStorage.getItem('reclmr_csrf');
     if (tok) x.setRequestHeader('Authorization', 'Bearer ' + tok);
     if (csrf) x.setRequestHeader('X-CSRF-Token', csrf);
     x.setRequestHeader('Content-Type', 'application/octet-stream');

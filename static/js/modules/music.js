@@ -115,7 +115,7 @@ function mzArtistLinks(t, cls, act) {
 }
 function mzIngest(d) {
   mz.source = d.source || '';
-  mz.error = d.error || (d.source === 'files' ? 'Showing tags read from the files. Add DECLOUD_NAVIDROME_USER and DECLOUD_NAVIDROME_PASS to .env to use Navidrome metadata.' : '');
+  mz.error = d.error || (d.source === 'files' ? 'Showing tags read from the files. Add RECLMR_NAVIDROME_USER and RECLMR_NAVIDROME_PASS to .env to use Navidrome metadata.' : '');
   musicPlaylist = d.tracks || [];
   mz.playlists = d.playlists || [];
   mz.byId = new Map(); mz.artists = new Map(); mz.albums = new Map(); mz.genres = new Map(); mz.plCache = {};
@@ -304,7 +304,7 @@ function mzToggleHelp(e) {
   var h = mzEl('wm-help'); if (!h) return;
   var open = h.style.display === 'none';
   h.style.display = open ? '' : 'none'; h.setAttribute('aria-hidden', open ? 'false' : 'true');
-  var cmd = mzEl('wm-help-cmd'); if (cmd) cmd.textContent = 'curl -fsSL ' + location.origin + '/static/tools/decloud-mpris.py -o ~/decloud-mpris.py && python3 ~/decloud-mpris.py';
+  var cmd = mzEl('wm-help-cmd'); if (cmd) cmd.textContent = 'curl -fsSL ' + location.origin + '/static/tools/reclmr-mpris.py -o ~/reclmr-mpris.py && python3 ~/reclmr-mpris.py';
   if (open) { var b = h.querySelector('button'); if (b) b.focus(); }
 }
 function mzCloseHelp() { var h = mzEl('wm-help'); if (h) { h.style.display = 'none'; h.setAttribute('aria-hidden', 'true'); } }

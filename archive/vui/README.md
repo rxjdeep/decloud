@@ -3,7 +3,7 @@
 Removed from the active app on 2026-09-05.
 
 Vui was a separate full-duplex WebRTC voice server (localhost:8081) that
-DeCloud proxied through Flask. The integration was experimental and is
+reclmr proxied through Flask. The integration was experimental and is
 replaced by the standalone Voice Agent project going forward.
 
 Contents:
@@ -18,5 +18,5 @@ To restore, merge these back into their original files and re-add
 `VUI_URL` to `shared.py`:
 
 ```python
-VUI_URL = os.environ.get('DECLOUD_VUI_URL', 'http://127.0.0.1:8081')
+VUI_URL = os.environ.get('RECLMR_VUI_URL', 'http://127.0.0.1:8081')
 ```

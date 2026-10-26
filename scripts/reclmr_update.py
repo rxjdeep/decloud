@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""DeCloud update CLI - the terminal twin of the in-app updater.
+"""reclmr update CLI - the terminal twin of the in-app updater.
 
 Both paths call the SAME functions in routes/update.py, so behavior and
 safety guarantees (verify, test-boot, auto-rollback) are identical.
 
 Usage:
-  decloud update check       show current vs latest
-  decloud update             update to the latest release (asks nothing extra)
-  decloud update v0.0.7      update to a specific tag
-  decloud update rollback    go back to the version before the last update
+  reclmr update check       show current vs latest
+  reclmr update             update to the latest release (asks nothing extra)
+  reclmr update v0.0.7      update to a specific tag
+  reclmr update rollback    go back to the version before the last update
 """
 import sys
 from pathlib import Path
@@ -44,7 +44,7 @@ def _print_status(d):
         print("         protect your changes (run `git status` to review).")
     if d['can_rollback']:
         print()
-        print("A previous version is recorded, `decloud update rollback` reverts.")
+        print("A previous version is recorded, `reclmr update rollback` reverts.")
 
 
 def main():

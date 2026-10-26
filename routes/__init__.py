@@ -1,4 +1,4 @@
-"""DeCloud - route blueprints registry."""
+"""reclmr - route blueprints registry."""
 
 
 def register_blueprints(app, sock):

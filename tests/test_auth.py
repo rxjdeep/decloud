@@ -3,7 +3,7 @@ import os
 import time
 import pytest
 
-TEST_PASSCODE = os.environ['DECLOUD_PIN']
+TEST_PASSCODE = os.environ['RECLMR_PIN']
 
 
 class TestLogin:
@@ -27,7 +27,7 @@ class TestLogin:
         assert resp.status_code == 401
 
     def test_login_cookie_is_session_token_not_pin(self, client, login):
-        cookies = client.get_cookie('decloud_session')
+        cookies = client.get_cookie('reclmr_session')
         assert cookies is not None
         assert cookies.value == login['session']
         assert cookies.value != TEST_PASSCODE
@@ -83,18 +83,18 @@ class TestGating:
 class TestCsrf:
     def test_cookie_post_without_csrf_rejected(self, client, login):
         # Authenticate via cookie only (no Bearer), then POST without CSRF
-        client.set_cookie('decloud_session', login['session'])
+        client.set_cookie('reclmr_session', login['session'])
         r = client.post('/api/auth/logout')
         assert r.status_code == 403
         assert r.get_json()['code'] == 'CSRF_REQUIRED'
 
     def test_cookie_post_with_wrong_csrf_rejected(self, client, login):
-        client.set_cookie('decloud_session', login['session'])
+        client.set_cookie('reclmr_session', login['session'])
         r = client.post('/api/auth/logout', headers={'X-CSRF-Token': '0' * 64})
         assert r.status_code == 403
 
     def test_cookie_post_with_valid_csrf_accepted(self, client, login):
-        client.set_cookie('decloud_session', login['session'])
+        client.set_cookie('reclmr_session', login['session'])
         r = client.post('/api/auth/logout', headers={'X-CSRF-Token': login['csrf']})
         assert r.status_code == 200
 
@@ -109,8 +109,8 @@ class TestOpenMode:
     def test_open_mode_bypasses_auth(self, client, monkeypatch):
         import shared
         import routes.auth as auth_module
-        monkeypatch.setattr(shared, 'DECLOUD_PIN', '')
-        monkeypatch.setattr(auth_module, 'DECLOUD_PIN', '')
+        monkeypatch.setattr(shared, 'RECLMR_PIN', '')
+        monkeypatch.setattr(auth_module, 'RECLMR_PIN', '')
         r = client.get('/api/system')
         assert r.status_code == 200
         r2 = client.get('/api/auth/check')

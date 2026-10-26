@@ -88,7 +88,7 @@ class TestGenerate:
         assert wf['1']['inputs']['lyrics'] == 'la la la'
         assert wf['1']['inputs']['instrumental'] is False
         assert wf['1']['inputs']['duration'] == 45
-        assert wf['2']['inputs']['filename_prefix'] == 'decloud_music'
+        assert wf['2']['inputs']['filename_prefix'] == 'reclmr_music'
 
 
 class TestWorkflowPatch:
@@ -101,10 +101,10 @@ class TestWorkflowPatch:
         }
         out = mg._patch_workflow(wf, {'prompt': 'new', 'lyrics': 'l',
                                       'instrumental': True,
-                                      'filename_prefix': 'decloud_music'})
+                                      'filename_prefix': 'reclmr_music'})
         assert out['a']['inputs']['prompt'] == 'new'
         assert out['a']['inputs']['instrumental'] is True
-        assert out['b']['inputs']['filename_prefix'] == 'decloud_music'
+        assert out['b']['inputs']['filename_prefix'] == 'reclmr_music'
         assert out['a']['inputs']['seed'] != 5  # randomized
 
     def test_ui_format_converted(self):
@@ -175,7 +175,7 @@ class TestComfyLifecycle:
     def test_strategy_detection(self, monkeypatch, tmp_path):
         import routes.comfy as comfy_module
         # env cmd wins
-        monkeypatch.setenv('DECLOUD_COMFY_CMD', '/usr/bin/python /opt/comfy/main.py --listen')
+        monkeypatch.setenv('RECLMR_COMFY_CMD', '/usr/bin/python /opt/comfy/main.py --listen')
         monkeypatch.setattr(comfy_module.subprocess, 'run', lambda *a, **k: type('R', (), {'returncode': 1})())
         strategy, argv = comfy_module._comfy_strategy()
         assert strategy == 'cmd'

@@ -84,7 +84,7 @@ def export_logs():
     return Response(
         text,
         mimetype='text/plain',
-        headers={'Content-Disposition': 'attachment; filename="decloud-logs.txt"'},
+        headers={'Content-Disposition': 'attachment; filename="reclmr-logs.txt"'},
     )
 
 # ─── API: Telemetry Export ────────────────────────────────────

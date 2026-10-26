@@ -1,6 +1,6 @@
-# Upgrading a running DeCloud install to v0.0.2 (alpha WIP)
+# Upgrading a running reclmr install to v0.0.2 (alpha WIP)
 
-This file is for the agent (or human) operating the PC where DeCloud runs.
+This file is for the agent (or human) operating the PC where reclmr runs.
 It upgrades an existing install in place, keeping your `.env` (passcode,
 paths, secrets) untouched.
 
@@ -17,14 +17,14 @@ paths, secrets) untouched.
 From the laptop (over Tailscale, or however you prefer):
 
 ```sh
-scp decloud-v0.0.2-wip.tar.gz <user>@<this-pc>:/tmp/
+scp reclmr-v0.0.2-wip.tar.gz <user>@<this-pc>:/tmp/
 ```
 
 ## 2. Back up the current install
 
 ```sh
-cd ~/decloud        # adjust if installed elsewhere
-tar czf /tmp/decloud-backup-$(date +%F-%H%M%S).tar.gz \
+cd ~/reclmr        # adjust if installed elsewhere
+tar czf /tmp/reclmr-backup-$(date +%F-%H%M%S).tar.gz \
     --exclude='audio_cache' --exclude='thumb_cache' --exclude='.venv' \
     --exclude='__pycache__' .
 ```
@@ -32,9 +32,9 @@ tar czf /tmp/decloud-backup-$(date +%F-%H%M%S).tar.gz \
 ## 3. Extract the new code
 
 ```sh
-cd ~/decloud
-tar xzf /tmp/decloud-v0.0.2-wip.tar.gz
-chmod +x decloud install.sh uninstall.sh 2>/dev/null || true
+cd ~/reclmr
+tar xzf /tmp/reclmr-v0.0.2-wip.tar.gz
+chmod +x reclmr install.sh uninstall.sh 2>/dev/null || true
 chmod 600 .env 2>/dev/null || true          # .env untouched, just re-lock perms
 ```
 
@@ -52,15 +52,15 @@ keeps working. If the app fails to boot with an import error, run:
 ## 4. Restart the service
 
 ```sh
-systemctl --user restart decloud
-systemctl --user status decloud
+systemctl --user restart reclmr
+systemctl --user status reclmr
 tail -30 app.log        # look for a clean boot line and NO tracebacks
 ```
 
 If it was started via the wrapper instead:
 
 ```sh
-./decloud restart && ./decloud status
+./reclmr restart && ./reclmr status
 ```
 
 ## 5. Verify locally on this PC
@@ -69,7 +69,7 @@ If it was started via the wrapper instead:
 curl -s http://localhost:8899/api/auth/check
 # open mode:  {"authenticated":true,"open_mode":true}
 # pin mode:   {"authenticated":false,"open_mode":false}  -> expected until login
-./decloud qr            # funnel URL should be unchanged
+./reclmr qr            # funnel URL should be unchanged
 ```
 
 ## 6. Test from the laptop (the real test)
@@ -98,9 +98,9 @@ curl -s http://localhost:8899/api/auth/check
 Roll back:
 
 ```sh
-cd ~/decloud
-tar xzf /tmp/decloud-backup-<timestamp>.tar.gz   # restores old code
-systemctl --user restart decloud
+cd ~/reclmr
+tar xzf /tmp/reclmr-backup-<timestamp>.tar.gz   # restores old code
+systemctl --user restart reclmr
 ```
 
 and report what failed (paste the tail of `app.log`).
@@ -116,6 +116,6 @@ and report what failed (paste the tail of `app.log`).
   `localhost.run` relay fallback was REMOVED — tunnel is Tailscale Funnel
   only (or cloudflared, manually).
 - **Cross-platform**: real OS detection (deb/rpm/macOS/Windows), Windows
-  installer (`setup.ps1`) and wrapper (`decloud.ps1`), PTY terminal
+  installer (`setup.ps1`) and wrapper (`reclmr.ps1`), PTY terminal
   degrades gracefully on Windows.
 - **Books**: correct per-book chapter totals and done counts.

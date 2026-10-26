@@ -64,7 +64,7 @@ Every app is optional. reclmr runs with no configuration, and anything that need
 **Requirements:** Linux or macOS, Python 3.10+, and [Tailscale](https://tailscale.com) for remote access. Windows is experimental and untested (see [Windows](#windows)).
 
 ```bash
-git clone https://github.com/rxjdeep/decloud.git ~/reclmr
+git clone https://github.com/rxjdeep/reclmr.git ~/reclmr
 cd ~/reclmr
 ./install.sh
 ```
@@ -149,9 +149,7 @@ Settings are environment variables in `.env` (see [`.env.example`](.env.example)
 | `RECLMR_MODELS_DIR`, `RECLMR_COMFY_MODELS_DIR` | `~/Models`, `~/ComfyUI/models` | Where the Model Advisor downloads to |
 | `RECLMR_TOTP_FILE`, `RECLMR_AUDIT_FILE` | `totp.json`, `audit.log` | Terminal secret and audit trail |
 | `RECLMR_TRANSCODE_CACHE_MB` | `2048` | Size limit for the converted-music cache |
-| `RECLMR_UPDATE_REPO` | `rxjdeep/decloud` | GitHub repo the updater checks |
-
-The older `DECLOUD_*` names keep working. If both spellings of one setting are in the same `.env`, the `DECLOUD_` one is used, so pick one prefix.
+| `RECLMR_UPDATE_REPO` | `rxjdeep/reclmr` | GitHub repo the updater checks |
 
 Optional: `RECLMR_OSINT_DIR` (privacy scanner), `RECLMR_JOURNAL_DIR` (Obsidian vault for voice notes), `RECLMR_HERMES_HOME` (agents panel).
 
@@ -162,8 +160,8 @@ Optional: `RECLMR_OSINT_DIR` (privacy scanner), `RECLMR_JOURNAL_DIR` (Obsidian v
 **Desktop media widget:** for shuffle and repeat in the KDE or GNOME media widget, run the companion on your desktop:
 
 ```bash
-curl -O https://<your-reclmr>/static/tools/decloud-mpris.py
-python3 decloud-mpris.py --install-service
+curl -O https://<your-reclmr>/static/tools/reclmr-mpris.py
+python3 reclmr-mpris.py --install-service
 ```
 
 ## Security
@@ -190,8 +188,6 @@ systemctl --user restart reclmr      # after editing .env
 journalctl --user -u reclmr -f       # live logs
 ```
 
-(Installs made before the rename keep their `decloud` service name, and `./decloud` still works.)
-
 **Updates:** Settings > About > *Check for updates*. The updater shows the version and asks first, refuses to touch a tree with local edits, test-boots the new version on a scratch port, rolls back on failure, and offers a one-click revert. `.env`, your books and settings are never touched.
 
 ### Windows
@@ -200,7 +196,7 @@ Experimental and untested. Everything except the interactive terminal (which nee
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\setup.ps1
-.\decloud.ps1 status
+.\reclmr.ps1 status
 ```
 
 **Set `RECLMR_PIN` in `.env` yourself before exposing it.** The setup script is not verified to set a passcode, and without one the app has no sign-in.

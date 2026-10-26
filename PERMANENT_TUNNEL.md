@@ -1,6 +1,6 @@
 # Permanent Tunnel Setup
 
-DeCloud uses **Tailscale Funnel** for secure, permanent remote access. This gives you a URL like `https://your-machine.tail1234.ts.net` that never changes.
+reclmr uses **Tailscale Funnel** for secure, permanent remote access. This gives you a URL like `https://your-machine.tail1234.ts.net` that never changes.
 
 ## Quick Setup (Recommended)
 
@@ -14,9 +14,9 @@ DeCloud uses **Tailscale Funnel** for secure, permanent remote access. This give
    sudo tailscale up
    ```
 
-3. **Start DeCloud** — it auto-detects Tailscale and uses Funnel:
+3. **Start reclmr** — it auto-detects Tailscale and uses Funnel:
    ```bash
-   ./decloud start
+   ./reclmr start
    ```
 
 Your URL: `https://your-machine-name.tail1234.ts.net`
@@ -33,13 +33,13 @@ Your URL: `https://your-machine-name.tail1234.ts.net`
 
 They **don't need Tailscale installed**. Just send them:
 1. The URL: `https://your-machine.tail1234.ts.net`
-2. Your DeCloud passcode
+2. Your reclmr passcode
 
 They can add it to their phone home screen like any app.
 
 ## Alternative: Cloudflare Named Tunnel
 
-If you prefer your own domain (`decloud.yourdomain.com`):
+If you prefer your own domain (`reclmr.yourdomain.com`):
 
 1. Buy a domain (~$10/year) or use a free subdomain
 2. Sign up for [Cloudflare](https://cloudflare.com) (free)
@@ -47,15 +47,15 @@ If you prefer your own domain (`decloud.yourdomain.com`):
 4. Run:
    ```bash
    cloudflared tunnel login
-   cloudflared tunnel create decloud
-   cloudflared tunnel route dns decloud decloud.yourdomain.com
+   cloudflared tunnel create reclmr
+   cloudflared tunnel route dns reclmr reclmr.yourdomain.com
    ```
 5. Edit `~/.cloudflared/config.yml`:
    ```yaml
    tunnel: <tunnel-id>
    credentials-file: /home/user/.cloudflared/<tunnel-id>.json
    ingress:
-     - hostname: decloud.yourdomain.com
+     - hostname: reclmr.yourdomain.com
        service: http://localhost:8899
      - service: http_status:404
    ```
@@ -65,7 +65,7 @@ If you prefer your own domain (`decloud.yourdomain.com`):
 
 If you don't want any public access:
 
-1. Don't run `./decloud start` (skip tunnel)
+1. Don't run `./reclmr start` (skip tunnel)
 2. Access via Tailscale directly: `http://your-machine:8899`
 3. Friends/family need Tailscale app + your approval to join tailnet
 
@@ -74,12 +74,12 @@ If you don't want any public access:
 **"Funnel failed"**
 - Check Tailscale is running: `tailscale status`
 - Check funnel is enabled: `tailscale funnel status`
-- Restart: `./decloud restart`
+- Restart: `./reclmr restart`
 
 **"URL not working"**
 - Wait 30 seconds for DNS propagation
 - Check: `curl -I https://your-machine.tail1234.ts.net`
-- Regenerate QR: `./decloud qr`
+- Regenerate QR: `./reclmr qr`
 
 **"Friends can't access"**
 - Make sure you gave them the full URL (including `https://`)

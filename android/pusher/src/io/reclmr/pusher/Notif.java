@@ -1,4 +1,4 @@
-package io.decloud.pusher;
+package io.reclmr.pusher;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -10,7 +10,7 @@ import android.graphics.drawable.Icon;
 
 /** The "ask me" for large files on mobile data. One notification, updated in place; it goes away once nothing is waiting. */
 final class Notif {
-    private static final String CHANNEL = "big", ACTION = "io.decloud.pusher.SEND_BIG";
+    private static final String CHANNEL = "big", ACTION = "io.reclmr.pusher.SEND_BIG";
     private static final int ID = 1;
     private static int lastCount = -1;
     private static long lastBytes = -1;
@@ -43,7 +43,7 @@ final class Notif {
         nm.createNotificationChannel(new NotificationChannel("run", "Backup in progress", NotificationManager.IMPORTANCE_LOW));
         int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
         PendingIntent open = PendingIntent.getActivity(c, 2, new Intent(c, MainActivity.class), flags);
-        PendingIntent stop = PendingIntent.getBroadcast(c, 2, new Intent(c, ActionReceiver.class).setAction("io.decloud.pusher.STOP"), flags);
+        PendingIntent stop = PendingIntent.getBroadcast(c, 2, new Intent(c, ActionReceiver.class).setAction("io.reclmr.pusher.STOP"), flags);
         nm.notify(3, new Notification.Builder(c, "run").setSmallIcon(android.R.drawable.stat_sys_upload).setContentTitle("Backing up").setContentText(text)
             .addAction(new Notification.Action.Builder(Icon.createWithResource(c, android.R.drawable.ic_media_pause), "Stop", stop).build())
             .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open).build());

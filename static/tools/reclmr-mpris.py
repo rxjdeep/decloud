@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""DeCloud desktop media controls (MPRIS) for KDE Plasma, GNOME and anything else that speaks MPRIS.
+"""reclmr desktop media controls (MPRIS) for KDE Plasma, GNOME and anything else that speaks MPRIS.
 
 Why this exists: a browser can only give your desktop's media widget play, pause, previous, next and seek.
 There is no way for a web page to add shuffle or repeat. This small program registers a real media player
-called "DeCloud" on your desktop and controls whichever device is currently playing (your phone, this
-computer, anything) through DeCloud's live connection. It plays no sound itself.
+called "reclmr" on your desktop and controls whichever device is currently playing (your phone, this
+computer, anything) through reclmr's live connection. It plays no sound itself.
 
-    python3 decloud-mpris.py                 # first run asks for your DeCloud address and passcode
-    python3 decloud-mpris.py --install-service   # start it automatically when you log in
+    python3 reclmr-mpris.py                 # first run asks for your reclmr address and passcode
+    python3 reclmr-mpris.py --install-service   # start it automatically when you log in
 
 Needs Python 3.9+. On first run it creates a private virtualenv and installs two small packages
 (aiohttp, dbus-next); nothing is installed system-wide.
@@ -25,12 +25,12 @@ import urllib.request
 from pathlib import Path
 
 HOME = Path.home()
-CONF_DIR = Path(os.environ.get('XDG_CONFIG_HOME', HOME / '.config')) / 'decloud-mpris'
+CONF_DIR = Path(os.environ.get('XDG_CONFIG_HOME', HOME / '.config')) / 'reclmr-mpris'
 CONF = CONF_DIR / 'config.json'
-DATA_DIR = Path(os.environ.get('XDG_DATA_HOME', HOME / '.local' / 'share')) / 'decloud-mpris'
-CACHE_DIR = Path(os.environ.get('XDG_CACHE_HOME', HOME / '.cache')) / 'decloud-mpris'
+DATA_DIR = Path(os.environ.get('XDG_DATA_HOME', HOME / '.local' / 'share')) / 'reclmr-mpris'
+CACHE_DIR = Path(os.environ.get('XDG_CACHE_HOME', HOME / '.cache')) / 'reclmr-mpris'
 VENV = DATA_DIR / 'venv'
-BUS_NAME = 'org.mpris.MediaPlayer2.decloud'
+BUS_NAME = 'org.mpris.MediaPlayer2.reclmr'
 
 
 # ─── first run: private virtualenv with the two dependencies ─────────────────
@@ -76,7 +76,7 @@ def login(url, passcode):
     except Exception as e:
         sys.exit('Could not reach %s: %s' % (url, e))
     if not d.get('session'):
-        sys.exit('This DeCloud did not return a session (is a passcode set?).')
+        sys.exit('This reclmr did not return a session (is a passcode set?).')
     return d['session']
 
 
@@ -118,7 +118,7 @@ def build(url, token, dev, label):
 
         @dbus_property(access=PropertyAccess.READ)
         def Identity(self) -> 's':
-            return 'DeCloud'
+            return 'reclmr'
 
         @dbus_property(access=PropertyAccess.READ)
         def SupportedUriSchemes(self) -> 'as':
@@ -163,7 +163,7 @@ def build(url, token, dev, label):
                 return {'mpris:trackid': Variant('o', NO_TRACK)}
             m = self.meta.get(i) or {}
             safe = ''.join(ch if ch.isalnum() else '_' for ch in i)[:60]
-            d = {'mpris:trackid': Variant('o', '/org/decloud/track/' + safe)}
+            d = {'mpris:trackid': Variant('o', '/org/reclmr/track/' + safe)}
             if m.get('d'):
                 d['mpris:length'] = Variant('x', int(m['d'] * 1_000_000))
             if m.get('t') is not None:
@@ -377,13 +377,13 @@ def build(url, token, dev, label):
         delay = 1
         while not stop.is_set():
             try:
-                async with aiohttp.ClientSession(headers={'Cookie': 'decloud_session=' + token}) as http:
+                async with aiohttp.ClientSession(headers={'Cookie': 'reclmr_session=' + token}) as http:
                     player.http = http
                     async with http.ws_connect(ws_url, heartbeat=None, max_msg_size=0) as ws:
                         player.ws, player.loop = ws, asyncio.get_running_loop()
                         await ws.send_json({'t': 'hello', 'dev': dev, 'label': label, 'role': 'controller'})
                         delay = 1
-                        print('Connected to DeCloud.', flush=True)
+                        print('Connected to reclmr.', flush=True)
 
                         async def ping():
                             while True:
@@ -401,7 +401,7 @@ def build(url, token, dev, label):
                             pinger.cancel()
             except aiohttp.WSServerHandshakeError as e:
                 if e.status in (401, 403):
-                    print('Your DeCloud sign-in has expired. Run this again to sign in.', flush=True)
+                    print('Your reclmr sign-in has expired. Run this again to sign in.', flush=True)
                     sys.exit(2)
                 print('Connection problem (%s), retrying...' % e.status, flush=True)
             except Exception as e:
@@ -430,24 +430,24 @@ def build(url, token, dev, label):
 
 def install_service():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    script = DATA_DIR / 'decloud-mpris.py'
+    script = DATA_DIR / 'reclmr-mpris.py'
     script.write_text(Path(__file__).read_text())
     script.chmod(0o755)
     py = VENV / 'bin' / 'python'
     unit_dir = Path(os.environ.get('XDG_CONFIG_HOME', HOME / '.config')) / 'systemd' / 'user'
     unit_dir.mkdir(parents=True, exist_ok=True)
-    (unit_dir / 'decloud-mpris.service').write_text(
-        '[Unit]\nDescription=DeCloud desktop media controls (MPRIS)\nAfter=graphical-session.target\n\n'
+    (unit_dir / 'reclmr-mpris.service').write_text(
+        '[Unit]\nDescription=reclmr desktop media controls (MPRIS)\nAfter=graphical-session.target\n\n'
         '[Service]\nExecStart=%s %s\nRestart=on-failure\nRestartSec=5\nRestartPreventExitStatus=2\n\n'
         '[Install]\nWantedBy=default.target\n' % (py if py.exists() else sys.executable, script))
     subprocess.call(['systemctl', '--user', 'daemon-reload'])
-    subprocess.call(['systemctl', '--user', 'enable', '--now', 'decloud-mpris.service'])
-    print('Installed. It now starts whenever you log in. Check it with: systemctl --user status decloud-mpris')
+    subprocess.call(['systemctl', '--user', 'enable', '--now', 'reclmr-mpris.service'])
+    print('Installed. It now starts whenever you log in. Check it with: systemctl --user status reclmr-mpris')
 
 
 def main():
-    ap = argparse.ArgumentParser(description='DeCloud desktop media controls (MPRIS)')
-    ap.add_argument('--url', help='your DeCloud address, e.g. https://my-server.tailXXXX.ts.net')
+    ap = argparse.ArgumentParser(description='reclmr desktop media controls (MPRIS)')
+    ap.add_argument('--url', help='your reclmr address, e.g. https://my-server.tailXXXX.ts.net')
     ap.add_argument('--token', help='a session token (skips the passcode prompt)')
     ap.add_argument('--no-save', action='store_true', help='do not write the config file')
     ap.add_argument('--install-service', action='store_true', help='start automatically at login (systemd user service)')
@@ -462,11 +462,11 @@ def main():
     url = (a.url or conf.get('url') or '').rstrip('/')
     token = a.token or conf.get('token')
     if not url:
-        url = input('DeCloud address (e.g. https://my-server.tailXXXX.ts.net): ').strip().rstrip('/')
+        url = input('reclmr address (e.g. https://my-server.tailXXXX.ts.net): ').strip().rstrip('/')
     if not url.startswith('http'):
         url = 'https://' + url
     if not token:
-        token = login(url, getpass.getpass('DeCloud passcode: '))
+        token = login(url, getpass.getpass('reclmr passcode: '))
     if not a.no_save:
         save_conf({'url': url, 'token': token})
     if a.install_service:

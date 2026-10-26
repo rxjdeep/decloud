@@ -1,6 +1,6 @@
 """Agents (Hermes profiles) management routes.
 
-Optional module. Set DECLOUD_HERMES_HOME in .env to your Hermes home
+Optional module. Set RECLMR_HERMES_HOME in .env to your Hermes home
 directory (e.g. ~/.hermes) to enable. If not configured, endpoints
 return helpful errors.
 
@@ -15,12 +15,12 @@ from flask import Blueprint, jsonify, request
 
 bp = Blueprint('agents', __name__)
 
-HERMES_HOME = os.environ.get('DECLOUD_HERMES_HOME', '').rstrip('/')
+HERMES_HOME = os.environ.get('RECLMR_HERMES_HOME', '').rstrip('/')
 
 
 def _not_configured():
     return jsonify({
-        'error': 'Hermes not configured. Set DECLOUD_HERMES_HOME in .env.'
+        'error': 'Hermes not configured. Set RECLMR_HERMES_HOME in .env.'
     }), 503
 
 
@@ -192,7 +192,7 @@ def get_agents():
 
     # This workstation (Reclmr) is always present and always-on.
     agents.append({
-        'id': 'decloud',
+        'id': 'reclmr',
         'name': 'Reclmr',
         'profile': 'local',
         'platforms': [],

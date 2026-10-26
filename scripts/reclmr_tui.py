@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DeCloud TUI - a brutalist terminal dashboard. Run with `decloud tui`.
+"""reclmr TUI - a brutalist terminal dashboard. Run with `reclmr tui`.
 
 Reads every value from the same JSON APIs the web app uses (no duplicated
 logic), and the update panel reuses routes.update directly. The app may be
@@ -29,8 +29,8 @@ except ImportError:
 
 # ─── API client (same endpoints as the web app) ───────────────────
 
-BASE = f"http://127.0.0.1:{os.environ.get('DECLOUD_PORT', '8899')}"
-SESSION_FILE = Path.home() / '.config' / 'decloud' / 'tui_session.json'
+BASE = f"http://127.0.0.1:{os.environ.get('RECLMR_PORT', '8899')}"
+SESSION_FILE = Path.home() / '.config' / 'reclmr' / 'tui_session.json'
 ACCENT = '#ff9e3d'   # amber
 MUTED = '#7a7a7a'
 FG = '#e8e6e3'
@@ -68,7 +68,7 @@ def _clear_session():
 
 
 def api(path, method='GET', data=None):
-    """Call the local DeCloud API. Returns (dict, ok)."""
+    """Call the local reclmr API. Returns (dict, ok)."""
     req = urllib.request.Request(BASE + path, method=method)
     sess = _load_session()
     if sess:
@@ -147,7 +147,7 @@ class LoginScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         yield Container(
-            Static("[bold]DECLOUD[/]. Enter your passcode", id="login-title"),
+            Static("[bold]RECLMR[/]. Enter your passcode", id="login-title"),
             Input(password=True, placeholder="passcode…", id="pin"),
             Static("", id="login-error"),
             Horizontal(
@@ -200,7 +200,7 @@ class ConfirmScreen(ModalScreen):
 
 # ─── App ──────────────────────────────────────────────────────────
 
-class DeCloudTUI(App):
+class ReclmrTUI(App):
     CSS = f"""
     Screen {{
         background: {BG};
@@ -278,7 +278,7 @@ class DeCloudTUI(App):
 
     def compose(self) -> ComposeResult:
         yield Static('', id='header')
-        yield Static('OFFLINE. The DeCloud app is not answering on '
+        yield Static('OFFLINE. The reclmr app is not answering on '
                      f'{BASE}', id='offline')
         yield Horizontal(
             Vertical(
@@ -351,7 +351,7 @@ class DeCloudTUI(App):
             from routes.version import VERSION
         except Exception:
             VERSION = '?'
-        word = big_word('DECLOUD')
+        word = big_word('RECLMR')
         self.query_one('#header', Static).update(
             f"[bold {ACCENT}]{word}[/]\n"
             f"v{VERSION}  ·  {host}  ·  {time.strftime('%H:%M:%S')}  ·  "
@@ -509,7 +509,7 @@ class DeCloudTUI(App):
             return
         ref = (d.get('latest') or {}).get('tag')
         self.push_screen(
-            ConfirmScreen(f"Update DeCloud to [bold]{ref}[/]?\n\n"
+            ConfirmScreen(f"Update reclmr to [bold]{ref}[/]?\n\n"
                           "The new version is downloaded, verified, and "
                           "test-booted before anything restarts.\n\n"
                           "This is safe. A broken update rolls back "
@@ -542,7 +542,7 @@ class DeCloudTUI(App):
 
 
 def main():
-    DeCloudTUI().run()
+    ReclmrTUI().run()
 
 
 if __name__ == '__main__':

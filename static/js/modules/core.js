@@ -2,7 +2,7 @@
 // ═══ recl/\mr ═══
 
 // ─── Auth: wrap all fetch calls with session-token header ────────
-// The session cookie (decloud_session) is set by /api/auth/login and
+// The session cookie (reclmr_session) is set by /api/auth/login and
 // sent automatically with same-origin requests. We also add a Bearer
 // header carrying the opaque session token as a fallback for
 // cross-origin (tunnel) scenarios. The PIN itself never lives in
@@ -13,7 +13,7 @@ window.fetch = function(input, init) {
   // Don't modify if already has Authorization header
   if (!init.headers || (init.headers instanceof Headers && !init.headers.has('Authorization'))) {
     // Add auth header from sessionStorage if we have a session token
-    const token = sessionStorage.getItem('decloud_session');
+    const token = sessionStorage.getItem('reclmr_session');
     if (token) {
       init.headers = init.headers || {};
       if (init.headers instanceof Headers) {
@@ -27,7 +27,7 @@ window.fetch = function(input, init) {
   // request is authenticated only by cookie)
   const method = (init.method || 'GET').toUpperCase();
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    const csrf = sessionStorage.getItem('decloud_csrf');
+    const csrf = sessionStorage.getItem('reclmr_csrf');
     if (csrf) {
       init.headers = init.headers || {};
       if (init.headers instanceof Headers) {
@@ -67,9 +67,9 @@ function safeUrl(u) {
 
 // Android's WebView has no Vibration API (Chrome does). Inside the recl/\mr app the native bridge stands in for it, so every
 // existing navigator.vibrate(...) call in the player and the UI keeps working unchanged.
-if (typeof navigator.vibrate !== 'function' && window.DeCloudApp && window.DeCloudApp.vibrate) {
+if (typeof navigator.vibrate !== 'function' && window.ReclmrApp && window.ReclmrApp.vibrate) {
   navigator.vibrate = function(p) {
-    try { window.DeCloudApp.vibrate(JSON.stringify(Array.isArray(p) ? p : [p])); return true; } catch (_) { return false; }
+    try { window.ReclmrApp.vibrate(JSON.stringify(Array.isArray(p) ? p : [p])); return true; } catch (_) { return false; }
   };
 }
 
@@ -103,19 +103,19 @@ window.addEventListener('error', function(e) {
   var t = e.target;
   if (!t || t.tagName !== 'SCRIPT' || !t.src) return;
   setTimeout(function() {                          // scripts cancelled by a normal navigation or refresh are not failures
-    if (decloudLeaving) return;
+    if (reclmrLeaving) return;
     try {
-      if (sessionStorage.getItem('decloud_script_retry') === t.src) return;
-      sessionStorage.setItem('decloud_script_retry', t.src);
+      if (sessionStorage.getItem('reclmr_script_retry') === t.src) return;
+      sessionStorage.setItem('reclmr_script_retry', t.src);
     } catch (_) { return; }
     console.warn('Script failed to load, retrying page:', t.src);
     location.reload();
   }, 400);
 }, true);
-var decloudLeaving = false;
-window.addEventListener('pagehide', function() { decloudLeaving = true; });
-window.addEventListener('beforeunload', function() { decloudLeaving = true; });
-window.addEventListener('load', function() { try { sessionStorage.removeItem('decloud_script_retry'); } catch (_) {} });
+var reclmrLeaving = false;
+window.addEventListener('pagehide', function() { reclmrLeaving = true; });
+window.addEventListener('beforeunload', function() { reclmrLeaving = true; });
+window.addEventListener('load', function() { try { sessionStorage.removeItem('reclmr_script_retry'); } catch (_) {} });
 
 window.addEventListener('error', function(e) {
   // Ignore errors from Safari's native share sheet / visibility changes
@@ -132,9 +132,9 @@ window.addEventListener('unhandledrejection', function(e) {
 
 function showCrashRecovery(err) {
   // Only show once per page load
-  if (document.getElementById('decloud-crash-overlay')) return;
+  if (document.getElementById('reclmr-crash-overlay')) return;
   var overlay = document.createElement('div');
-  overlay.id = 'decloud-crash-overlay';
+  overlay.id = 'reclmr-crash-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0f;color:#e0e0e0;font-family:system-ui,sans-serif;padding:24px;text-align:center';
   overlay.innerHTML =
     '<div style="font-size:48px;margin-bottom:16px">X</div>' +

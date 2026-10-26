@@ -10,7 +10,7 @@ def secret(tmp_path, monkeypatch):
     f = tmp_path / 'totp.json'
     s = base64.b32encode(b'12345678901234567890').decode()       # RFC 6238 test secret
     f.write_text(json.dumps({'secret': s, 'last_step': 0}))
-    monkeypatch.setenv('DECLOUD_TOTP_FILE', str(f))
+    monkeypatch.setenv('RECLMR_TOTP_FILE', str(f))
     security._unlocked.clear(); security._fails.clear(); security._locked_until = 0.0
     return s
 
@@ -38,7 +38,7 @@ def test_terminal_unlock_flow(client, auth_headers, secret):
 
 
 def test_unlock_needs_setup(client, auth_headers, tmp_path, monkeypatch):
-    monkeypatch.setenv('DECLOUD_TOTP_FILE', str(tmp_path / 'missing.json'))
+    monkeypatch.setenv('RECLMR_TOTP_FILE', str(tmp_path / 'missing.json'))
     assert client.post('/api/terminal/unlock', json={'code': '123456'}, headers=auth_headers).status_code == 409
 
 

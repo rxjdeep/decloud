@@ -37,7 +37,7 @@ limiter = Limiter(
 )
 
 # ─── .env loader ─────────────────────────────────────────────────
-# systemd injects EnvironmentFile automatically, but manual `./decloud start`
+# systemd injects EnvironmentFile automatically, but manual `./reclmr start`
 # and bare `python app.py` don't. Load .env here so both paths behave the same.
 # Never overrides variables already set in the real environment.
 def _load_env_file():
@@ -67,35 +67,26 @@ def _load_env_file():
 _load_env_file()
 
 
-def _alias_reclmr_env():
-    """RECLMR_* settings work everywhere the older DECLOUD_* names do (an existing DECLOUD_* value wins)."""
-    for _k, _v in list(os.environ.items()):
-        if _k.startswith('RECLMR_') and ('DECLOUD_' + _k[7:]) not in os.environ:
-            os.environ['DECLOUD_' + _k[7:]] = _v
-
-
-_alias_reclmr_env()
-
 # ─── Authentication ─────────────────────────────────────────────
-# Reclmr requires a passcode (DECLOUD_PIN) to access the app. If not
+# Reclmr requires a passcode (RECLMR_PIN) to access the app. If not
 # set, the app runs in open mode (for local-only development).
 #
 # Security model:
 #   - The passcode is the *credential* - only used during /api/auth/login.
 #   - On successful login the server mints a random opaque session token,
 #     stores it in the in-memory SESSIONS map with an expiry, and sets it
-#     as the `decloud_session` cookie. The passcode itself is NEVER sent
+#     as the `reclmr_session` cookie. The passcode itself is NEVER sent
 #     back to the browser and never accepted as a Bearer credential.
 #   - All subsequent requests are authenticated by the session token.
 #   - Sessions are scoped to a single process (in-memory) and expire
 #     after 30 days. A restart invalidates all sessions, forcing
 #     re-login - acceptable for a personal self-hosted app.
-DECLOUD_PIN = os.environ.get('DECLOUD_PIN', '')
-if DECLOUD_PIN:
-    if len(DECLOUD_PIN) > 64:
-        raise SystemExit('[decloud] DECLOUD_PIN is longer than 64 characters.')
-    if len(DECLOUD_PIN) < 8:
-        print('[decloud] WARNING: DECLOUD_PIN is short. Use at least 8 '
+RECLMR_PIN = os.environ.get('RECLMR_PIN', '')
+if RECLMR_PIN:
+    if len(RECLMR_PIN) > 64:
+        raise SystemExit('[reclmr] RECLMR_PIN is longer than 64 characters.')
+    if len(RECLMR_PIN) < 8:
+        print('[reclmr] WARNING: RECLMR_PIN is short. Use at least 8 '
               'characters (a passphrase, not just digits). The install '
               'default is now 8 digits.', flush=True)
 
@@ -105,14 +96,14 @@ if _env_secret and _env_secret != 'change-me-to-a-random-string':
     SECRET_KEY = _env_secret
 else:
     SECRET_KEY = secrets.token_hex(32)
-    print('[decloud] WARNING: SECRET_KEY not set in .env. Generated an ephemeral '
+    print('[reclmr] WARNING: SECRET_KEY not set in .env. Generated an ephemeral '
           'one for this run. Sessions will not survive a restart. '
           'Set SECRET_KEY in .env to persist sessions.', flush=True)
 app.secret_key = SECRET_KEY
 
 # Session store: token -> expiry epoch seconds. Persisted to disk so sessions
 # survive an app restart (still single-process - see note in save_sessions).
-SESSIONS_FILE = Path(os.environ.get('DECLOUD_SESSIONS_FILE') or Path(__file__).parent / 'sessions.json')   # tests point this at a temp dir
+SESSIONS_FILE = Path(os.environ.get('RECLMR_SESSIONS_FILE') or Path(__file__).parent / 'sessions.json')   # tests point this at a temp dir
 SESSION_TTL_SECONDS = 30 * 24 * 60 * 60  # 30 days
 MAX_SESSIONS = 50
 _session_lock = threading.Lock()
@@ -173,7 +164,7 @@ def _extract_session_token():
     """Return the session token from cookie, Authorization header, or the
     ?token= query parameter (the cross-origin tunnel fallback for
     WebSocket handshakes, where browsers cannot set headers)."""
-    token = request.cookies.get('decloud_session')
+    token = request.cookies.get('reclmr_session')
     if not token:
         auth_header = request.headers.get('Authorization', '')
         if auth_header.startswith('Bearer '):
@@ -184,7 +175,7 @@ def _extract_session_token():
 
 def _is_authenticated():
     """Check if the current request carries a valid session token."""
-    if not DECLOUD_PIN:
+    if not RECLMR_PIN:
         return True  # Open mode (no passcode set)
     token = _extract_session_token()
     if not token:
@@ -205,7 +196,7 @@ def ws_session_token(environ: dict) -> str:
     if not token:
         for part in environ.get('HTTP_COOKIE', '').split(';'):
             key, _, val = part.strip().partition('=')
-            if key == 'decloud_session':
+            if key == 'reclmr_session':
                 token = val
                 break
     if not token:
@@ -221,7 +212,7 @@ def ws_is_authenticated(environ: dict) -> bool:
     token via cookie, Authorization header, or ?token= query parameter
     (the query parameter is the cross-origin tunnel fallback).
     """
-    if not DECLOUD_PIN:
+    if not RECLMR_PIN:
         return True  # Open mode
     token = ''
     auth = environ.get('HTTP_AUTHORIZATION', '')
@@ -231,7 +222,7 @@ def ws_is_authenticated(environ: dict) -> bool:
         cookie = environ.get('HTTP_COOKIE', '')
         for part in cookie.split(';'):
             key, _, val = part.strip().partition('=')
-            if key == 'decloud_session':
+            if key == 'reclmr_session':
                 token = val
                 break
     if not token:
@@ -247,7 +238,7 @@ def ws_is_authenticated(environ: dict) -> bool:
 def _require_auth():
     """Gate all API endpoints behind session-token authentication."""
     from flask import request as req
-    if not DECLOUD_PIN:
+    if not RECLMR_PIN:
         return  # Open mode, no auth needed
     # Allow static files and the login page
     if req.path.startswith('/static/') or req.path == '/manifest.json' or req.path == '/sw.js':
@@ -257,7 +248,7 @@ def _require_auth():
     if req.path == '/api/auth/login' or req.path == '/api/auth/check':
         return
     if req.path.startswith('/api/backup/'):
-        return  # the phone's push: its own bearer token, checked in routes/backup.py (off unless DECLOUD_BACKUP_TOKEN is set)
+        return  # the phone's push: its own bearer token, checked in routes/backup.py (off unless RECLMR_BACKUP_TOKEN is set)
     if req.path == '/lab-agent.py' and req.method == 'GET':
         return  # public: this repo's own source, curl'd onto devices being added
     if not _is_authenticated():
@@ -323,7 +314,7 @@ BASE_DIR = Path(__file__).parent
 # Format matches _read_logs(): "TIMESTAMP LEVEL MESSAGE".
 import logging as _logging
 
-_req_logger = _logging.getLogger('decloud.requests')
+_req_logger = _logging.getLogger('reclmr.requests')
 _req_handler = _logging.FileHandler(BASE_DIR / 'app.log')
 _req_handler.setFormatter(_logging.Formatter('%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%dT%H:%M:%S'))
 _req_logger.addHandler(_req_handler)
@@ -420,30 +411,30 @@ def _env_path(key, default):
         return Path(os.path.expandvars(os.path.expanduser(val)))
     return Path(default)
 
-BOOKS_DIR = _env_path('DECLOUD_BOOKS_DIR', Path.home() / 'Books')
+BOOKS_DIR = _env_path('RECLMR_BOOKS_DIR', Path.home() / 'Books')
 AUDIO_DIR = BASE_DIR / 'audio_cache'
 AUDIO_DIR.mkdir(exist_ok=True)
 
 
 def reload_env_paths():
-    """Re-read DECLOUD_*_DIR from the environment into the module globals.
+    """Re-read RECLMR_*_DIR from the environment into the module globals.
 
     Called after Settings saves new paths to .env so library changes take
     effect without an app restart. Code that reads shared.BOOKS_DIR /
     shared.FILES_DIR / shared.MUSIC_DIR at request time sees the new
     values immediately."""
     global BOOKS_DIR, FILES_DIR, MUSIC_DIR, PIPER_DIR
-    BOOKS_DIR = _env_path('DECLOUD_BOOKS_DIR', Path.home() / 'Books')
-    FILES_DIR = _env_path('DECLOUD_FILES_DIR', Path.home())
-    MUSIC_DIR = _env_path('DECLOUD_MUSIC_DIR', Path.home() / 'Music')
-    PIPER_DIR = _env_path('DECLOUD_PIPER_DIR', Path.home() / '.local/share/piper')
+    BOOKS_DIR = _env_path('RECLMR_BOOKS_DIR', Path.home() / 'Books')
+    FILES_DIR = _env_path('RECLMR_FILES_DIR', Path.home())
+    MUSIC_DIR = _env_path('RECLMR_MUSIC_DIR', Path.home() / 'Music')
+    PIPER_DIR = _env_path('RECLMR_PIPER_DIR', Path.home() / '.local/share/piper')
     try:
         MUSIC_DIR.mkdir(parents=True, exist_ok=True)
     except OSError:
         pass
 
 # Piper TTS voice models directory
-PIPER_DIR = _env_path('DECLOUD_PIPER_DIR', Path.home() / '.local/share/piper')
+PIPER_DIR = _env_path('RECLMR_PIPER_DIR', Path.home() / '.local/share/piper')
 
 # In-memory cache for parsed PDF text (avoids re-parsing on every request)
 _pdf_text_cache = {}  # key: (book_id, chapter_idx) -> text
@@ -479,7 +470,7 @@ VOICES = {
 
 # ─── LLM (local Ollama) ────────────────────────────────────────
 OLLAMA_URL = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')
-LLM_MODEL = os.environ.get('DECLOUD_LLM_MODEL', 'llama3.2')
+LLM_MODEL = os.environ.get('RECLMR_LLM_MODEL', 'llama3.2')
 LLM_TIMEOUT = 90
 
 def llm_chat(messages, timeout=LLM_TIMEOUT):
@@ -551,8 +542,8 @@ def get_text_up_to_position(text, word_index):
     return text  # full chapter if no position
 
 # ─── File Browser ──────────────────────────────────────────────
-# The directory the Files app browses. Set DECLOUD_FILES_DIR in .env
-FILES_DIR = _env_path('DECLOUD_FILES_DIR', Path.home())
+# The directory the Files app browses. Set RECLMR_FILES_DIR in .env
+FILES_DIR = _env_path('RECLMR_FILES_DIR', Path.home())
 THUMB_CACHE_DIR = BASE_DIR / 'thumb_cache'
 THUMB_CACHE_DIR.mkdir(exist_ok=True)
 THUMB_SIZE = (200, 200)
@@ -588,8 +579,8 @@ def _generate_thumbnail(source_path: Path, size: tuple = THUMB_SIZE) -> Path | N
 
 def browse_root():
     """What the Files app and Gallery treat as the top of the tree. Opt in to the whole machine with
-    DECLOUD_BROWSE_ROOT=/ ; otherwise it is FILES_DIR, as before."""
-    r = os.environ.get('DECLOUD_BROWSE_ROOT', '').strip()
+    RECLMR_BROWSE_ROOT=/ ; otherwise it is FILES_DIR, as before."""
+    r = os.environ.get('RECLMR_BROWSE_ROOT', '').strip()
     return Path(r).expanduser().resolve() if r else Path(FILES_DIR).resolve()
 
 
@@ -639,8 +630,8 @@ _folder_info_cache = {}  # path -> (mtime, child_count, has_images)
 
 # ─── ComfyUI ────────────────────────────────────────────────────
 COMFY_URL = os.environ.get('COMFY_URL', 'http://localhost:8188')
-COMFY_OUTPUT = _env_path('DECLOUD_COMFY_OUTPUT', Path.home() / 'ComfyUI' / 'output')
-COMFY_INPUT = _env_path('DECLOUD_COMFY_INPUT', Path.home() / 'ComfyUI' / 'input')
+COMFY_OUTPUT = _env_path('RECLMR_COMFY_OUTPUT', Path.home() / 'ComfyUI' / 'output')
+COMFY_INPUT = _env_path('RECLMR_COMFY_INPUT', Path.home() / 'ComfyUI' / 'input')
 
 # ─── Voice System: Whisper + Engines ────────────────────────────
 _whisper_model = None
@@ -853,7 +844,7 @@ def llm_complete(messages, temperature=0.3, max_tokens=None, model=None, timeout
     if cfg.get('llm_backend') == 'cloud':
         provider = cfg.get('llm_cloud_provider', 'openai')
         cloud_model = cfg.get('llm_cloud_model') or 'gpt-4o-mini'
-        api_key = os.environ.get('DECLOUD_LLM_API_KEY', '').strip()
+        api_key = os.environ.get('RECLMR_LLM_API_KEY', '').strip()
         if not api_key:
             raise RuntimeError('No API key configured for the cloud LLM')
         if provider == 'anthropic':
@@ -870,13 +861,13 @@ def llm_complete(messages, temperature=0.3, max_tokens=None, model=None, timeout
 # ─── Optional modules (set env vars to enable) ──────────────────
 # These features need external tools/config to work.
 # If env vars aren't set, the modules load but return helpful errors.
-OSINT_TOOLS_DIR = os.environ.get('DECLOUD_OSINT_DIR', '')  # path to osint-tools
-JOURNAL_DIR = _env_path('DECLOUD_JOURNAL_DIR', '')  # path to Obsidian vault
-HERMES_HOME = os.environ.get('DECLOUD_HERMES_HOME', '')  # path to .hermes
+OSINT_TOOLS_DIR = os.environ.get('RECLMR_OSINT_DIR', '')  # path to osint-tools
+JOURNAL_DIR = _env_path('RECLMR_JOURNAL_DIR', '')  # path to Obsidian vault
+HERMES_HOME = os.environ.get('RECLMR_HERMES_HOME', '')  # path to .hermes
 
 # ─── Projects config (data-driven, edit in settings or .env) ───
 # Empty by default - users add their own projects in the UI
-PROJECTS_CONFIG = json.loads(os.environ.get('DECLOUD_PROJECTS', '[]'))
+PROJECTS_CONFIG = json.loads(os.environ.get('RECLMR_PROJECTS', '[]'))
 
 # ─── Network stats state ────────────────────────────────────────
 _network_last = {'bytes_sent': 0, 'bytes_recv': 0, 'ts': 0}
@@ -977,7 +968,7 @@ def _read_logs(limit=100):
     return log_lines
 
 # ─── Music ──────────────────────────────────────────────────────
-MUSIC_DIR = _env_path('DECLOUD_MUSIC_DIR', Path.home() / 'Music')
+MUSIC_DIR = _env_path('RECLMR_MUSIC_DIR', Path.home() / 'Music')
 try:
     MUSIC_DIR.mkdir(parents=True, exist_ok=True)
 except OSError:

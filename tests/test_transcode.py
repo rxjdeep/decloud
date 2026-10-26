@@ -50,7 +50,7 @@ def test_unknown_quality_is_ignored(client, auth_headers, nd):
 
 
 def test_cache_is_trimmed(client, auth_headers, nd, monkeypatch):
-    monkeypatch.setenv('DECLOUD_TRANSCODE_CACHE_MB', '0')
+    monkeypatch.setenv('RECLMR_TRANSCODE_CACHE_MB', '0')
     client.get('/api/music/stream/one', query_string={'q': 64}, headers=auth_headers)
     client.get('/api/music/stream/two', query_string={'q': 64}, headers=auth_headers)
     left = [f.name for f in music._TC_DIR.glob('*.mp3')]

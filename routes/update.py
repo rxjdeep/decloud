@@ -45,8 +45,8 @@ _REF_PATTERN = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$')
 # Cache for the remote "latest version" lookup (10 minutes)
 _latest_cache = {'ts': 0.0, 'data': None}
 
-# Self-update repo. Overridable via env for forks (e.g. DECLOUD_UPDATE_REPO=myorg/decloud).
-UPDATE_REPO = os.environ.get('DECLOUD_UPDATE_REPO', 'rxjdeep/decloud')
+# Self-update repo. Overridable via env for forks (e.g. RECLMR_UPDATE_REPO=myorg/reclmr).
+UPDATE_REPO = os.environ.get('RECLMR_UPDATE_REPO', 'rxjdeep/reclmr')
 GITHUB_RELEASES_URL = f'https://api.github.com/repos/{UPDATE_REPO}/releases/latest'
 GITHUB_TAGS_URL = f'https://api.github.com/repos/{UPDATE_REPO}/tags'
 
@@ -131,9 +131,9 @@ def _boot_probe(timeout=25) -> tuple:
         s.bind(('127.0.0.1', 0))
         probe_port = s.getsockname()[1]
     env = dict(os.environ)
-    env['DECLOUD_PORT'] = str(probe_port)
-    env['DECLOUD_HOST'] = '127.0.0.1'
-    env['DECLOUD_UPDATE_PROBE'] = '1'  # app.py skips rollback logic in probes
+    env['RECLMR_PORT'] = str(probe_port)
+    env['RECLMR_HOST'] = '127.0.0.1'
+    env['RECLMR_UPDATE_PROBE'] = '1'  # app.py skips rollback logic in probes
     try:
         proc = subprocess.Popen(
             [sys.executable, 'app.py'], cwd=str(BASE_DIR),
@@ -256,7 +256,7 @@ def _fetch_latest_from_github() -> dict:
             data = None
     return data or {}
 
-# ─── Core logic (shared by the HTTP routes and the `decloud update` CLI) ──
+# ─── Core logic (shared by the HTTP routes and the `reclmr update` CLI) ──
 
 def check_status():
     """Return the update status dict. Read-only."""
@@ -442,7 +442,7 @@ def _schedule_restart() -> bool:
     """Kill this process in 2 seconds; the service manager (systemd
     Restart=always / launchd / scheduled task) brings it back on the
     new code. Disabled via env for tests. Returns True if scheduled."""
-    if os.environ.get('DECLOUD_UPDATE_DISABLE_RESTART') == '1':
+    if os.environ.get('RECLMR_UPDATE_DISABLE_RESTART') == '1':
         return False
     script = (
         'import os, signal, sys, time\n'

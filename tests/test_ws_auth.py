@@ -10,7 +10,7 @@ import time
 import pytest
 
 from shared import (
-    DECLOUD_PIN, SESSIONS, SESSION_TTL_SECONDS, ws_is_authenticated,
+    RECLMR_PIN, SESSIONS, SESSION_TTL_SECONDS, ws_is_authenticated,
 )
 
 
@@ -38,7 +38,7 @@ class TestWsAuthHelper:
         assert ws_is_authenticated(_environ()) is False
 
     def test_cookie_accepted(self, session_token):
-        assert ws_is_authenticated(_environ(HTTP_COOKIE=f'decloud_session={session_token}')) is True
+        assert ws_is_authenticated(_environ(HTTP_COOKIE=f'reclmr_session={session_token}')) is True
 
     def test_bearer_accepted(self, session_token):
         assert ws_is_authenticated(_environ(HTTP_AUTHORIZATION=f'Bearer {session_token}')) is True
@@ -51,7 +51,7 @@ class TestWsAuthHelper:
         assert ws_is_authenticated(env) is True
 
     def test_unknown_token_rejected(self, session_token):
-        env = _environ(HTTP_COOKIE='decloud_session=not-a-real-token')
+        env = _environ(HTTP_COOKIE='reclmr_session=not-a-real-token')
         assert ws_is_authenticated(env) is False
 
     def test_expired_token_rejected(self, session_token):
@@ -60,10 +60,10 @@ class TestWsAuthHelper:
 
     def test_raw_passcode_rejected(self):
         # The passcode itself must never authenticate a socket
-        env = _environ(QUERY_STRING=f'token={DECLOUD_PIN}')
+        env = _environ(QUERY_STRING=f'token={RECLMR_PIN}')
         assert ws_is_authenticated(env) is False
 
     def test_open_mode_allows(self, monkeypatch):
         import shared
-        monkeypatch.setattr(shared, 'DECLOUD_PIN', '')
+        monkeypatch.setattr(shared, 'RECLMR_PIN', '')
         assert ws_is_authenticated(_environ()) is True

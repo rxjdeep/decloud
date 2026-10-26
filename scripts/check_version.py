@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Verify DeCloud's version is consistent across the three places it lives.
+"""Verify reclmr's version is consistent across the three places it lives.
 
 Exit non-zero (fail CI) if:
   - routes/version.py VERSION != CHANGELOG[0]["version"]
   - CHANGELOG[0] is missing a date or changes list
-  - decloud VERSION != routes/version.py VERSION
+  - reclmr VERSION != routes/version.py VERSION
 """
 import re
 import sys
@@ -20,7 +20,7 @@ def fail(msg):
 
 def main():
     version_file = ROOT / 'routes' / 'version.py'
-    decloud_file = ROOT / 'reclmr'
+    reclmr_file = ROOT / 'reclmr'
     ok = True
 
     vtext = version_file.read_text()
@@ -47,12 +47,12 @@ def main():
         if not entry_changes:
             ok = fail('CHANGELOG[0] is missing a "changes" list')
 
-    dtext = decloud_file.read_text()
+    dtext = reclmr_file.read_text()
     dm = re.search(r'^VERSION="([^"]+)"', dtext, re.MULTILINE)
     if not dm:
-        ok = fail('VERSION not found in decloud script')
+        ok = fail('VERSION not found in reclmr script')
     elif dm.group(1) != version:
-        ok = fail(f'decloud VERSION ({dm.group(1)}) does not match routes/version.py ({version})')
+        ok = fail(f'reclmr VERSION ({dm.group(1)}) does not match routes/version.py ({version})')
 
     if not ok:
         sys.exit(1)

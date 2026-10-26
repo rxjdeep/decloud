@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.decloud.app">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.reclmr.app">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -19,7 +19,7 @@
     <application android:label="@string/app_name" android:icon="@drawable/ic_launcher" android:allowBackup="false"
         android:usesCleartextTraffic="false" android:theme="@style/AppTheme">
 
-        <!-- DeCloud itself: a WebView on your server -->
+        <!-- reclmr itself: a WebView on your server -->
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|density|uiMode|fontScale"
             android:windowSoftInputMode="adjustResize">
@@ -27,7 +27,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "Share" a song name or link from another app: DeCloud opens its Search with that text -->
+            <!-- "Share" a song name or link from another app: reclmr opens its Search with that text -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

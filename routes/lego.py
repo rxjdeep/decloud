@@ -362,7 +362,7 @@ UPLOAD_CHUNK = 1 << 20
 
 def _upload_limit():
     try:
-        return int(os.environ.get('DECLOUD_UPLOAD_MAX_MB', '20480')) * 1024 * 1024
+        return int(os.environ.get('RECLMR_UPLOAD_MAX_MB', '20480')) * 1024 * 1024
     except ValueError:
         return 20480 * 1024 * 1024
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-JSON-based TTS worker for the DeCloud.
+JSON-based TTS worker for the reclmr.
 Reads chapter text from a JSON file instead of a PDF, generates audio with Piper TTS.
 JSON format: [{"chapter": 1, "title": "...", "text": "..."}, ...]
 """
 import sys, wave, subprocess, os, json, re
 from pathlib import Path
 
-_PIPER_DIR = os.environ.get('DECLOUD_PIPER_DIR', str(Path.home() / '.local' / 'share' / 'piper'))
+_PIPER_DIR = os.environ.get('RECLMR_PIPER_DIR', str(Path.home() / '.local' / 'share' / 'piper'))
 VOICE_MAP = {
     'kathleen-low': os.path.join(_PIPER_DIR, 'en_US-kathleen-low.onnx'),
     'lessac-medium': os.path.join(_PIPER_DIR, 'en_US-lessac-medium.onnx'),

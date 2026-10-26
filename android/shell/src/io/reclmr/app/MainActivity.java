@@ -1,4 +1,4 @@
-package io.decloud.app;
+package io.reclmr.app;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -14,7 +14,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 
-/** DeCloud itself: the shared WebView, drawn edge to edge under transparent system bars. */
+/** reclmr itself: the shared WebView, drawn edge to edge under transparent system bars. */
 public class MainActivity extends Activity {
     private FrameLayout root;
     private WebView web;
@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    // The system back swipe at the left edge would swallow the page's own edge swipe, so while DeCloud is on screen its sensitivity is 0.
+    // The system back swipe at the left edge would swallow the page's own edge swipe, so while reclmr is on screen its sensitivity is 0.
     // The value you had is kept in preferences and put back the moment the app leaves the screen (or, if it died first, the next time it opens).
     private static final String[] EDGES = { "back_gesture_inset_scale_left" };
     private static float sane(float v) { return v < 0.05f ? 1f : v; }          // 0 is what this app sets, never what you chose: a stray 0 is never kept as "your" value

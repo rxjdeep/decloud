@@ -47,12 +47,12 @@ if ('serviceWorker' in navigator) {
 // ─── Init (wrapped in try-catch so one failure doesn't brick everything) ─
 // Delayed slightly so auth.js can check authentication first.
 // If login screen is showing, skip init until user authenticates.
-function decloudInit() {
+function reclmrInit() {
   // Don't init if login screen is visible (not yet authenticated)
   var loginScreen = document.getElementById('login-screen');
   if (loginScreen && loginScreen.style.display !== 'none' && loginScreen.style.display !== '') {
     // Login screen is showing - retry in 500ms
-    setTimeout(decloudInit, 500);
+    setTimeout(reclmrInit, 500);
     return;
   }
   buildStatusChips();
@@ -66,7 +66,7 @@ function decloudInit() {
   setInterval(refreshProjectCards, 120000);
   setInterval(refreshNotifications, 60000);
 }
-try { decloudInit(); } catch(e) { console.error('recl/\\mr init error:', e); showCrashRecovery(e); }
+try { reclmrInit(); } catch(e) { console.error('recl/\\mr init error:', e); showCrashRecovery(e); }
 
 // Restore screen from URL hash on load/refresh
 function restoreFromHash() {

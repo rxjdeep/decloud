@@ -9,8 +9,8 @@ TOKEN = 'T' * 32
 
 @pytest.fixture()
 def bk(tmp_path, monkeypatch):
-    monkeypatch.setenv('DECLOUD_BACKUP_TOKEN', TOKEN)
-    monkeypatch.setenv('DECLOUD_BACKUP_DIR', str(tmp_path / 'bk'))
+    monkeypatch.setenv('RECLMR_BACKUP_TOKEN', TOKEN)
+    monkeypatch.setenv('RECLMR_BACKUP_DIR', str(tmp_path / 'bk'))
     backup._fails.clear()
     return tmp_path / 'bk'
 
@@ -27,9 +27,9 @@ def put(client, rel, data, m=None, headers=None):
 
 
 def test_off_without_a_token(client, monkeypatch):
-    monkeypatch.setenv('DECLOUD_BACKUP_TOKEN', '')
+    monkeypatch.setenv('RECLMR_BACKUP_TOKEN', '')
     assert client.post('/api/backup/check', json={'files': []}, headers=H()).status_code == 404
-    monkeypatch.setenv('DECLOUD_BACKUP_TOKEN', 'short')
+    monkeypatch.setenv('RECLMR_BACKUP_TOKEN', 'short')
     assert client.post('/api/backup/check', json={'files': []}, headers=H('short')).status_code == 404
 
 
@@ -96,13 +96,13 @@ def test_truncated_upload_is_discarded(client, bk):
 
 
 def test_size_cap(client, bk, monkeypatch):
-    monkeypatch.setenv('DECLOUD_BACKUP_MAX_MB', '1')
+    monkeypatch.setenv('RECLMR_BACKUP_MAX_MB', '1')
     assert put(client, 'Camera/big.bin', b'z' * (1024 * 1024 + 1)).status_code == 413
     assert put(client, 'Camera/ok.bin', b'z' * 1024).status_code == 200
 
 
 def test_large_body_beats_the_app_wide_cap(client, bk, monkeypatch):
-    monkeypatch.setenv('DECLOUD_BACKUP_MAX_MB', '300')
+    monkeypatch.setenv('RECLMR_BACKUP_MAX_MB', '300')
     assert put(client, 'Camera/video.mp4', b'v' * (101 * 1024 * 1024)).status_code == 200      # > the 100 MB cap other routes keep
     assert (bk / 'Camera' / 'video.mp4').stat().st_size == 101 * 1024 * 1024
 

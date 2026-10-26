@@ -9,7 +9,6 @@ set -e
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="reclmr"
-[ -f "$HOME/.config/systemd/user/decloud.service" ] && SERVICE_NAME="decloud"      # an existing install keeps its service name
 
 # ─── Detect OS ──────────────────────────────────────────────────
 OS_TYPE="linux"
@@ -33,8 +32,8 @@ if ! git -C "$APP_DIR" rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
     echo "⚠ This is NOT a git checkout — the in-app updater will be unavailable."
     echo "  The app installs and runs fine, but for one-click updates reinstall with:"
     echo ""
-    echo "    git clone https://github.com/rxjdeep/decloud ~/decloud"
-    echo "    cd ~/decloud && ./install.sh"
+    echo "    git clone https://github.com/rxjdeep/reclmr ~/reclmr"
+    echo "    cd ~/reclmr && ./install.sh"
     echo ""
 fi
 
@@ -156,11 +155,11 @@ if [ ! -f .env ]; then
     # to brute-force; the app warns if you shorten it below 8 characters)
     PIN=$($PYBIN -c "import secrets; print(''.join(str(secrets.randbelow(10)) for _ in range(8)))")
     # Idempotent: replace any existing PIN line (either name), else append.
-    if grep -qE '^(RECLMR|DECLOUD)_PIN=' .env 2>/dev/null; then
+    if grep -q '^RECLMR_PIN=' .env 2>/dev/null; then
         if [ "$OS_TYPE" = "macos" ]; then
-            sed -i '' -E "s/^(RECLMR|DECLOUD)_PIN=.*/\1_PIN=$PIN/" .env
+            sed -i '' "s/^RECLMR_PIN=.*/RECLMR_PIN=$PIN/" .env
         else
-            sed -i -E "s/^(RECLMR|DECLOUD)_PIN=.*/\1_PIN=$PIN/" .env
+            sed -i "s/^RECLMR_PIN=.*/RECLMR_PIN=$PIN/" .env
         fi
     else
         echo "RECLMR_PIN=$PIN" >> .env
@@ -172,7 +171,7 @@ fi
 chmod 600 .env 2>/dev/null || true
 
 # ─── Piper TTS voices (downloaded so speech works out of the box) ──
-PIPER_DIR=$(grep -E '^(RECLMR|DECLOUD)_PIPER_DIR=' .env 2>/dev/null | cut -d= -f2- | sed 's/^"//;s/"$//')
+PIPER_DIR=$(grep '^RECLMR_PIPER_DIR=' .env 2>/dev/null | cut -d= -f2- | sed 's/^"//;s/"$//')
 if [ -z "$PIPER_DIR" ]; then
     PIPER_DIR="$HOME/.local/share/piper"
 fi
@@ -200,13 +199,13 @@ _fetch_voice "kathleen" "low"
 
 # ─── Service setup (platform-specific) ──────────────────────────
 echo ""
-PORT=$(grep -E "^(RECLMR|DECLOUD)_PORT=" .env 2>/dev/null | tail -n1 | cut -d= -f2 || echo "8899")
+PORT=$(grep "^RECLMR_PORT=" .env 2>/dev/null | tail -n1 | cut -d= -f2 || echo "8899")
 
 if [ "$OS_TYPE" = "macos" ]; then
     echo "→ Setting up macOS LaunchAgent..."
     LAUNCH_DIR="$HOME/Library/LaunchAgents"
     mkdir -p "$LAUNCH_DIR"
-    PLIST_FILE="$LAUNCH_DIR/com.decloud.app.plist"
+    PLIST_FILE="$LAUNCH_DIR/com.reclmr.app.plist"
 
     cat > "$PLIST_FILE" << 'PLISTEOF'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -214,7 +213,7 @@ if [ "$OS_TYPE" = "macos" ]; then
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.decloud.app</string>
+    <string>com.reclmr.app</string>
     <key>WorkingDirectory</key>
     <string>__APP_DIR__</string>
     <key>ProgramArguments</key>
@@ -227,9 +226,9 @@ if [ "$OS_TYPE" = "macos" ]; then
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>__APP_DIR__/decloud.log</string>
+    <string>__APP_DIR__/reclmr.log</string>
     <key>StandardErrorPath</key>
-    <string>__APP_DIR__/decloud.log</string>
+    <string>__APP_DIR__/reclmr.log</string>
 </dict>
 </plist>
 PLISTEOF
@@ -241,9 +240,9 @@ PLISTEOF
 elif [ "$OS_TYPE" = "wsl" ]; then
     echo "→ Setting up WSL background service..."
     pkill -f "python.*app.py" 2>/dev/null || true
-    nohup "$APP_DIR/.venv/bin/python" "$APP_DIR/app.py" > "$APP_DIR/decloud.log" 2>&1 &
-    echo $! > "$APP_DIR/decloud.pid"
-    echo "✓ reclmr started (PID: $(cat "$APP_DIR/decloud.pid"))"
+    nohup "$APP_DIR/.venv/bin/python" "$APP_DIR/app.py" > "$APP_DIR/reclmr.log" 2>&1 &
+    echo $! > "$APP_DIR/reclmr.pid"
+    echo "✓ reclmr started (PID: $(cat "$APP_DIR/reclmr.pid"))"
 
 else
     # Linux: systemd user service
@@ -281,8 +280,8 @@ WantedBy=default.target
 SVCEOF
 
     systemctl --user daemon-reload
-    systemctl --user enable decloud
-    systemctl --user restart decloud
+    systemctl --user enable reclmr
+    systemctl --user restart reclmr
     echo "✓ Service installed and started"
 fi
 
@@ -295,12 +294,11 @@ chmod +x "$APP_DIR/reclmr"
 # work from any directory. Most distros already include ~/.local/bin in PATH.
 mkdir -p "$HOME/.local/bin"
 ln -sf "$APP_DIR/reclmr" "$HOME/.local/bin/reclmr"
-[ -e "$HOME/.local/bin/decloud" ] && ln -sf "$APP_DIR/reclmr" "$HOME/.local/bin/decloud"      # the old command name keeps working
 echo "✓ 'reclmr' command installed to ~/.local/bin (reclmr update, status, qr, …)"
 
 # The reclmr wrapper starts the app and the Tailscale funnel together
 # (no third-party relays). A non-root user may need `sudo tailscale funnel`.
-"$APP_DIR/decloud" start
+"$APP_DIR/reclmr" start
 
 # Get the funnel URL (can take a few seconds to appear)
 TUNNEL_URL=""
@@ -321,7 +319,7 @@ else
 fi
 
 # ─── Done ───────────────────────────────────────────────────────
-PIN=$(grep -E "^(RECLMR|DECLOUD)_PIN=" .env 2>/dev/null | tail -n1 | cut -d= -f2 || echo "")
+PIN=$(grep "^RECLMR_PIN=" .env 2>/dev/null | tail -n1 | cut -d= -f2 || echo "")
 echo ""
 echo ""
 echo "╔══════════════════════════════════════════════╗"
@@ -346,15 +344,15 @@ if [ -n "$TUNNEL_URL" ]; then
     echo ""
     echo "   2. Create a free Cloudflare account & tunnel:"
     echo "      cloudflared tunnel login"
-    echo "      cloudflared tunnel create decloud"
+    echo "      cloudflared tunnel create reclmr"
     echo ""
     echo "   3. Point a domain (yours or free subdomain):"
-    echo "      cloudflared tunnel route dns decloud mydomain.com"
+    echo "      cloudflared tunnel route dns reclmr mydomain.com"
     echo ""
     echo "   4. Run the tunnel:"
-    echo "      cloudflared tunnel run decloud"
+    echo "      cloudflared tunnel run reclmr"
     echo ""
-    echo "   Result: https://decloud.mydomain.com (permanent, never changes)"
+    echo "   Result: https://reclmr.mydomain.com (permanent, never changes)"
     echo ""
     echo "🔐 ALTERNATIVE (Private-only access):"
     echo "   Use Tailscale for permanent HTTPS from your own devices:"
@@ -396,21 +394,21 @@ fi
 
 echo ""
 echo "Manage reclmr:"
-echo "  ./decloud status   — check what's running"
-echo "  ./decloud qr       — show current tunnel URL + QR code"
-echo "  ./decloud restart  — restart app + tunnel (new QR if tunnel changed)"
+echo "  ./reclmr status   — check what's running"
+echo "  ./reclmr qr       — show current tunnel URL + QR code"
+echo "  ./reclmr restart  — restart app + tunnel (new QR if tunnel changed)"
 echo ""
 echo "System service:"
 if [ "$OS_TYPE" = "macos" ]; then
-    echo "  launchctl list | grep decloud      # status"
+    echo "  launchctl list | grep reclmr      # status"
     echo "  launchctl unload $PLIST_FILE       # stop"
     echo "  launchctl load $PLIST_FILE         # start"
 elif [ "$OS_TYPE" = "wsl" ]; then
-    echo "  ./decloud restart                  # restart everything"
+    echo "  ./reclmr restart                  # restart everything"
 else
-    echo "  systemctl --user status decloud    # status"
-    echo "  systemctl --user restart decloud   # restart"
-    echo "  systemctl --user stop decloud      # stop"
+    echo "  systemctl --user status reclmr    # status"
+    echo "  systemctl --user restart reclmr   # restart"
+    echo "  systemctl --user stop reclmr      # stop"
 fi
 echo ""
 echo "Uninstall: ./uninstall.sh"

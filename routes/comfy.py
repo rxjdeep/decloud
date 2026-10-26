@@ -16,7 +16,7 @@ def _comfy_strategy() -> tuple:
 
     Returns (strategy, argv) where strategy is one of:
       'systemd'  - a comfyui user unit exists; argv = systemctl args
-      'cmd'      - DECLOUD_COMFY_CMD from .env; argv = shell-split cmd
+      'cmd'      - RECLMR_COMFY_CMD from .env; argv = shell-split cmd
       'main.py'  - found a ComfyUI checkout; argv = python main.py
       None       - nothing found; the UI shows setup guidance
     """
@@ -30,7 +30,7 @@ def _comfy_strategy() -> tuple:
         pass
 
     # 2. Explicit command from .env
-    cmd = os.environ.get('DECLOUD_COMFY_CMD', '').strip()
+    cmd = os.environ.get('RECLMR_COMFY_CMD', '').strip()
     if cmd:
         try:
             argv = shlex.split(cmd)
@@ -84,7 +84,7 @@ def comfy_start():
     if not argv:
         return jsonify({
             'error': 'ComfyUI is not installed where Reclmr can find it. '
-                     'Install ComfyUI, or set DECLOUD_COMFY_CMD in .env to '
+                     'Install ComfyUI, or set RECLMR_COMFY_CMD in .env to '
                      'the command that starts it.',
             'code': 'NOT_INSTALLED',
         }), 409
@@ -233,7 +233,7 @@ def comfy_generate():
         },
         "9": {
             "class_type": "SaveImage",
-            "inputs": {"filename_prefix": "decloud", "images": ["8", 0]}
+            "inputs": {"filename_prefix": "reclmr", "images": ["8", 0]}
         }
     }
 

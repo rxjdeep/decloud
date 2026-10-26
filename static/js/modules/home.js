@@ -16,7 +16,7 @@ async function loadAgents() {
     const agents = data.agents || [];
 
     if (!agents.length) {
-      listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🤖</div><h3>No agents found</h3><p>Set DECLOUD_HERMES_HOME in .env to enable agent management.</p></div>';
+      listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🤖</div><h3>No agents found</h3><p>Set RECLMR_HERMES_HOME in .env to enable agent management.</p></div>';
       return;
     }
 
@@ -56,7 +56,7 @@ async function loadAgents() {
     }
   } catch(e) {
     console.error('loadAgents failed', e);
-    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🤖</div><h3>Agents not configured</h3><p>Set DECLOUD_HERMES_HOME in .env to enable agent management.</p></div>';
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🤖</div><h3>Agents not configured</h3><p>Set RECLMR_HERMES_HOME in .env to enable agent management.</p></div>';
   }
 }
 

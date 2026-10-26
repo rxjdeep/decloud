@@ -247,7 +247,7 @@ async function loadSystem() {
         </details>
       </details>`;
     document.getElementById('lab-agent-cmd').textContent =
-      `sudo apt install -y python3-psutil\ncurl -fsSL ${location.origin}/lab-agent.py -o decloud-agent.py\npython3 decloud-agent.py --install-service`;
+      `sudo apt install -y python3-psutil\ncurl -fsSL ${location.origin}/lab-agent.py -o reclmr-agent.py\npython3 reclmr-agent.py --install-service`;
   }
   try { await labRefresh(); } catch {
     document.getElementById('lab-card').innerHTML = '<p class="lab-loading">Couldn\'t read this machine\'s stats. Is recl/\\mr still running?</p>';

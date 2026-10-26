@@ -1,6 +1,6 @@
 """OSINT watcher routes.
 
-Requires an external osint-tools package. Set DECLOUD_OSINT_DIR in .env
+Requires an external osint-tools package. Set RECLMR_OSINT_DIR in .env
 to the directory containing osint_watcher.py. If not configured,
 endpoints return helpful error messages.
 """
@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request
 
 bp = Blueprint('osint', __name__)
 
-OSINT_DIR = os.environ.get('DECLOUD_OSINT_DIR', '')
+OSINT_DIR = os.environ.get('RECLMR_OSINT_DIR', '')
 
 def _osint_available():
     """Check if osint tools are installed."""
@@ -29,7 +29,7 @@ def _load_osint():
 
 def _not_configured():
     return jsonify({
-        'error': 'OSINT tools not configured. Set DECLOUD_OSINT_DIR in your .env file.'
+        'error': 'OSINT tools not configured. Set RECLMR_OSINT_DIR in your .env file.'
     }), 503
 
 @bp.route('/api/osint/profiles', methods=['GET'])

@@ -44,7 +44,7 @@ function toggleVoice() {
 // ─── Microphone permission ───
 
 function micPermissionGranted() {
-  return sessionStorage.getItem('decloud_mic_granted') === '1';
+  return sessionStorage.getItem('reclmr_mic_granted') === '1';
 }
 
 function showPermissionButton() {
@@ -65,7 +65,7 @@ async function requestMicPermission() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => t.stop());
-    sessionStorage.setItem('decloud_mic_granted', '1');
+    sessionStorage.setItem('reclmr_mic_granted', '1');
     hidePermissionButton();
     startAutoListen();
   } catch (e) {

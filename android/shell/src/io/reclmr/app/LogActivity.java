@@ -1,4 +1,4 @@
-package io.decloud.app;
+package io.reclmr.app;
 
 import android.app.Activity;
 import android.content.ClipData;
@@ -27,7 +27,7 @@ public class LogActivity extends Activity {
         root.setPadding((int) (12 * d), (int) (28 * d), (int) (12 * d), (int) (12 * d));
         LinearLayout row = new LinearLayout(this);
         row.addView(button("Copy log", new View.OnClickListener() { @Override public void onClick(View v) {
-            ((ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("decloud log", Log.tail(LogActivity.this, 400_000)));
+            ((ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("reclmr log", Log.tail(LogActivity.this, 400_000)));
             Toast.makeText(LogActivity.this, "Log copied", Toast.LENGTH_SHORT).show();
         } }));
         row.addView(button("Clear", new View.OnClickListener() { @Override public void onClick(View v) { Log.clear(LogActivity.this); show(); } }));

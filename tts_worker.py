@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Chapter-aware TTS worker for the DeCloud.
+Chapter-aware TTS worker for the reclmr.
 Uses PyMuPDF to get the real TOC, extracts clean text per chapter,
 and generates audio with Piper TTS (kathleen-low voice).
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 import fitz  # pymupdf
 
 # ─── Voice selection ──────────────────────────────────────────
-_PIPER_DIR = os.environ.get('DECLOUD_PIPER_DIR', str(Path.home() / '.local' / 'share' / 'piper'))
+_PIPER_DIR = os.environ.get('RECLMR_PIPER_DIR', str(Path.home() / '.local' / 'share' / 'piper'))
 VOICE_MAP = {
     'kathleen-low': os.path.join(_PIPER_DIR, 'en_US-kathleen-low.onnx'),
     'lessac-medium': os.path.join(_PIPER_DIR, 'en_US-lessac-medium.onnx'),

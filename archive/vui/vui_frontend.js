@@ -50,7 +50,7 @@ async function startVuiStreaming() {
     // auth headers on WebSocket connections and SameSite cookies are not
     // sent cross-origin (tunnel URLs).
     const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const sess = sessionStorage.getItem('decloud_session') || '';
+    const sess = sessionStorage.getItem('reclmr_session') || '';
     vuiWS = new WebSocket(`${wsProto}://${location.host}/api/voice/vui/ws?cid=${encodeURIComponent(vuiClientId)}` +
       (sess ? `&token=${encodeURIComponent(sess)}` : ''));
 

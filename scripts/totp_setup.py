@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the TOTP secret that protects the DeCloud Terminal.
+"""Create the TOTP secret that protects the reclmr Terminal.
 
 Run this on the server, in your own terminal (not through the web UI), then scan the QR code with your
 authenticator app (Aegis: + > Scan QR code, or Enter manually: SHA1, 6 digits, 30 s).
@@ -13,11 +13,11 @@ from pathlib import Path
 from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent.parent
-PATH = Path(os.environ.get('DECLOUD_TOTP_FILE') or ROOT / 'totp.json')
+PATH = Path(os.environ.get('RECLMR_TOTP_FILE') or ROOT / 'totp.json')
 
 if '--check' in sys.argv:
     sys.path.insert(0, str(ROOT))
-    os.environ.setdefault('DECLOUD_TOTP_FILE', str(PATH))
+    os.environ.setdefault('RECLMR_TOTP_FILE', str(PATH))
     from routes.security import verify
     print('valid' if verify(sys.argv[sys.argv.index('--check') + 1]) else 'NOT valid')
     sys.exit(0)
@@ -30,8 +30,8 @@ os.fchmod(fd, 0o600)
 with os.fdopen(fd, 'w') as fh:
     json.dump({'secret': secret, 'last_step': 0, 'created': int(time.time())}, fh)
 os.replace(tmp, PATH)
-label = quote('DeCloud:' + (os.environ.get('USER') or 'terminal'))
-uri = 'otpauth://totp/%s?secret=%s&issuer=DeCloud&algorithm=SHA1&digits=6&period=30' % (label, secret)
+label = quote('reclmr:' + (os.environ.get('USER') or 'terminal'))
+uri = 'otpauth://totp/%s?secret=%s&issuer=reclmr&algorithm=SHA1&digits=6&period=30' % (label, secret)
 print('\nTerminal two-step code is ready. Saved to %s (mode 600).\n' % PATH)
 if shutil.which('qrencode'):
     subprocess.run(['qrencode', '-t', 'ansiutf8', uri])

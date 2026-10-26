@@ -211,7 +211,7 @@
         <li><b>Find music</b><span>Pick a category in the left sidebar, or use the search box (press <kbd>/</kbd>).</span></li>
         <li><b>Keyboard</b><span><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> skip 10 seconds · <kbd>N</kbd> next · <kbd>P</kbd> previous · <kbd>Esc</kbd> close menus</span></li>
         <li><b>Another device is playing?</b><span>The bottom bar says "Listening on…" and its buttons control that device. Use the devices button to move playback here.</span></li>
-        <li><b>Shuffle and repeat in your desktop media widget (KDE, GNOME)</b><span>Browsers can only give your desktop play, pause, next, previous and seek. For a real "recl/\mr" player with working shuffle, repeat, volume and cover art, run this once on that computer: <code id="wm-help-cmd">curl -fsSL /static/tools/decloud-mpris.py -o ~/decloud-mpris.py &amp;&amp; python3 ~/decloud-mpris.py</code> Then add <code>--install-service</code> to start it at login.</span></li>
+        <li><b>Shuffle and repeat in your desktop media widget (KDE, GNOME)</b><span>Browsers can only give your desktop play, pause, next, previous and seek. For a real "recl/\mr" player with working shuffle, repeat, volume and cover art, run this once on that computer: <code id="wm-help-cmd">curl -fsSL /static/tools/reclmr-mpris.py -o ~/reclmr-mpris.py &amp;&amp; python3 ~/reclmr-mpris.py</code> Then add <code>--install-service</code> to start it at login.</span></li>
         <li><b>The coloured dots</b><span>Red goes back to the recl/\mr home screen, yellow hides the sidebar, green goes full screen. Drag the sidebar's edge to resize it.</span></li>
       </ul>
     </div>
@@ -612,11 +612,11 @@
         <div class="settings-label">Android app</div>
         <div class="settings-row">
           <span>App log</span>
-          <button class="settings-btn" onclick="DeCloudApp.openLog()">Open</button>
+          <button class="settings-btn" onclick="ReclmrApp.openLog()">Open</button>
         </div>
         <div class="settings-row">
           <span>recl/\mr Backup</span>
-          <button class="settings-btn" onclick="DeCloudApp.openBackup()">Open</button>
+          <button class="settings-btn" onclick="ReclmrApp.openBackup()">Open</button>
         </div>
         <div class="settings-note">The log shows page errors and the music controls. recl/\mr Backup is a separate app; this opens it if it is installed.</div>
       </div>
@@ -860,12 +860,12 @@
         <div class="about-blurb">Self-hosted PWA dashboard. Tailscale-only, no accounts, no cloud. MIT licensed.</div>
         <div class="about-madeby">Made with recl/\mr</div>
         <div class="about-socials">
-          <a href="https://github.com/rxjdeep/decloud/issues" target="_blank" rel="noopener" class="about-social-link">GitHub</a>
+          <a href="https://github.com/rxjdeep/reclmr/issues" target="_blank" rel="noopener" class="about-social-link">GitHub</a>
         </div>
       </div>
       <div class="settings-group">
         <div class="settings-label">Feedback</div>
-        <button class="settings-feedback-btn" onclick="window.open('https://github.com/rxjdeep/decloud/issues/new', '_blank')">Open GitHub Issue</button>
+        <button class="settings-feedback-btn" onclick="window.open('https://github.com/rxjdeep/reclmr/issues/new', '_blank')">Open GitHub Issue</button>
       </div>
     </div>
   </div>
@@ -885,7 +885,7 @@
     <div class="journal-voice-content">
       <div class="onboarding-banner">
         <h3>Voice Journal</h3>
-        <p>Record a voice memo and recl/\mr transcribes it locally. Configure DECLOUD_JOURNAL_DIR in .env to save entries to your Obsidian vault.</p>
+        <p>Record a voice memo and recl/\mr transcribes it locally. Configure RECLMR_JOURNAL_DIR in .env to save entries to your Obsidian vault.</p>
       </div>
       <button class="journal-record-btn" id="journal-record-btn" onclick="startVoiceJournal()">
         <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""DeCloud lab report - one machine's specs + what's running, served to
+"""reclmr lab report - one machine's specs + what's running, served to
 paired hubs over pinned HTTPS.
 
 Used two ways:
-  * imported by DeCloud (routes/lab.py): builds the local report, and runs
+  * imported by reclmr (routes/lab.py): builds the local report, and runs
     LabServer when the user lets other devices add this computer
   * run standalone as the tiny agent on headless boxes (Pi, NAS, Proxmox):
         python3 lab_report.py --install-service   # pair with a hub, then run on boot
@@ -17,7 +17,7 @@ Security model:
   * the token a hub receives only unlocks GET /api/lab/report
 
 Standalone needs only Python 3.8+ and psutil (apt install python3-psutil).
-Keep this file free of DeCloud imports so it can be copied anywhere.
+Keep this file free of reclmr imports so it can be copied anywhere.
 """
 import base64
 import hashlib
@@ -168,7 +168,7 @@ def services(names):
     return out
 
 
-def report(service_names=None, kind='decloud'):
+def report(service_names=None, kind='reclmr'):
     procs = list(psutil.process_iter(['name', 'memory_percent']))
     for p in procs:
         try:
@@ -249,7 +249,7 @@ def _make_cert(cert, key):
         from cryptography.hazmat.primitives.asymmetric import ec
         from cryptography.x509.oid import NameOID
         k = ec.generate_private_key(ec.SECP256R1())
-        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'decloud-lab')])
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'reclmr-lab')])
         now = datetime.datetime.now(datetime.timezone.utc)
         c = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(k.public_key())
              .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(days=1))
@@ -259,7 +259,7 @@ def _make_cert(cert, key):
         cert.write_bytes(c.public_bytes(serialization.Encoding.PEM))
     except ImportError:  # standalone agent without the cryptography package
         subprocess.run(['openssl', 'req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1',
-                        '-nodes', '-keyout', str(key), '-out', str(cert), '-days', '3650', '-subj', '/CN=decloud-lab'],
+                        '-nodes', '-keyout', str(key), '-out', str(cert), '-days', '3650', '-subj', '/CN=reclmr-lab'],
                        check=True, capture_output=True)
         os.chmod(key, 0o600)
 
@@ -296,7 +296,7 @@ def sas(fp, nonce_h, nonce_d):
 
 
 # ─── Device side: HTTPS report + pairing, UDP discovery ──────────
-DISCOVERY_MSG = b'DECLOUD-LAB?'
+DISCOVERY_MSG = b'RECLMR-LAB?'
 PAIR_TTL = 120
 
 
@@ -304,7 +304,7 @@ class LabServer:
     """approve(hub_name, number) -> bool is called (it may block, e.g. waiting
     for a click or a y/N in the terminal) when a hub asks to pair."""
 
-    def __init__(self, state, name, report_fn, approve, host='0.0.0.0', port=AGENT_PORT, kind='decloud'):
+    def __init__(self, state, name, report_fn, approve, host='0.0.0.0', port=AGENT_PORT, kind='reclmr'):
         from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
         self.state, self.name, self.kind = state, name, kind
         sessions, lock, approve_lock = {}, threading.Lock(), threading.Lock()
@@ -452,7 +452,7 @@ def discover(timeout=1.5, port=AGENT_PORT):
                 d = json.loads(data)
                 fp = str(d.get('fp', ''))
                 if re.fullmatch(r'[0-9a-f]{64}', fp) and fp not in found:
-                    found[fp] = {'name': str(d.get('name', ''))[:40], 'kind': 'agent' if d.get('kind') == 'agent' else 'decloud',
+                    found[fp] = {'name': str(d.get('name', ''))[:40], 'kind': 'agent' if d.get('kind') == 'agent' else 'reclmr',
                                  'ip': ip, 'port': int(d.get('port') or port), 'fp': fp}
             except (socket.timeout, ValueError, TypeError):
                 pass
@@ -473,7 +473,7 @@ def pair_start(url, hub_name):
     if status != 200 or not isinstance(d, dict) or not re.fullmatch(r'[0-9a-f]{32}', str(d.get('nonce', ''))):
         raise OSError((d or {}).get('error') if isinstance(d, dict) else f'HTTP {status}')
     return {'url': url, 'fp': seen, 'nh': nh, 'session': str(d.get('session')), 'name': str(d.get('name', ''))[:40],
-            'kind': 'agent' if d.get('kind') == 'agent' else 'decloud', 'number': sas(seen, nh, d['nonce'])}
+            'kind': 'agent' if d.get('kind') == 'agent' else 'reclmr', 'number': sas(seen, nh, d['nonce'])}
 
 
 def pair_finish(job):
@@ -495,7 +495,7 @@ def parse_pairing_code(code):
     """Returns {'u','t','n','f'} or raises ValueError."""
     code = (code or '').strip()
     if not code.startswith('dcl1.'):
-        raise ValueError('That is not a DeCloud pairing code (it should start with dcl1.)')
+        raise ValueError('That is not a reclmr pairing code (it should start with dcl1.)')
     body = code[5:]
     try:
         d = json.loads(base64.urlsafe_b64decode(body + '=' * (-len(body) % 4)))
@@ -509,10 +509,10 @@ def parse_pairing_code(code):
 
 # ─── Standalone agent ────────────────────────────────────────────
 def _agent_main(argv):
-    cfg = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'decloud-agent'
+    cfg = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'reclmr-agent'
     state = State(cfg)
-    port = int(os.environ.get('DECLOUD_AGENT_PORT', AGENT_PORT))
-    svc = [s for s in os.environ.get('DECLOUD_LAB_SERVICES', '').replace(',', ' ').split() if s]
+    port = int(os.environ.get('RECLMR_AGENT_PORT', AGENT_PORT))
+    svc = [s for s in os.environ.get('RECLMR_LAB_SERVICES', '').replace(',', ' ').split() if s]
     name = platform.node()
     report_fn = lambda: report(svc, kind='agent')
     pairing = '--pair' in argv or '--install-service' in argv
@@ -522,13 +522,13 @@ def _agent_main(argv):
             print(f'Pairing request from "{hub}" ignored. To add a hub, run: python3 {Path(__file__).resolve()} --pair', flush=True)
             return False
         LabServer(state, name, report_fn, refuse, port=port, kind='agent').start()
-        print(f'DeCloud agent "{name}" serving on port {port}', flush=True)
+        print(f'reclmr agent "{name}" serving on port {port}', flush=True)
         threading.Event().wait()
 
     has_systemd = shutil.which('systemctl') is not None
-    was_running = has_systemd and subprocess.run(['systemctl', '--user', 'is-active', '--quiet', 'decloud-agent']).returncode == 0
+    was_running = has_systemd and subprocess.run(['systemctl', '--user', 'is-active', '--quiet', 'reclmr-agent']).returncode == 0
     if was_running:
-        subprocess.run(['systemctl', '--user', 'stop', 'decloud-agent'])
+        subprocess.run(['systemctl', '--user', 'stop', 'reclmr-agent'])
 
     paired = threading.Event()
 
@@ -543,7 +543,7 @@ def _agent_main(argv):
     srv = LabServer(state, name, report_fn, ask, port=port, kind='agent').start()
     code = pairing_code(f'https://{lan_ip()}:{port}', state.token, name, state.fp)
     print(f'\nThis computer ("{name}") is ready to be added.\n'
-          f'On your DeCloud hub: open Lab → Devices → Find devices, then tap Add next to "{name}".\n'
+          f'On your reclmr hub: open Lab → Devices → Find devices, then tap Add next to "{name}".\n'
           f'(Not on the same network? Paste this code instead:\n  {code} )\n\nWaiting… press Ctrl+C to skip.')
     try:
         while not paired.wait(0.5):
@@ -556,19 +556,19 @@ def _agent_main(argv):
     if '--install-service' in argv and has_systemd:
         unit_dir = Path.home() / '.config/systemd/user'
         unit_dir.mkdir(parents=True, exist_ok=True)
-        (unit_dir / 'decloud-agent.service').write_text(
-            '[Unit]\nDescription=DeCloud lab agent\nAfter=network-online.target\n\n'
+        (unit_dir / 'reclmr-agent.service').write_text(
+            '[Unit]\nDescription=reclmr lab agent\nAfter=network-online.target\n\n'
             f'[Service]\nExecStart={sys.executable} {Path(__file__).resolve()}\nRestart=always\n'
-            f'Environment=DECLOUD_AGENT_PORT={port}\nEnvironment=DECLOUD_LAB_SERVICES={",".join(svc)}\n\n'
+            f'Environment=RECLMR_AGENT_PORT={port}\nEnvironment=RECLMR_LAB_SERVICES={",".join(svc)}\n\n'
             '[Install]\nWantedBy=default.target\n')
         subprocess.run(['systemctl', '--user', 'daemon-reload'])
-        subprocess.run(['systemctl', '--user', 'enable', '--now', 'decloud-agent'])
+        subprocess.run(['systemctl', '--user', 'enable', '--now', 'reclmr-agent'])
         subprocess.run(['loginctl', 'enable-linger', os.environ.get('USER', '')], capture_output=True)
         print('Installed: the agent now starts on boot.')
     elif '--install-service' in argv:
         print(f'No systemd here: keep it running with your process manager:\n  python3 {Path(__file__).resolve()}')
     elif was_running:
-        subprocess.run(['systemctl', '--user', 'start', 'decloud-agent'])
+        subprocess.run(['systemctl', '--user', 'start', 'reclmr-agent'])
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ keeps a local history index so past songs are always browsable.
 Workflow handling is generic: the user exports their working
 MiniMax Music 3 workflow from ComfyUI ("Save (API format)") and drops
 it in the app directory as `musicgen_workflow.json` (or sets
-DECLOUD_MUSICGEN_WORKFLOW). Text inputs are patched by keyword
+RECLMR_MUSICGEN_WORKFLOW). Text inputs are patched by keyword
 (prompt/lyrics/text/style), an instrumental flag by keyword, and the
 audio save node's filename_prefix is set so output is recognizable.
 No node class names are hardcoded, so it survives workflow updates.
@@ -27,11 +27,11 @@ bp = Blueprint('musicgen', __name__)
 
 # ─── Config ───────────────────────────────────────────────────────
 MUSICGEN_DIR = Path(os.path.expandvars(os.path.expanduser(
-    os.environ.get('DECLOUD_MUSICGEN_DIR', '~/Music/decloud-generated'))))
+    os.environ.get('RECLMR_MUSICGEN_DIR', '~/Music/reclmr-generated'))))
 MUSICGEN_INDEX = MUSICGEN_DIR / 'index.json'
 
 WORKFLOW_FILE = Path(os.path.expandvars(os.path.expanduser(
-    os.environ.get('DECLOUD_MUSICGEN_WORKFLOW',
+    os.environ.get('RECLMR_MUSICGEN_WORKFLOW',
                    str(BASE_DIR / 'musicgen_workflow.json')))))
 
 AUDIO_EXTS = {'.wav', '.mp3', '.flac', '.ogg', '.m4a', '.aac'}
@@ -189,7 +189,7 @@ def musicgen_generate():
         }), 409
 
     params = {'prompt': prompt, 'lyrics': lyrics, 'instrumental': instrumental,
-              'filename_prefix': 'decloud_music'}
+              'filename_prefix': 'reclmr_music'}
     if duration:
         params['duration'] = duration
     api_workflow = _patch_workflow(workflow, params)

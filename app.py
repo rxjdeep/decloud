@@ -26,12 +26,12 @@ try:
     from routes.update import rollback_on_failed_boot, clear_marker_after_healthy_uptime
     from routes.update import read_update_meta
     register_blueprints(app, sock)
-    if os.environ.get('DECLOUD_UPDATE_PROBE') != '1':
+    if os.environ.get('RECLMR_UPDATE_PROBE') != '1':
         _meta = read_update_meta()
         if _meta.get('state') in ('installed', 'rolled_back', 'prepared'):
             clear_marker_after_healthy_uptime()
 except Exception as _boot_error:
-    if os.environ.get('DECLOUD_UPDATE_PROBE') != '1':
+    if os.environ.get('RECLMR_UPDATE_PROBE') != '1':
         try:
             from routes.update import rollback_on_failed_boot
             if rollback_on_failed_boot():
@@ -44,7 +44,7 @@ except Exception as _boot_error:
 
 
 if __name__ == '__main__':
-    PORT = int(os.environ.get('DECLOUD_PORT', '8899'))
+    PORT = int(os.environ.get('RECLMR_PORT', '8899'))
 
     # Bind to localhost by default - never expose directly to the network.
     # Remote access is provided exclusively by a tunnel (Tailscale Funnel
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     #   - Zero open ports on the machine
     #   - No port scanning attacks possible
     #   - No need for local SSL certs (tunnel handles HTTPS)
-    bind_host = os.environ.get('DECLOUD_HOST', '127.0.0.1')
+    bind_host = os.environ.get('RECLMR_HOST', '127.0.0.1')
 
     print(f'[Reclmr] Running on http://localhost:{PORT}')
     if bind_host not in ('127.0.0.1', 'localhost', '::1'):

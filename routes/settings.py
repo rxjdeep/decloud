@@ -6,13 +6,13 @@ import shared
 bp = Blueprint('settings', __name__)
 
 _ENV_PATH_KEYS = {
-    'books': 'DECLOUD_BOOKS_DIR',
-    'files': 'DECLOUD_FILES_DIR',
-    'music': 'DECLOUD_MUSIC_DIR',
+    'books': 'RECLMR_BOOKS_DIR',
+    'files': 'RECLMR_FILES_DIR',
+    'music': 'RECLMR_MUSIC_DIR',
 }
 
 def _update_env_file(updates):
-    """Persist DECLOUD_*_DIR values to .env, preserving everything else."""
+    """Persist RECLMR_*_DIR values to .env, preserving everything else."""
     env_path = shared.BASE_DIR / '.env'
     try:
         lines = env_path.read_text(errors='replace').splitlines() if env_path.exists() else []

@@ -1,6 +1,6 @@
-# Contributing to DeCloud
+# Contributing to reclmr
 
-Thanks for your interest in making DeCloud better! This is an open-source project driven by the community.
+Thanks for your interest in making reclmr better! This is an open-source project driven by the community.
 
 ## Ways to Contribute
 
@@ -8,13 +8,13 @@ Thanks for your interest in making DeCloud better! This is an open-source projec
 - **Feature ideas** — Open an issue with the `feature-request` label
 - **Code** — Fix a bug or build a feature (see below)
 - **Docs** — Improve the README, add guides, fix typos
-- **Testing** — Try DeCloud on your hardware and report what works/breaks
+- **Testing** — Try reclmr on your hardware and report what works/breaks
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/rxjdeep/decloud ~/decloud
-cd ~/decloud
+git clone https://github.com/rxjdeep/reclmr ~/reclmr
+cd ~/reclmr
 ./install.sh  # sets up venv + deps
 source .venv/bin/activate
 python app.py
@@ -27,7 +27,7 @@ Open `http://localhost:8899` in your browser.
 - **Python**: Follow PEP 8. Use type hints where practical. Keep routes in `routes/`, shared state in `shared.py`.
 - **JavaScript**: Vanilla JS, no build step. One file per app in `static/js/apps/`, shared modules in `static/js/modules/`.
 - **CSS**: Single file (`static/css/app.css`). No preprocessors.
-- **No frameworks**: DeCloud intentionally avoids React, Vue, etc. The frontend is vanilla JS + Flask templates. Respect that.
+- **No frameworks**: reclmr intentionally avoids React, Vue, etc. The frontend is vanilla JS + Flask templates. Respect that.
 
 ## Adding a New App
 

@@ -10,7 +10,7 @@ _MAX_BYTES = 1_000_000
 
 
 def _path():
-    return Path(os.environ.get('DECLOUD_AUDIT_FILE') or Path(__file__).resolve().parent / 'audit.log')
+    return Path(os.environ.get('RECLMR_AUDIT_FILE') or Path(__file__).resolve().parent / 'audit.log')
 
 
 def _who():

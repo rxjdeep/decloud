@@ -104,7 +104,7 @@ class TestAuthRequired:
 @pytest.mark.parametrize('endpoint', ['trash', 'poof'])
 def test_destructive_actions_work_when_browse_root_is_slash(client, auth_headers, tmp_path, monkeypatch, endpoint):
     import shared
-    monkeypatch.setenv('DECLOUD_BROWSE_ROOT', '/')
+    monkeypatch.setenv('RECLMR_BROWSE_ROOT', '/')
     victim = tmp_path / 'pics' / 'old.jpg'
     victim.parent.mkdir()
     victim.write_bytes(b'jpg')
@@ -120,7 +120,7 @@ def test_trash_still_refuses_paths_outside_a_narrower_root(client, auth_headers,
     root = tmp_path / 'root'; root.mkdir()
     sibling = tmp_path / 'root2'; sibling.mkdir()                      # shares the prefix of the root's name
     (sibling / 'x.txt').write_text('x')
-    monkeypatch.setenv('DECLOUD_BROWSE_ROOT', str(root))
+    monkeypatch.setenv('RECLMR_BROWSE_ROOT', str(root))
     r = client.post('/api/lego/trash', json={'path': '../root2/x.txt'}, headers=auth_headers)
     assert r.status_code in (400, 403)
     assert (sibling / 'x.txt').exists()
