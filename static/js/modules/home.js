@@ -594,3 +594,13 @@ function homeNpUpdate() {
   card.classList.toggle('playing', playing);
 }
 setInterval(homeNpUpdate, 1000);
+
+// The prompt at the top of the home screen shows this machine's name: the first part of the address you opened it on (noble.tailnet.ts.net -> noble)
+(function () {
+  function setHost() {
+    var el = document.getElementById('ht-host'); if (!el) return;
+    var h = location.hostname, local = !h || h === 'localhost' || /^[\d.]+$/.test(h) || h.indexOf(':') >= 0;
+    el.textContent = local ? 'localhost' : h.split('.')[0];
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setHost); else setHost();
+})();

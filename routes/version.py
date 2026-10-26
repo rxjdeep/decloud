@@ -8,9 +8,17 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.4"
+VERSION = "0.7.5"
 
 CHANGELOG = [
+    {
+        "version": "0.7.5",
+        "date": "2026-10-27",
+        "changes": [
+            "Terminal-style home title",
+            "Home: the title is a minimal terminal prompt (reclmr@<this machine>:~$ with a blinking cursor), centred at the top",
+        ]
+    },
     {
         "version": "0.7.4",
         "date": "2026-10-27",
