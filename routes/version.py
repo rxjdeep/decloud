@@ -8,9 +8,18 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.1"
+VERSION = "0.7.2"
 
 CHANGELOG = [
+    {
+        "version": "0.7.2",
+        "date": "2026-10-27",
+        "changes": [
+            "Halo-style home title, centred, no tagline",
+            "Home: the title is now a centred Halo-style mark (a ring arc with ticks, angular letters, an orange Forerunner glyph for the A)",
+            "the tagline is gone",
+        ]
+    },
     {
         "version": "0.7.1",
         "date": "2026-10-27",

@@ -10,9 +10,9 @@
   <meta name="theme-color" content="#0a0a0f">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-  <link rel="stylesheet" href="/static/css/app.css?v=308">
-  <link rel="stylesheet" href="/static/css/onboarding.css?v=308">
-  <link rel="stylesheet" href="/static/css/gallery.css?v=308">
+  <link rel="stylesheet" href="/static/css/app.css?v=309">
+  <link rel="stylesheet" href="/static/css/onboarding.css?v=309">
+  <link rel="stylesheet" href="/static/css/gallery.css?v=309">
   <link rel="stylesheet" href="/static/vendor/xterm/xterm.min.css">
   <title>Project Recl/\mr</title>
 </head>
@@ -46,9 +46,28 @@
 
 <!-- ═══ HOME SCREEN ═══ -->
 <div id="home-screen" class="screen active">
-  <header class="home-title" aria-label="recl/\mr">
-    <span class="ht-name" aria-hidden="true">recl<b>/\</b>mr</span>
-    <span class="ht-tag" aria-hidden="true">take it back</span>
+  <header class="home-title" role="img" aria-label="recl/\mr">
+    <svg viewBox="0 0 320 78" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="ht-ring" x1="0" x2="1"><stop offset="0" stop-color="#7fd8ff" stop-opacity="0"/><stop offset=".5" stop-color="#9fe3ff"/><stop offset="1" stop-color="#7fd8ff" stop-opacity="0"/></linearGradient>
+        <linearGradient id="ht-ink" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#9db4c6"/></linearGradient>
+        <filter id="ht-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <!-- the ring: a thin arc behind the name, with a glint at the top and tick marks along it -->
+      <path d="M8 60 A152 50 0 0 1 312 60" fill="none" stroke="url(#ht-ring)" stroke-width="1.4" filter="url(#ht-glow)"/>
+      <path d="M40 46 l-2 5 M68 36 l-1.5 5 M100 22 l-1 5 M220 22 l1 5 M252 36 l1.5 5 M280 46 l2 5" stroke="#9fe3ff" stroke-opacity=".55" stroke-width="1" stroke-linecap="round"/>
+      <circle cx="160" cy="10" r="2.2" fill="#e8fbff" filter="url(#ht-glow)"/>
+      <!-- the name, drawn as angular single-stroke letters; the slash pair is the orange Forerunner glyph -->
+      <g transform="translate(62 30)" fill="none" stroke="url(#ht-ink)" stroke-width="2.6" stroke-linejoin="miter" stroke-linecap="square">
+        <path d="M2 28V2H14L18 6V12L14 16H2M10 16L18 28"/>
+        <path transform="translate(26 0)" d="M18 2H2V28H18M2 15H14"/>
+        <path transform="translate(52 0)" d="M18 2H6L2 6V24L6 28H18"/>
+        <path transform="translate(78 0)" d="M2 2V28H18"/>
+        <path transform="translate(104 0)" d="M2 28L10 2L18 28" stroke="#ff9d2e" filter="url(#ht-glow)"/>
+        <path transform="translate(130 0)" d="M2 28V2L10 14L18 2V28"/>
+        <path transform="translate(156 0)" d="M2 28V2H14L18 6V12L14 16H2M10 16L18 28"/>
+      </g>
+    </svg>
   </header>
   <div class="top-bar">
     <div class="top-bar-left">
@@ -1296,36 +1315,36 @@
 </div>
 
 <script src="/static/js/thinking-orbs.js"></script>
-<script src="/static/js/modules/auth.js?v=308"></script>
-<script src="/static/js/modules/onboarding.js?v=308"></script>
-<script src="/static/js/modules/core.js?v=308"></script>
-<script src="/static/js/modules/nav.js?v=308"></script>
-<script src="/static/js/modules/media-session.js?v=308"></script>
-<script src="/static/js/modules/home.js?v=308"></script>
- <script src="/static/js/modules/liquid.js?v=308"></script>
- <script src="/static/js/modules/musicgen.js?v=308"></script>
- <script src="/static/js/modules/models.js?v=308"></script>
-<script src="/static/js/modules/projects.js?v=308"></script>
-<script src="/static/js/modules/audiobooks.js?v=308"></script>
-<script src="/static/js/modules/ui-kit.js?v=308"></script>
-<script src="/static/js/modules/gallery.js?v=308"></script>
-<script src="/static/js/modules/lego.js?v=308"></script>
-<script src="/static/js/modules/logs.js?v=308"></script>
-<script src="/static/js/modules/terminal.js?v=308"></script>
-<script src="/static/js/modules/osint.js?v=308"></script>
-<script src="/static/js/modules/universe.js?v=308"></script>
-<script src="/static/js/modules/system.js?v=308"></script>
-<script src="/static/js/modules/ollama.js?v=308"></script>
-<script src="/static/js/modules/comfy.js?v=308"></script>
-<script src="/static/js/modules/lego3d.js?v=308"></script>
-<script src="/static/js/modules/voice.js?v=308"></script>
-<script src="/static/js/modules/journal.js?v=308"></script>
-<script src="/static/js/modules/legos3d.js?v=308"></script>
-<script src="/static/js/modules/settings.js?v=308"></script>
-<script src="/static/js/modules/telemetry.js?v=308"></script>
-<script src="/static/js/modules/desktop.js?v=308"></script>
-<script src="/static/js/modules/music.js?v=308"></script>
-<script src="/static/js/modules/music-spotify.js?v=308"></script>
+<script src="/static/js/modules/auth.js?v=309"></script>
+<script src="/static/js/modules/onboarding.js?v=309"></script>
+<script src="/static/js/modules/core.js?v=309"></script>
+<script src="/static/js/modules/nav.js?v=309"></script>
+<script src="/static/js/modules/media-session.js?v=309"></script>
+<script src="/static/js/modules/home.js?v=309"></script>
+ <script src="/static/js/modules/liquid.js?v=309"></script>
+ <script src="/static/js/modules/musicgen.js?v=309"></script>
+ <script src="/static/js/modules/models.js?v=309"></script>
+<script src="/static/js/modules/projects.js?v=309"></script>
+<script src="/static/js/modules/audiobooks.js?v=309"></script>
+<script src="/static/js/modules/ui-kit.js?v=309"></script>
+<script src="/static/js/modules/gallery.js?v=309"></script>
+<script src="/static/js/modules/lego.js?v=309"></script>
+<script src="/static/js/modules/logs.js?v=309"></script>
+<script src="/static/js/modules/terminal.js?v=309"></script>
+<script src="/static/js/modules/osint.js?v=309"></script>
+<script src="/static/js/modules/universe.js?v=309"></script>
+<script src="/static/js/modules/system.js?v=309"></script>
+<script src="/static/js/modules/ollama.js?v=309"></script>
+<script src="/static/js/modules/comfy.js?v=309"></script>
+<script src="/static/js/modules/lego3d.js?v=309"></script>
+<script src="/static/js/modules/voice.js?v=309"></script>
+<script src="/static/js/modules/journal.js?v=309"></script>
+<script src="/static/js/modules/legos3d.js?v=309"></script>
+<script src="/static/js/modules/settings.js?v=309"></script>
+<script src="/static/js/modules/telemetry.js?v=309"></script>
+<script src="/static/js/modules/desktop.js?v=309"></script>
+<script src="/static/js/modules/music.js?v=309"></script>
+<script src="/static/js/modules/music-spotify.js?v=309"></script>
 
 <!-- ═══ ONBOARDING OVERLAY ═══ -->
 <div id="onboarding-overlay" class="onboarding-overlay" style="display:none">

@@ -7035,14 +7035,10 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
 /* phone: a library row is 56px of cover plus 8px above and below, so the placeholder size is right and the scroll length never jumps */
 @media (max-width: 760px) { .sp-li { contain-intrinsic-size: auto 72px; } }
 
-/* ═══ HOME TITLE: the wordmark. The slash pair is the "a", drawn in the accent gradient ═══ */
-.home-title { display: flex; align-items: baseline; gap: 12px; padding: 20px 24px 6px; user-select: none; }
-.home-title .ht-name { font: 800 30px/1 ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; letter-spacing: -.04em; color: var(--text, #f2f2f7); }
-.home-title .ht-name b { font-weight: 800; letter-spacing: -.18em; margin: 0 .12em 0 .02em; background: linear-gradient(135deg, #7cf7c8 0%, #6aa8ff 55%, #b48cff 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 10px rgba(106,168,255,.45)); }
-.home-title .ht-tag { font: 600 10.5px/1 var(--font, system-ui), system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: var(--text-dim, #8e8e93); opacity: .8; }
-@media (prefers-reduced-motion: no-preference) { .home-title { animation: ht-in .6s cubic-bezier(.2,.8,.2,1) both; } }
+/* ═══ HOME TITLE: the name as a Halo-style mark, centred at the top (an arc like the ring, angular letters, an orange Forerunner glyph) ═══ */
+.home-title { display: flex; justify-content: center; padding: 10px 24px 0; user-select: none; }
+.home-title svg { width: min(300px, 74vw); height: auto; overflow: visible; }
+@media (prefers-reduced-motion: no-preference) { .home-title svg { animation: ht-in .7s cubic-bezier(.2,.8,.2,1) both; } }
 @keyframes ht-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-body:not(.desktop-mode) #home-screen .home-title { padding-left: 20px; padding-right: 20px; }
-body.desktop-mode .home-title { max-width: 720px; margin: 0 auto; padding: 4vh 24px 0; }
-body.desktop-mode .home-title + .top-bar { padding-top: 14px; }
-body.desktop-mode .home-title .ht-name { font-size: 38px; }
+body.desktop-mode .home-title { max-width: 720px; margin: 0 auto; padding-top: 3vh; }
+body.desktop-mode .home-title svg { width: 340px; }
