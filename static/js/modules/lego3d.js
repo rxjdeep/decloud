@@ -55,6 +55,7 @@ function reclmrInit() {
     setTimeout(reclmrInit, 500);
     return;
   }
+  if (typeof loadHomeUser === 'function') loadHomeUser();      // the name for the prompt on the home screen
   buildStatusChips();
   buildAppGrid();
   buildProjectsSection();

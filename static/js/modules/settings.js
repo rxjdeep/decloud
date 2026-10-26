@@ -169,7 +169,26 @@ function changePin() {
 
 var _voiceStatus = null;
 
+// Your name for the prompt on the home screen (name@reclmr)
+function saveUserName(name) {
+  return fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+    .then(function(x) { if (x.ok && x.d.name) setHomeUser(x.d.name); return x; });
+}
+function saveProfileName() {
+  var input = document.getElementById('profile-name'), note = document.getElementById('profile-status');
+  var name = input ? input.value.trim() : '';
+  if (!name) return;
+  saveUserName(name).then(function(x) {
+    if (x.ok) { if (input) input.value = x.d.name; if (note) note.textContent = 'Saved. You are ' + x.d.name + '@reclmr.'; }
+    else if (note) note.textContent = (x.d && x.d.error) || 'Could not save';
+  }).catch(function() { if (note) note.textContent = 'Could not save'; });
+}
+
 function loadVoicePanel() {
+  fetch('/api/profile').then(function(r) { return r.json(); }).then(function(d) {
+    var el = document.getElementById('profile-name'); if (el && d.name) el.value = d.name;
+  }).catch(function() {});
   fetch('/api/voice/status').then(function(r) { return r.json(); }).then(function(d) {
     _voiceStatus = d;
     var cfg = d.config || {};

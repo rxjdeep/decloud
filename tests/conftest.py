@@ -18,6 +18,7 @@ os.environ['RECLMR_BROWSE_ROOT'] = ''          # tests browse the sandbox, never
 os.environ['RECLMR_TOTP_FILE'] = str(_TMP / 'totp.json')
 os.environ['RECLMR_AUDIT_FILE'] = str(_TMP / 'audit.log')
 os.environ['RECLMR_SESSIONS_FILE'] = str(_TMP / 'sessions.json')
+os.environ['RECLMR_SETTINGS_FILE'] = str(_TMP / 'settings.json')      # the suite must never touch the real settings.json
 os.environ['RECLMR_NAVIDROME_USER'] = os.environ['RECLMR_NAVIDROME_PASS'] = ''   # keep the suite off the real Navidrome (it read/wrote it via the .env credentials)   # else the suite overwrites the real logged-in sessions
 os.environ.setdefault('RECLMR_MUSIC_DIR', str(_TMP / 'music'))
 os.environ.setdefault('RECLMR_PIPER_DIR', str(_TMP / 'piper'))

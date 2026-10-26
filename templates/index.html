@@ -10,9 +10,9 @@
   <meta name="theme-color" content="#0a0a0f">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-  <link rel="stylesheet" href="/static/css/app.css?v=312">
-  <link rel="stylesheet" href="/static/css/onboarding.css?v=312">
-  <link rel="stylesheet" href="/static/css/gallery.css?v=312">
+  <link rel="stylesheet" href="/static/css/app.css?v=314">
+  <link rel="stylesheet" href="/static/css/onboarding.css?v=314">
+  <link rel="stylesheet" href="/static/css/gallery.css?v=314">
   <link rel="stylesheet" href="/static/vendor/xterm/xterm.min.css">
   <title>Project Recl/\mr</title>
 </head>
@@ -47,7 +47,7 @@
 <!-- ═══ HOME SCREEN ═══ -->
 <div id="home-screen" class="screen active">
   <header class="home-title" role="img" aria-label="recl/\mr">
-    <span class="ht-prompt" aria-hidden="true"><span class="ht-user">reclmr</span><span class="ht-at">@</span><span class="ht-host" id="ht-host">localhost</span><span class="ht-colon">:</span><span class="ht-path">~</span><span class="ht-sign">$</span><i class="ht-cursor"></i></span>
+    <span class="ht-prompt" aria-hidden="true"><span class="ht-user" id="ht-user">user</span><span class="ht-at">@</span><span class="ht-host">reclmr</span><span class="ht-colon">:</span><span class="ht-path">~</span><span class="ht-sign">$</span><i class="ht-cursor"></i></span>
   </header>
   <div class="top-bar">
     <div class="top-bar-left">
@@ -666,6 +666,15 @@
     </div>
     <!-- Voice -->
     <div class="settings-panel" id="st-panel-voice" style="display:none">
+      <div class="settings-group">
+        <div class="settings-label">You</div>
+        <div class="settings-row">
+          <span>Name</span>
+          <input type="text" id="profile-name" class="settings-input" placeholder="your name" maxlength="40" autocomplete="off" autocapitalize="none" spellcheck="false">
+        </div>
+        <button class="settings-save-btn" onclick="saveProfileName()">Save Name</button>
+        <div class="settings-note" id="profile-status">Shown in the prompt at the top of the home screen (you@reclmr).</div>
+      </div>
       <div class="settings-group">
         <div class="settings-label">Your Voice Assistant</div>
         <div class="settings-row">
@@ -1295,36 +1304,36 @@
 </div>
 
 <script src="/static/js/thinking-orbs.js"></script>
-<script src="/static/js/modules/auth.js?v=312"></script>
-<script src="/static/js/modules/onboarding.js?v=312"></script>
-<script src="/static/js/modules/core.js?v=312"></script>
-<script src="/static/js/modules/nav.js?v=312"></script>
-<script src="/static/js/modules/media-session.js?v=312"></script>
-<script src="/static/js/modules/home.js?v=312"></script>
- <script src="/static/js/modules/liquid.js?v=312"></script>
- <script src="/static/js/modules/musicgen.js?v=312"></script>
- <script src="/static/js/modules/models.js?v=312"></script>
-<script src="/static/js/modules/projects.js?v=312"></script>
-<script src="/static/js/modules/audiobooks.js?v=312"></script>
-<script src="/static/js/modules/ui-kit.js?v=312"></script>
-<script src="/static/js/modules/gallery.js?v=312"></script>
-<script src="/static/js/modules/lego.js?v=312"></script>
-<script src="/static/js/modules/logs.js?v=312"></script>
-<script src="/static/js/modules/terminal.js?v=312"></script>
-<script src="/static/js/modules/osint.js?v=312"></script>
-<script src="/static/js/modules/universe.js?v=312"></script>
-<script src="/static/js/modules/system.js?v=312"></script>
-<script src="/static/js/modules/ollama.js?v=312"></script>
-<script src="/static/js/modules/comfy.js?v=312"></script>
-<script src="/static/js/modules/lego3d.js?v=312"></script>
-<script src="/static/js/modules/voice.js?v=312"></script>
-<script src="/static/js/modules/journal.js?v=312"></script>
-<script src="/static/js/modules/legos3d.js?v=312"></script>
-<script src="/static/js/modules/settings.js?v=312"></script>
-<script src="/static/js/modules/telemetry.js?v=312"></script>
-<script src="/static/js/modules/desktop.js?v=312"></script>
-<script src="/static/js/modules/music.js?v=312"></script>
-<script src="/static/js/modules/music-spotify.js?v=312"></script>
+<script src="/static/js/modules/auth.js?v=314"></script>
+<script src="/static/js/modules/onboarding.js?v=314"></script>
+<script src="/static/js/modules/core.js?v=314"></script>
+<script src="/static/js/modules/nav.js?v=314"></script>
+<script src="/static/js/modules/media-session.js?v=314"></script>
+<script src="/static/js/modules/home.js?v=314"></script>
+ <script src="/static/js/modules/liquid.js?v=314"></script>
+ <script src="/static/js/modules/musicgen.js?v=314"></script>
+ <script src="/static/js/modules/models.js?v=314"></script>
+<script src="/static/js/modules/projects.js?v=314"></script>
+<script src="/static/js/modules/audiobooks.js?v=314"></script>
+<script src="/static/js/modules/ui-kit.js?v=314"></script>
+<script src="/static/js/modules/gallery.js?v=314"></script>
+<script src="/static/js/modules/lego.js?v=314"></script>
+<script src="/static/js/modules/logs.js?v=314"></script>
+<script src="/static/js/modules/terminal.js?v=314"></script>
+<script src="/static/js/modules/osint.js?v=314"></script>
+<script src="/static/js/modules/universe.js?v=314"></script>
+<script src="/static/js/modules/system.js?v=314"></script>
+<script src="/static/js/modules/ollama.js?v=314"></script>
+<script src="/static/js/modules/comfy.js?v=314"></script>
+<script src="/static/js/modules/lego3d.js?v=314"></script>
+<script src="/static/js/modules/voice.js?v=314"></script>
+<script src="/static/js/modules/journal.js?v=314"></script>
+<script src="/static/js/modules/legos3d.js?v=314"></script>
+<script src="/static/js/modules/settings.js?v=314"></script>
+<script src="/static/js/modules/telemetry.js?v=314"></script>
+<script src="/static/js/modules/desktop.js?v=314"></script>
+<script src="/static/js/modules/music.js?v=314"></script>
+<script src="/static/js/modules/music-spotify.js?v=314"></script>
 
 <!-- ═══ ONBOARDING OVERLAY ═══ -->
 <div id="onboarding-overlay" class="onboarding-overlay" style="display:none">
@@ -1335,6 +1344,11 @@
     <div class="onboarding-step active" data-step="0">
       <h1>Welcome to Project Recl/\mr</h1>
       <p>recl/\mr is your personal cloud. A self-hosted dashboard for audiobooks, AI chat, files, music, and more. No accounts, no tracking, no cloud fees. Just your machine, your data, your control.</p>
+      <div class="onboarding-name">
+        <label for="user-name-input">What should we call you?</label>
+        <input type="text" id="user-name-input" placeholder="your name" maxlength="40" autocomplete="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <p style="font-size:0.85em;opacity:0.6;margin-top:-4px">It shows in the prompt at the top of your home screen, as <b>you@reclmr</b>.</p>
       <div class="onboarding-name">
         <label for="agent-name-input">Name your AI companion</label>
         <input type="text" id="agent-name-input" placeholder="Reclmr" maxlength="40" autocomplete="off" autocapitalize="words">

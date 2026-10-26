@@ -873,7 +873,7 @@ PROJECTS_CONFIG = json.loads(os.environ.get('RECLMR_PROJECTS', '[]'))
 _network_last = {'bytes_sent': 0, 'bytes_recv': 0, 'ts': 0}
 
 # ─── Settings ───────────────────────────────────────────────────
-SETTINGS_FILE = BASE_DIR / 'settings.json'
+SETTINGS_FILE = Path(os.environ.get('RECLMR_SETTINGS_FILE') or BASE_DIR / 'settings.json')   # tests point this at a temp dir
 
 
 def load_settings():

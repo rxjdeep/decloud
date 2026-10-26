@@ -21,6 +21,10 @@ function initOnboarding() {
   generateOnboardingQRs();
   showOnboardingStep(0);
   // Prefill the agent name with the current value (if already set).
+  fetch('/api/profile').then(function(r) { return r.json(); }).then(function(d) {
+    var u = document.getElementById('user-name-input');
+    if (u && d.name && !u.value) u.value = d.name;
+  }).catch(function() {});
   fetch('/api/voice/config').then(function(r) { return r.json(); }).then(function(d) {
     var input = document.getElementById('agent-name-input');
     if (input && d.config && d.config.agent_name) input.value = d.config.agent_name;
@@ -93,6 +97,10 @@ function onboardingFinish() {
 }
 
 function finishOnboarding(skipped) {
+  // Persist your name (the prompt at the top of the home screen).
+  var userInput = document.getElementById('user-name-input');
+  var userName = userInput ? userInput.value.trim() : '';
+  if (userName) saveUserName(userName);
   // Persist the chosen agent name (empty = keep default).
   var nameInput = document.getElementById('agent-name-input');
   var name = nameInput ? nameInput.value.trim() : '';

@@ -38,6 +38,9 @@ def register_blueprints(app, sock):
     from .voice import bp as voice_bp
     app.register_blueprint(voice_bp)
 
+    from .profile import bp as profile_bp
+    app.register_blueprint(profile_bp)
+
     from .projects import bp as projects_bp
     app.register_blueprint(projects_bp)
 

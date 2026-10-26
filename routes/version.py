@@ -8,9 +8,18 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.5"
+VERSION = "0.7.6"
 
 CHANGELOG = [
+    {
+        "version": "0.7.6",
+        "date": "2026-10-27",
+        "changes": [
+            "Your name in the home prompt; tests no longer touch settings.json",
+            "Setup asks what to call you, and the home prompt reads yourname@reclmr:~$ (change it in Settings, You)",
+            "Tests: the suite now uses its own settings file instead of the real settings.json",
+        ]
+    },
     {
         "version": "0.7.5",
         "date": "2026-10-27",
