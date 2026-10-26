@@ -17,7 +17,7 @@ CHANGELOG = [
         "changes": [
             "Renamed everywhere to reclmr: files, settings, apps",
             "Name: every file, folder, setting, cookie, storage key and Android package now says reclmr (nothing says the old name except the LICENSE copyright line the MIT licence requires)",
-            "Settings: RECLMR_* only. Rename the DECLOUD_* keys in your .env",
+            "Settings: RECLMR_* only, so rename the old-prefix keys in your .env",
             "Command and service: ./reclmr and the reclmr service",
             "Android: new package IDs io.reclmr.app and io.reclmr.pusher (uninstall the old apps",
             "sign in again)",
