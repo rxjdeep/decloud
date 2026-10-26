@@ -44,6 +44,19 @@ Every app is optional. DeCloud works with zero configuration, and anything that 
   <img src="docs/screenshots/mobile.jpg" alt="Gallery, viewer, Files and Logs on a phone" width="860">
 </p>
 
+### Music: two themes
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/music-spotify-desktop.jpg" alt="Music, Spotify theme on desktop"><br><sub><b>Spotify theme.</b> Library sidebar, playlist pages with a playing indicator, queue, lyrics and Connect.</sub></td>
+    <td width="50%"><img src="docs/screenshots/music-glossy-desktop.jpg" alt="Music, Glossy Black theme on desktop"><br><sub><b>Glossy Black theme.</b> A Mac-style glass player that tints itself from the cover.</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/music-phone.jpg" alt="Music on a phone: library, playlist, Now Playing" width="860">
+</p>
+
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/viewer.jpg" alt="Full-screen photo viewer"><br><sub><b>Viewer.</b> Swipe, pinch and double-tap zoom, drag down to close, video, details.</sub></td>
