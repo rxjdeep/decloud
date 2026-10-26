@@ -8,9 +8,18 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.6"
+VERSION = "0.7.7"
 
 CHANGELOG = [
+    {
+        "version": "0.7.7",
+        "date": "2026-10-27",
+        "changes": [
+            "Sign-in comes before the walkthrough; clearer passcode wording",
+            "Sign-in: the first-run walkthrough now waits until you are signed in, so the name you enter is saved",
+            "Login: it says passcode (not password) and tells you where to find it",
+        ]
+    },
     {
         "version": "0.7.6",
         "date": "2026-10-27",

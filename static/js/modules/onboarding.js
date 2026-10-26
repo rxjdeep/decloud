@@ -14,6 +14,13 @@ function initOnboarding() {
     overlay.style.display = 'none';
     return;
   }
+  // Wait for the sign-in: the walkthrough saves your name and the companion's name, which needs a signed-in session
+  var loginScreen = document.getElementById('login-screen');
+  if (loginScreen && loginScreen.style.display !== 'none' && loginScreen.style.display !== '') {
+    overlay.style.display = 'none';
+    setTimeout(initOnboarding, 500);
+    return;
+  }
   // Show the overlay
   overlay.style.display = 'flex';
   onboardingCurrentStep = 0;
