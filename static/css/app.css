@@ -7035,11 +7035,10 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
 /* phone: a library row is 56px of cover plus 8px above and below, so the placeholder size is right and the scroll length never jumps */
 @media (max-width: 760px) { .sp-li { contain-intrinsic-size: auto 72px; } }
 
-@font-face { font-family: 'Michroma'; font-weight: 400; font-display: swap; src: url(/static/vendor/fonts/michroma-400.woff2) format('woff2'); }
 /* ═══ HOME TITLE: the name as a Halo-style mark, centred at the top (an arc like the ring, angular letters, an orange Forerunner glyph) ═══ */
 .home-title { display: flex; justify-content: center; padding: 10px 24px 0; user-select: none; }
-.home-title svg { width: min(300px, 74vw); height: auto; overflow: visible; }
+.home-title svg { width: min(330px, 80vw); height: auto; overflow: visible; }
 @media (prefers-reduced-motion: no-preference) { .home-title svg { animation: ht-in .7s cubic-bezier(.2,.8,.2,1) both; } }
 @keyframes ht-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 body.desktop-mode .home-title { max-width: 720px; margin: 0 auto; padding-top: 3vh; }
-body.desktop-mode .home-title svg { width: 340px; }
+body.desktop-mode .home-title svg { width: 380px; }
