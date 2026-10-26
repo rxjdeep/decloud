@@ -58,7 +58,8 @@ public class MainActivity extends Activity {
     private FrameLayout root;
     private LinearLayout home, details;
     private TextView icon, headline, sub, button, filesVal, limitVal, batteryVal, heldLabel, info, logView;
-    private View glow, batteryRow, heldGroup;
+    private View glow, batteryRow, heldGroup, skipRow;
+    private TextView skipLabel;
     private Bar bar;
     private ScrollView logScroll;
     private String shownLog = "";
@@ -66,7 +67,7 @@ public class MainActivity extends Activity {
     private final Handler ui = new Handler();
     private final Runnable tick = new Runnable() { @Override public void run() { refresh(); ui.postDelayed(this, 1000); } };
 
-    private static final int IDLE = 0, SENDING = 1, PERMISSION = 2, ERROR = 3;
+    private static final int IDLE = 0, SENDING = 1, PERMISSION = 2, ERROR = 3, PAUSED = 4;
     private int state = IDLE;
 
     @Override protected void onCreate(Bundle b) {
@@ -106,6 +107,7 @@ public class MainActivity extends Activity {
         }
 
         Sched.all(this);
+        if (!State.running) Notif.runningClear(this);                 // a "Backing up" notification left behind by a pass Android cut short
         if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 1);      // so it can ask about large files
     }
@@ -164,6 +166,12 @@ public class MainActivity extends Activity {
         heldGroup = hg;
         h.addView(hg, groupParams());
 
+        LinearLayout sg = group();
+        skipLabel = new TextView(this);
+        sg.addView(row("", skipLabel, "Undo", new View.OnClickListener() { @Override public void onClick(View v) { Sync.clearSkips(MainActivity.this); Toast.makeText(MainActivity.this, "Skipped files will be tried again", Toast.LENGTH_SHORT).show(); syncNow(false); } }, true));
+        skipRow = sg;
+        h.addView(sg, groupParams());
+
         LinearLayout g = group();
         filesVal = new TextView(this);
         g.addView(row("Files on server", filesVal, null, null, false));
@@ -180,11 +188,11 @@ public class MainActivity extends Activity {
     }
 
     private void nextLimit() {
-        int[] opts = {5, 25, 100, 500};
+        int[] opts = {0, 5, 25, 100, 500};                           // 0 = nothing goes over mobile data
         int cur = getSharedPreferences("s", 0).getInt("bigmb", 25), next = opts[0];
         for (int i = 0; i < opts.length; i++) if (opts[i] == cur && i + 1 < opts.length) next = opts[i + 1];
         getSharedPreferences("s", 0).edit().putInt("bigmb", next).apply();
-        Log.add(this, "mobile-data limit set to " + next + " MB per file");
+        Log.add(this, next == 0 ? "mobile data: nothing is sent, Wi-Fi only" : "mobile-data limit set to " + next + " MB per file");
         refresh();
     }
 
@@ -265,11 +273,12 @@ public class MainActivity extends Activity {
         SharedPreferences sp = getSharedPreferences("s", 0);
         String note = sp.getString("note", "");
         boolean perm = Environment.isExternalStorageManager();
-        state = !perm ? PERMISSION : State.running ? SENDING : note.contains(": failed") ? ERROR : IDLE;
+        boolean paused = sp.getBoolean("paused", false);
+        state = !perm ? PERMISSION : State.running ? SENDING : paused ? PAUSED : note.contains(": failed") ? ERROR : IDLE;
 
         int color = state == SENDING ? blue : state == IDLE ? green : orange;
         icon.setTextColor(color);
-        icon.setText(state == IDLE ? "✓" : state == SENDING ? "↑" : "!");
+        icon.setText(state == IDLE ? "✓" : state == SENDING ? "↑" : state == PAUSED ? "‖" : "!");
         shownState = state;
         NumberFormat nf = NumberFormat.getIntegerInstance();
 
@@ -278,10 +287,24 @@ public class MainActivity extends Activity {
             sub.setText("Allow access to your files so photos can be backed up");
             setButton("Allow files access", new View.OnClickListener() { @Override public void onClick(View v) { openFilesAccess(); } });
         } else if (state == SENDING) {
-            headline.setText("Backing up");
+            headline.setText(State.cancel ? "Stopping" : "Backing up");
             int done = State.sentFiles + State.haveFiles + State.failedFiles;
-            sub.setText(State.total > 0 ? Math.min(done + 1, State.total) + " of " + nf.format(State.total) + " files" : State.phase);
-            setButton(null, null);
+            String line = State.total > 0 ? Math.min(done + 1, State.total) + " of " + nf.format(State.total) + " files" : State.phase;
+            long secs = Math.max(1, (System.currentTimeMillis() - State.fileStart) / 1000), now = State.fileSent - State.fileOff;
+            if (State.fileSize > 0 && now > 0 && secs >= 3) {
+                double bps = now / (double) secs;
+                long left = (long) ((State.fileSize - State.fileSent) / Math.max(1, bps));
+                line += " · " + Sync.human((long) bps) + "/s · " + (left < 90 ? "under a minute" : "about " + (left / 60) + " min") + " left";
+            }
+            sub.setText(line + (State.file.isEmpty() ? "" : "\n" + State.file.substring(State.file.lastIndexOf('/') + 1)));
+            if (State.cancel) setButton(null, null);
+            else setButton("Stop", new View.OnClickListener() { @Override public void onClick(View v) { stopDialog(); } }, false);
+        } else if (state == PAUSED) {
+            headline.setText("Paused");
+            sub.setText("Backups are off until you resume");
+            setButton("Resume", new View.OnClickListener() { @Override public void onClick(View v) {
+                getSharedPreferences("s", 0).edit().putBoolean("paused", false).apply(); Log.add(MainActivity.this, "resumed by you"); syncNow(false);
+            } }, true);
         } else if (state == ERROR) {
             headline.setText("Couldn't back up");
             String why = note.substring(note.indexOf(": failed") + 8).replaceFirst("^:\\s*", "");
@@ -299,23 +322,51 @@ public class MainActivity extends Activity {
         else bar.setVisibility(state == SENDING ? View.VISIBLE : View.GONE);
         if (state == SENDING && State.fileSize <= 0) bar.set(0);
 
+        int skips = Sync.skipped(this).size();
+        skipRow.setVisibility(skips > 0 && state != SENDING ? View.VISIBLE : View.GONE);
+        skipLabel.setText(skips > 0 ? skips + (skips == 1 ? " file skipped" : " files skipped") : "");
         int held = sp.getInt("held", 0);
         heldGroup.setVisibility(held > 0 ? View.VISIBLE : View.GONE);
         heldLabel.setText(held > 0 ? held + (held == 1 ? " large file" : " large files") + " waiting for Wi-Fi" : "");
         int conf = sp.getInt("conf", 0);
         filesVal.setText(conf > 0 ? nf.format(conf) : "–");
-        limitVal.setText(sp.getInt("bigmb", 25) + " MB");
+        limitVal.setText(sp.getInt("bigmb", 25) == 0 ? "Wi-Fi only" : sp.getInt("bigmb", 25) + " MB");
         boolean batt = getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(getPackageName());
         batteryRow.setVisibility(batt ? View.GONE : View.VISIBLE);
         batteryVal.setText("Not yet");
         for (TextView t : new TextView[]{filesVal, limitVal, batteryVal}) { t.setTextColor(text2); t.setTextSize(17); }
     }
 
-    private void setButton(String label, View.OnClickListener l) {
+    private void setButton(String label, View.OnClickListener l) { setButton(label, l, true); }
+
+    /** primary = the blue action; otherwise a quiet grey button (Stop). */
+    private void setButton(String label, View.OnClickListener l, boolean primary) {
         if (label == null) { button.setVisibility(View.GONE); return; }
         button.setVisibility(View.VISIBLE);
         button.setText(label);
+        button.setBackground(primary ? capsule() : quiet());
         button.setOnClickListener(l);
+    }
+
+    private GradientDrawable quiet() {
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(2));
+        g.setColor(night ? 0xFF3A3F45 : 0xFFD9DEE2);
+        return g;
+    }
+
+    /** What to do with an upload that is taking too long. */
+    private void stopDialog() {
+        final String rel = State.fileRel, name = rel.isEmpty() ? "this file" : rel.substring(rel.lastIndexOf('/') + 1);
+        final long size = State.fileSize, mtime = State.fileMtime;
+        new android.app.AlertDialog.Builder(this).setTitle("Stop this upload?")
+            .setItems(new String[]{"Pause backups", "Skip " + name, "Keep going"}, new android.content.DialogInterface.OnClickListener() {
+                @Override public void onClick(android.content.DialogInterface d, int which) {
+                    if (which == 0) { getSharedPreferences("s", 0).edit().putBoolean("paused", true).apply(); State.cancel = true; Log.add(MainActivity.this, "you paused backups"); }
+                    else if (which == 1 && !rel.isEmpty()) { Sync.skip(MainActivity.this, rel, size, mtime); State.abortFile = true; Toast.makeText(MainActivity.this, "Skipped. Undo it on the main screen.", Toast.LENGTH_LONG).show(); }
+                    refresh();
+                }
+            }).show();
     }
 
     private void refreshDetails() {
@@ -341,7 +392,7 @@ public class MainActivity extends Activity {
         String net = "none";
         if (nc != null) {
             net = nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ? "Wi-Fi" : nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ? "mobile data" : nc.hasTransport(NetworkCapabilities.TRANSPORT_VPN) ? "VPN" : "other";
-            net += nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) ? ", unmetered: everything is sent" : ", METERED: files over " + getSharedPreferences("s", 0).getInt("bigmb", 25) + " MB wait";
+            net += Sync.metered(this) ? ", counts as mobile data: files over " + getSharedPreferences("s", 0).getInt("bigmb", 25) + " MB ask first" : ", unmetered: everything is sent";
             if (nc.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) net += ", via VPN";
         }
         s.append("Network      : ").append(net).append('\n');

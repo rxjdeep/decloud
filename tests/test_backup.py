@@ -52,7 +52,7 @@ def test_lockout_after_ten_wrong_tokens(client, bk):
 def test_check_lists_only_missing(client, bk):
     assert put(client, 'Camera/a.jpg', b'one').status_code == 200
     r = client.post('/api/backup/check', json={'files': [['Camera/a.jpg', 3], ['Camera/b.jpg', 9], ['Nope/c', 1], ['Camera/../x', 1]]}, headers=H())
-    assert r.get_json() == {'need': ['Camera/b.jpg'], 'bad': 2}
+    assert r.get_json() == {'need': ['Camera/b.jpg'], 'bad': 2, 'partial': {}}
 
 
 def test_upload_roundtrip_and_mtime(client, bk):
@@ -105,3 +105,50 @@ def test_large_body_beats_the_app_wide_cap(client, bk, monkeypatch):
     monkeypatch.setenv('DECLOUD_BACKUP_MAX_MB', '300')
     assert put(client, 'Camera/video.mp4', b'v' * (101 * 1024 * 1024)).status_code == 200      # > the 100 MB cap other routes keep
     assert (bk / 'Camera' / 'video.mp4').stat().st_size == 101 * 1024 * 1024
+
+
+def _put_r(client, rel, data, off, total, m='1700000000000'):
+    return client.put('/api/backup/file', query_string={'p': rel, 'off': off, 'total': total, 'm': m}, data=data, headers=H())
+
+
+def test_resume_after_a_cut_connection(client, bk):
+    body = bytes(range(256)) * 40                                  # 10240 bytes
+    # first try: 4000 of 10240 bytes arrive, then the phone loses signal
+    r = client.put('/api/backup/file', query_string={'p': 'Camera/v.mp4', 'off': 0, 'total': len(body)}, data=body[:4000], headers=H(),
+                   environ_overrides={'CONTENT_LENGTH': str(len(body))})
+    assert r.status_code == 400
+    assert not (bk / 'Camera' / 'v.mp4').exists()
+    # the next check says how far it got
+    c = client.post('/api/backup/check', json={'files': [['Camera/v.mp4', len(body)]]}, headers=H()).get_json()
+    assert c['need'] == ['Camera/v.mp4'] and c['partial'] == {'Camera/v.mp4': 4000}
+    # second try carries on from byte 4000
+    r = _put_r(client, 'Camera/v.mp4', body[4000:], 4000, len(body))
+    assert r.status_code == 200 and r.get_json()['existed'] is False
+    assert (bk / 'Camera' / 'v.mp4').read_bytes() == body
+    assert not [p.name for p in (bk / 'Camera').iterdir() if p.name.startswith('.part')]
+
+
+def test_resume_wrong_offset_is_refused(client, bk):
+    body = b'x' * 1000
+    client.put('/api/backup/file', query_string={'p': 'Camera/w.bin', 'off': 0, 'total': 1000}, data=body[:300], headers=H(),
+               environ_overrides={'CONTENT_LENGTH': '1000'})
+    r = _put_r(client, 'Camera/w.bin', body[500:], 500, 1000)
+    assert r.status_code == 409 and r.get_json()['have'] == 300
+    assert not (bk / 'Camera' / 'w.bin').exists()
+
+
+def test_resume_off_zero_starts_over(client, bk):
+    client.put('/api/backup/file', query_string={'p': 'Camera/z.bin', 'off': 0, 'total': 10}, data=b'abc', headers=H(), environ_overrides={'CONTENT_LENGTH': '10'})
+    r = _put_r(client, 'Camera/z.bin', b'0123456789', 0, 10)
+    assert r.status_code == 200 and (bk / 'Camera' / 'z.bin').read_bytes() == b'0123456789'
+
+
+def test_resume_never_overwrites(client, bk):
+    (bk / 'Camera').mkdir(parents=True, exist_ok=True)
+    (bk / 'Camera' / 'k.bin').write_bytes(b'old')
+    r = _put_r(client, 'Camera/k.bin', b'newnew', 0, 6)
+    assert r.get_json()['existed'] is True and (bk / 'Camera' / 'k.bin').read_bytes() == b'old'
+
+
+def test_resume_lengths_must_add_up(client, bk):
+    assert _put_r(client, 'Camera/m.bin', b'abc', 5, 10).status_code == 400

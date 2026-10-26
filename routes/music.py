@@ -10,6 +10,7 @@ import datetime
 import requests
 import os
 import re
+import shutil
 import threading
 import time
 
@@ -378,7 +379,9 @@ def _library_data():
 
 @bp.route('/api/music/library')
 def music_library():
-    """Whole library in one request."""
+    """Whole library in one request. `fresh=1` (pull to refresh) drops the server's saved copy first."""
+    if request.args.get('fresh'):
+        _invalidate()
     return jsonify(_library_data())
 
 
@@ -423,6 +426,22 @@ def music_playlist_create():
         return jsonify({'error': str(e)}), 502
     _invalidate()
     return jsonify({'ok': True, 'id': pl.get('id', ''), 'name': name})
+
+
+@bp.route('/api/music/playlist/<pid>/rename', methods=['POST'])
+def music_playlist_rename(pid):
+    """Give a playlist a new name."""
+    name = str((request.get_json(silent=True) or {}).get('name') or '').strip()[:120]
+    if _bad_id(pid) or not name:
+        return jsonify({'error': 'bad request'}), 400
+    if not _nd_conf():
+        return jsonify({'error': 'Playlists need Navidrome'}), 400
+    try:
+        _nd_get('updatePlaylist', playlistId=pid, name=name)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
+    _invalidate()
+    return jsonify({'ok': True, 'name': name})
 
 
 @bp.route('/api/music/playlist/<pid>/delete', methods=['POST'])
@@ -534,6 +553,21 @@ def music_membership():
     return jsonify({'playlists': [i for i in found if i]})
 
 
+@bp.route('/api/music/inplaylists')
+def music_inplaylists():
+    """Ids of every track that is in at least one playlist (for the tick on Now Playing)."""
+    if not _nd_conf():
+        return jsonify({'ids': []})
+    try:
+        pls = _nd_get('getPlaylists').get('playlists', {}).get('playlist', []) or []
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            lists = list(ex.map(lambda p: [e['id'] for e in _pl_entries(p['id']) if e.get('id')], pls))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
+    return jsonify({'ids': sorted({i for l in lists for i in l})})
+
+
 @bp.route('/api/music/playlist/<pid>')
 def music_playlist(pid):
     try:
@@ -636,6 +670,101 @@ def _nd_proxy(endpoint, params, extra_headers=None, cache=None, ctype=None):
     return resp
 
 
+# ─── Streaming quality: lower-bitrate copies of songs, made once and kept ───────────
+# Navidrome's own transcoded stream cannot be seeked (no Range), so the MP3 is fetched whole, cached on disk and served as a normal file.
+TRANSCODE_RATES = (320, 256, 192, 128, 96, 64)
+_TC_DIR = _APP_DIR / 'transcode_cache'
+_tc_locks = {}
+_tc_lock = threading.Lock()
+_tc_slots = threading.BoundedSemaphore(2)               # at most two songs are converted at the same time
+
+
+def _tc_limit():
+    try:
+        return int(os.environ.get('DECLOUD_TRANSCODE_CACHE_MB', '2048')) * 1024 * 1024
+    except ValueError:
+        return 2048 * 1024 * 1024
+
+
+def _tc_trim(keep=None):
+    """Keep the cache under its size: the songs not played for longest go first (never the one just made)."""
+    try:
+        files = sorted(((f.stat().st_mtime, f.stat().st_size, f) for f in _TC_DIR.glob('*.mp3') if f != keep))
+    except OSError:
+        return
+    total, limit = sum(x[1] for x in files) + (keep.stat().st_size if keep is not None and keep.exists() else 0), _tc_limit()
+    for _m, size, f in files:
+        if total <= limit * 0.9:
+            break
+        try:
+            f.unlink()
+            total -= size
+        except OSError:
+            pass
+
+
+def _transcoded(ident, rate):
+    """Path of the MP3 of this song at `rate` kbps (made now if it does not exist yet), or None if it could not be made."""
+    conf = _nd_conf()
+    if not conf:
+        return None
+    key = re.sub(r'[^A-Za-z0-9_-]', '_', ident) + f'-{rate}'
+    f = _TC_DIR / (key + '.mp3')
+    if f.exists():
+        try:
+            os.utime(f, None)                                   # played now: last to be cleared
+        except OSError:
+            pass
+        return f
+    with _tc_lock:
+        lock = _tc_locks.setdefault(key, threading.Lock())
+    with lock:
+        if f.exists():
+            return f
+        try:
+            _TC_DIR.mkdir(exist_ok=True)
+            if shutil.disk_usage(_TC_DIR).free < 2 * 1024 ** 3:
+                return None
+        except OSError:
+            return None
+        tmp = _TC_DIR / (key + '.part-' + secrets.token_hex(4))
+        with _tc_slots:
+            try:
+                up = requests.get(f'{conf[0]}/rest/stream.view', params=_nd_params(conf, {'id': ident, 'format': 'mp3', 'maxBitRate': rate}),
+                                  stream=True, timeout=(5, 120))
+                ctype = up.headers.get('Content-Type', '')
+                if up.status_code >= 400 or 'json' in ctype or 'xml' in ctype:
+                    up.close()
+                    return None
+                with open(tmp, 'wb') as out:
+                    for chunk in up.iter_content(1 << 16):
+                        out.write(chunk)
+                up.close()
+                if tmp.stat().st_size < 1024:
+                    return None
+                os.replace(tmp, f)
+            except (requests.RequestException, OSError):
+                return None
+            finally:
+                try:
+                    tmp.unlink()
+                except OSError:
+                    pass
+    _tc_trim(f)
+    return f
+
+
+@bp.route('/api/music/prewarm', methods=['POST'])
+def music_prewarm():
+    """Convert a song in the background (the player asks for the next one while the current one plays)."""
+    d = request.get_json(silent=True) or {}
+    ident, rate = d.get('id'), d.get('q')
+    if _bad_id(ident) or rate not in TRANSCODE_RATES or not _nd_conf():
+        return jsonify({'error': 'bad request'}), 400
+    threading.Thread(target=_transcoded, args=(ident, rate), daemon=True).start()
+    return jsonify({'ok': True}), 202
+
+
 @bp.route('/api/music/stream/<path:ident>')
 def music_stream(ident):
     if _nd_conf():
@@ -643,6 +772,13 @@ def music_stream(ident):
             return jsonify({'error': 'bad id'}), 400
         if request.args.get('fb'):  # browser could not decode the original: transcode (no seeking)
             return _nd_proxy('stream', {'id': ident, 'format': 'mp3', 'maxBitRate': 320}, ctype='audio/mpeg')
+        rate = request.args.get('q', type=int)
+        if rate in TRANSCODE_RATES:                        # a lower quality was asked for: a cached MP3, so seeking still works
+            f = _transcoded(ident, rate)
+            if f is not None:
+                resp = send_file(str(f), mimetype='audio/mpeg', conditional=True)
+                resp.headers['Cache-Control'] = 'private, max-age=3600'
+                return resp
         # Navidrome labels WAV audio/x-wav; browsers only reliably accept audio/wav
         ctype = 'audio/wav' if request.args.get('x') == 'wav' else None
         return _nd_proxy('stream', {'id': ident, 'format': 'raw'}, ctype=ctype)
@@ -1261,6 +1397,15 @@ def _validate_report(b):
     return pos, qi, rp, q
 
 
+def _clean_ctx(b):
+    """The playlist/album/artist a queue was started from: {'k', 'v'} or None."""
+    cx = b.get('cx')
+    if (isinstance(cx, dict) and cx.get('k') in ('album', 'playlist', 'artist', 'liked')
+            and isinstance(cx.get('v'), str) and len(cx['v']) <= 600):
+        return {'k': cx['k'], 'v': cx['v']}
+    return None
+
+
 def _report(dev, label, b, force=False):
     """Merge a device's playback report into the shared session.
 
@@ -1284,6 +1429,8 @@ def _report(dev, label, b, force=False):
         if q is None and queue[qi] != b.get('cur'):
             return {'ok': False, 'stale': True}
         st.update(qi=qi, pos=round(pos, 1), playing=playing, sh=bool(b.get('sh')), rp=rp)
+        if 'cx' in b:
+            st['cx'] = _clean_ctx(b)
         if act == dev or playing:
             new_active = dev
         else:

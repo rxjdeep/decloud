@@ -64,7 +64,7 @@ async function loadLego(path, opts) {
     if (seq !== fm.seq) return;
     if (data.error) throw new Error(data.error);
     fm.items = data.items || []; fm.loading = false;
-    fm.places = data.places || []; fm.backup = data.backup || ''; fm.isRoot = !!data.is_root;
+    fm.places = data.places || []; fm.backup = data.backup || ''; fm.trash = data.trash || ''; fm.isRoot = !!data.is_root;
     if (dflt) { legoCurrentPath = data.path || ''; if (!(opts && opts.silent)) navReplace('lego/' + legoCurrentPath); }
     fmPaintChrome(data.breadcrumbs);
     fmRender();
@@ -96,10 +96,10 @@ function fmPaintChrome(bc) {
   fmEl('fm-back').disabled = !navCanBack();
   // sidebar
   var side = fmEl('fm-side'), cur = legoCurrentPath;
-  var ICO = { home: UI_ICON.home, desktop: UI_ICON.file, documents: UI_ICON.doc, downloads: UI_ICON.download, pictures: UI_ICON.image, music: UI_ICON.music, videos: UI_ICON.video, backup: UI_ICON.archive, camera: UI_ICON.camera, screenshots: UI_ICON.screenshot };
-  function place(nm, path, ic) { var on = path === cur || (path && cur.indexOf(path + '/') === 0 && !fm.places.some(function (q) { return q.path.length > path.length && (cur === q.path || cur.indexOf(q.path + '/') === 0); })); return '<button class="fm-place' + (on ? ' on' : '') + '" data-path="' + escapeHtml(path) + '">' + ic + '<span>' + escapeHtml(nm) + '</span></button>'; }
+  var ICO = { home: UI_ICON.home, desktop: UI_ICON.file, documents: UI_ICON.doc, downloads: UI_ICON.download, pictures: UI_ICON.image, music: UI_ICON.music, videos: UI_ICON.video, backup: UI_ICON.archive, camera: UI_ICON.camera, screenshots: UI_ICON.screenshot, trash: UI_ICON.trash };
+  function place(nm, path, ic, fixed) { var on = path === cur || (path && cur.indexOf(path + '/') === 0 && !fm.places.some(function (q) { return q.path.length > path.length && (cur === q.path || cur.indexOf(q.path + '/') === 0); })); return '<button class="fm-place' + (on ? ' on' : '') + '" data-path="' + escapeHtml(path) + '" data-name="' + escapeHtml(nm) + '"' + (fixed ? ' data-fixed="1"' : '') + '>' + ic + '<span>' + escapeHtml(nm) + '</span></button>'; }
   var h = '<div class="fm-side-h">Places</div>';
-  fm.places.forEach(function (p) { h += place(p.name, p.path, ICO[p.icon] || UI_ICON.folder); });
+  fm.places.forEach(function (p) { h += place(p.name, p.path, ICO[p.icon] || UI_ICON.folder, p.fixed); });
   if (fm.isRoot) h += place('Computer', '', UI_ICON.server || UI_ICON.folder);
   h += '<div class="fm-side-h">Library</div><button class="fm-place" data-go="gallery">' + UI_ICON.photos + '<span>Gallery</span></button>';
   side.innerHTML = h;
@@ -244,29 +244,37 @@ function fmForget(gone) {
 }
 
 async function fmTrashSelected() {
-  var sel = Array.from(fm.sel).map(function (i) { return fm.shown[i]; }).filter(function (x) { return x && !x.is_dir; });
-  if (!sel.length) { uiToast('Only files can be moved to Trash'); return; }
-  var ok = await uiConfirm(sel.length === 1 ? 'Move "' + sel[0].name + '" to Trash?' : 'Move ' + sel.length + ' items to Trash?', 'They go to "file types / trash", so you can still get them back.', 'Move to Trash', true);
-  if (!ok) return;
-  var done = new Set(), bad = 0;
-  for (var i = 0; i < sel.length; i++) { var r = await uiPost('/api/lego/trash', { path: sel[i].path }); if (r.ok) done.add(sel[i].path); else bad++; }
-  if (done.size) { fmForget(done); if (typeof glForget === 'function') glForget(Array.from(done).map(function (p) { return { p: p }; })); uiToast(done.size === 1 ? 'Moved to Trash' : done.size + ' moved to Trash'); }
-  if (bad) uiToast(bad + ' could not be moved');
-}
-async function fmPoofSelected() {
-  var sel = Array.from(fm.sel).map(function (i) { return fm.shown[i]; }).filter(function (x) { return x && !x.is_dir; });
-  var done = new Set();
-  for (var i = 0; i < sel.length; i++) { var r = await uiPost('/api/lego/poof', { path: sel[i].path }); if (r.ok) done.add(sel[i].path); }
-  if (done.size) { fmForget(done); uiToast(done.size + ' poofed'); }
-}
-async function fmShredSelected() {
-  var sel = Array.from(fm.sel).map(function (i) { return fm.shown[i]; }).filter(function (x) { return x && !x.is_dir; });
+  var sel = Array.from(fm.sel).map(function (i) { return fm.shown[i]; }).filter(Boolean);
   if (!sel.length) return;
-  var ok = await uiConfirm('Permanently shred ' + (sel.length === 1 ? '"' + sel[0].name + '"' : sel.length + ' files') + '?', 'This cannot be undone.', 'Shred', true);
+  var folders = sel.filter(function (x) { return x.is_dir; }).length;
+  var ok = await uiConfirm(sel.length === 1 ? 'Move "' + sel[0].name + '" to Trash?' : 'Move ' + sel.length + ' items to Trash?', 'They go to "file types / trash", so you can still get them back.' + (folders ? ' Folders are moved with everything inside.' : ''), 'Move to Trash', true);
   if (!ok) return;
-  var done = new Set();
-  for (var i = 0; i < sel.length; i++) { var r = await uiPost('/api/lego/shred', { path: sel[i].path }); if (r.ok) done.add(sel[i].path); else uiToast('Shred failed: ' + r.error); }
-  if (done.size) { fmForget(done); uiToast(done.size + ' shredded'); }
+  var done = new Set(), bad = [];
+  for (var i = 0; i < sel.length; i++) { var r = await uiPost('/api/lego/trash', { path: sel[i].path }); if (r.ok) done.add(sel[i].path); else bad.push(r.error || 'failed'); }
+  if (done.size) { fmForget(done); if (typeof glForget === 'function') glForget(Array.from(done).map(function (p) { return { p: p }; })); uiToast(done.size === 1 ? 'Moved to Trash' : done.size + ' moved to Trash'); }
+  if (bad.length) setTimeout(function () { uiToast(bad.length === 1 ? bad[0] : bad.length + ' could not be moved: ' + bad[0]); }, done.size ? 2800 : 0);
+}
+function fmInTrash() { return !!fm.trash && (legoCurrentPath === fm.trash || legoCurrentPath.indexOf(fm.trash + '/') === 0); }
+// in the Trash folder: delete the selected files for good (the server refuses anything that is not in Trash)
+async function fmDeleteSelected() {
+  var sel = Array.from(fm.sel).map(function (i) { return fm.shown[i]; }).filter(Boolean);
+  if (!sel.length) { uiToast('Select something first (Ctrl+A selects all)'); return; }
+  var ok = await uiConfirm('Delete ' + (sel.length === 1 ? '"' + sel[0].name + '"' : sel.length + ' items') + ' permanently?', 'This cannot be undone.', 'Delete', true);
+  if (!ok) return;
+  var gone = new Set(), bad = 0;
+  for (var i = 0; i < sel.length; i += 200) {
+    var part = sel.slice(i, i + 200), r = await uiPost('/api/lego/delete', { paths: part.map(function (f) { return f.path; }) });
+    if (r.ok && r.failed === 0) part.forEach(function (f) { gone.add(f.path); }); else { loadLego(legoCurrentPath, { silent: true }); bad += (r.failed || part.length); }
+  }
+  if (gone.size) { fmForget(gone); uiToast(gone.size === 1 ? 'Deleted' : gone.size + ' deleted'); }
+  if (bad) uiToast(bad + ' could not be deleted');
+}
+async function fmEmptyTrash() {
+  var ok = await uiConfirm('Empty the Trash?', 'Every file in it is deleted for good. This cannot be undone.', 'Empty Trash', true);
+  if (!ok) return;
+  var r = await uiPost('/api/lego/delete', { empty: true });
+  loadLego(legoCurrentPath, { silent: true });
+  uiToast(r.ok ? (r.deleted ? r.deleted + ' deleted' : 'Trash is already empty') : 'Could not empty the Trash');
 }
 async function markFolderDone() {
   if (!legoCurrentPath) return;
@@ -300,21 +308,103 @@ function fmSortMenu(ev) {
   var e = Object.keys(names).map(function (k) { return { label: names[k] + (fm.sortKey === k ? (fm.sortDir > 0 ? '  ↑' : '  ↓') : ''), on: fm.sortKey === k, run: function () { fmSetSort(k); } }; });
   fmShowMenu(r.right - 190, r.bottom + 6, e);
 }
+// ── upload: send files from this device into the folder that is open ──────────
+var fmUp = { busy: false };
+function fmUploadPick() {
+  if (fmUp.busy) { uiToast('An upload is already running'); return; }
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.multiple = true;
+  inp.onchange = function () { if (inp.files && inp.files.length) fmUploadFiles(Array.from(inp.files)); };
+  inp.click();
+}
+function fmUploadOne(file, dir, onProgress) {
+  return new Promise(function (resolve, reject) {
+    var x = new XMLHttpRequest();
+    x.open('PUT', '/api/files/upload?dir=' + encodeURIComponent(dir) + '&name=' + encodeURIComponent(file.name));
+    var tok = sessionStorage.getItem('decloud_session'), csrf = sessionStorage.getItem('decloud_csrf');
+    if (tok) x.setRequestHeader('Authorization', 'Bearer ' + tok);
+    if (csrf) x.setRequestHeader('X-CSRF-Token', csrf);
+    x.setRequestHeader('Content-Type', 'application/octet-stream');
+    x.withCredentials = true;
+    x.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    x.onload = function () {
+      var d = {}; try { d = JSON.parse(x.responseText); } catch (_) {}
+      if (x.status >= 200 && x.status < 300) resolve(d); else reject(new Error(d.error || 'HTTP ' + x.status));
+    };
+    x.onerror = function () { reject(new Error('Connection lost')); };
+    x.send(file);
+  });
+}
+async function fmUploadFiles(files) {
+  if (fmUp.busy || !files.length) return;
+  fmUp.busy = true;
+  var dir = legoCurrentPath, st = fmEl('fm-status'), ok = 0, renamed = 0, failed = [];
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i], pre = 'Uploading ' + (i + 1) + ' of ' + files.length + ' · ' + f.name + ' · ';
+    if (st) st.textContent = pre + '0%';
+    try {
+      var d = await fmUploadOne(f, dir, function (p) { if (st) st.textContent = pre + Math.round(p * 100) + '%'; });
+      ok++; if (d.name && d.name !== f.name) renamed++;
+    } catch (e) { failed.push(f.name + ' (' + e.message + ')'); }
+  }
+  fmUp.busy = false;
+  loadLego(dir, { silent: true });
+  var msg = ok ? 'Uploaded ' + ok + (ok === 1 ? ' file' : ' files') + (renamed ? ' (' + renamed + ' renamed, the name was taken)' : '') : 'Nothing uploaded';
+  if (failed.length) msg += '. Failed: ' + failed.slice(0, 2).join(', ') + (failed.length > 2 ? ' and ' + (failed.length - 2) + ' more' : '');
+  uiToast(msg);
+}
+// drop files from the desktop onto the file list
+(function () {
+  function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
+  document.addEventListener('dragover', function (e) {
+    var m = document.getElementById('lego-screen');
+    if (!m || !m.classList.contains('active') || !hasFiles(e)) return;
+    e.preventDefault(); m.classList.add('fm-drop');
+  });
+  document.addEventListener('dragleave', function (e) { if (!e.relatedTarget) { var m = document.getElementById('lego-screen'); if (m) m.classList.remove('fm-drop'); } });
+  document.addEventListener('drop', function (e) {
+    var m = document.getElementById('lego-screen');
+    if (!m || !m.classList.contains('active') || !hasFiles(e)) return;
+    e.preventDefault(); m.classList.remove('fm-drop');
+    fmUploadFiles(Array.from(e.dataTransfer.files).filter(function (f) { return f.size > 0 || f.type; }));        // folders arrive as empty "files": skipped
+  });
+})();
+
+// ── Places: add a folder to the sidebar, or take one off ──
+function fmIsPlace(path) { return fm.places.some(function (p) { return p.path === path; }); }
+async function fmPlaceEdit(action, path, name) {
+  var r = await uiPost('/api/files/places', { action: action, path: path, name: name });
+  if (!r.ok) { uiToast(r.error || 'Could not change Places'); return; }
+  await loadLego(legoCurrentPath, { silent: true });
+  uiToast(action === 'add' ? 'Added to Places' : action === 'reset' ? 'Places reset' : 'Removed from Places');
+}
+function fmPlaceMenu(ev, btn) {
+  ev.preventDefault();
+  var e = [];
+  if (!btn.dataset.fixed) e.push({ label: 'Remove from Places', icon: UI_ICON.trash, danger: true, run: function () { fmPlaceEdit('remove', btn.dataset.path, btn.dataset.name); } });
+  e.push({ label: 'Reset Places', icon: UI_ICON.folder, run: function () { fmPlaceEdit('reset', '', ''); } });
+  fmShowMenu(ev.clientX, ev.clientY, e);
+}
 function fmMoreMenu(ev) {
   var r = ev.currentTarget.getBoundingClientRect(), e = [
+    { label: 'Upload files…', icon: UI_ICON.upload, run: function () { fmUploadPick(); } },
+    legoCurrentPath ? (fmIsPlace(legoCurrentPath) ? { label: 'Remove this folder from Places', icon: UI_ICON.folder, run: function () { fmPlaceEdit('remove', legoCurrentPath, (fm.places.filter(function (p) { return p.path === legoCurrentPath; })[0] || {}).name); } }
+      : { label: 'Add this folder to Places', icon: UI_ICON.folder, run: function () { fmPlaceEdit('add', legoCurrentPath, ''); } }) : null,
+    fmInTrash() ? { label: 'Empty Trash…', icon: UI_ICON.trash, danger: true, run: fmEmptyTrash } : null,
     { label: 'Swipe to clean up this folder', icon: UI_ICON.swipe, run: function () { openSwipeMode(legoCurrentPath); } },
     { label: 'Open Gallery', icon: UI_ICON.photos, run: function () { glOpen(); } },
     { label: 'Refresh', icon: UI_ICON.search, run: function () { loadLego(legoCurrentPath, { silent: true }); } },
   ];
   if (fm.backup && legoCurrentPath.indexOf(fm.backup + '/') === 0 && legoCurrentPath.indexOf(fm.backup + '/manually done') !== 0) e.push('-', { label: 'Mark folder as done…', icon: UI_ICON.check, run: markFolderDone });
-  fmShowMenu(r.right - 230, r.bottom + 6, e);
+  fmShowMenu(r.right - 230, r.bottom + 6, e.filter(Boolean));
 }
 function fmItemMenu(x, y) {
   var sel = Array.from(fm.sel).map(function (i) { return fm.shown[i]; }).filter(Boolean), one = sel.length === 1 ? sel[0] : null, files = sel.filter(function (s) { return !s.is_dir; });
   var e = [];
   if (one) e.push({ label: one.is_dir ? 'Open' : fmIsMedia(one) ? 'View' : 'Download', icon: UI_ICON[one.is_dir ? 'folder' : 'image'], run: function () { fmOpenItem(one); } });
+  if (one && one.is_dir && !fmIsPlace(one.path)) e.push({ label: 'Add to Places', icon: UI_ICON.folder, run: function () { fmPlaceEdit('add', one.path, one.name); } });
   if (files.length) e.push({ label: files.length > 1 ? 'Download ' + files.length + ' files' : 'Download', icon: UI_ICON.download, run: function () { uiDownload(files.map(function (f) { return { p: f.path }; })); } });
-  if (files.length) e.push('-', { label: 'Move to Trash', icon: UI_ICON.trash, danger: true, run: fmTrashSelected }, { label: 'Poof', icon: UI_ICON.swipe, run: fmPoofSelected }, { label: 'Shred…', icon: UI_ICON.trash, danger: true, run: fmShredSelected });
+  if (sel.length) e.push('-', fmInTrash() ? { label: 'Delete permanently…', icon: UI_ICON.trash, danger: true, run: fmDeleteSelected } : { label: 'Move to Trash', icon: UI_ICON.trash, danger: true, run: fmTrashSelected });
   if (e.length) fmShowMenu(x, y, e);
 }
 
@@ -350,6 +440,7 @@ function fmInit() {
 
   fmEl('fm-head').addEventListener('click', function (e) { var b = e.target.closest('[data-sort]'); if (b) fmSetSort(b.dataset.sort); });
   fmEl('lego-breadcrumbs').addEventListener('click', function (e) { var b = e.target.closest('[data-path]'); if (b) loadLego(b.dataset.path); });
+  fmEl('fm-side').addEventListener('contextmenu', function (e) { var b = e.target.closest('.fm-place[data-path]'); if (b) fmPlaceMenu(e, b); });
   fmEl('fm-side').addEventListener('click', function (e) {
     var b = e.target.closest('.fm-place'); if (!b) return;
     if (b.dataset.go === 'gallery') glOpen(); else loadLego(b.dataset.path);
@@ -371,7 +462,7 @@ function fmInit() {
     if (step) { e.preventDefault(); var j = cur < 0 ? (step > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, cur + step)); if (n) fmSelectOnly(j, true); return; }
     if (e.key === 'Enter' && cur >= 0) { e.preventDefault(); fmOpenItem(fm.shown[cur]); }
     else if (e.key === 'Backspace') { e.preventDefault(); fmUp(); }
-    else if (e.key === 'Delete' && fm.sel.size) { e.preventDefault(); fmTrashSelected(); }
+    else if (e.key === 'Delete' && fm.sel.size) { e.preventDefault(); if (fmInTrash()) fmDeleteSelected(); else fmTrashSelected(); }
     else if (e.key === ' ' && cur >= 0 && fmIsMedia(fm.shown[cur])) { e.preventDefault(); fmOpenItem(fm.shown[cur]); }
   });
 }

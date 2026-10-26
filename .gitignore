@@ -50,6 +50,7 @@ thumb_cache/
 page_cache/
 artist_art/
 lyrics_cache/
+transcode_cache/
 text_cache/
 voice_clips/
 voices/

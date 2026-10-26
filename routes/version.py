@@ -8,9 +8,22 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.6.0"
+VERSION = "0.6.1"
 
 CHANGELOG = [
+    {
+        "version": "0.6.1",
+        "date": "2026-10-26",
+        "changes": [
+            "Uploads, trash and places in Files, streaming quality, lyrics, multi-select playlists, native-feel touches, new backup app",
+            "Files: upload from the device, Trash with permanent delete, editable Places, folders can be trashed",
+            "Music: streaming quality (transcode cache, slider for Wi-Fi and mobile data), live lyrics line, playing indicator and Playing from playlist, playlist rename and delete with undo",
+            "Playlists: select several songs to move or remove, swipe the mini player for next and previous, green tick for songs already in a playlist",
+            "Feel: pull to refresh, touch-down feedback, edge swipe back, instant startup from the saved page, artist names in song rows are plain text",
+            "Backup app: Holo look, resumable uploads, Wi-Fi only, stop button",
+            "Android app: keep the screen on in Now Playing, left back swipe off while open, Liked Songs and Search shortcuts, share text into Search",
+        ]
+    },
     {
         "version": "0.6.0",
         "date": "2026-10-25",

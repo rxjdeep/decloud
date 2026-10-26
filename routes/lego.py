@@ -1,6 +1,6 @@
 """Lego file browser (Files) routes."""
 from flask import Blueprint, jsonify, request, send_file
-import os, json, subprocess
+import os, json, subprocess, secrets
 from pathlib import Path
 import random as _random
 import shutil as _shutil
@@ -129,12 +129,28 @@ def lego_browse():
     home = Path.home()
     cand = [('Home', home, 'home')] + [(n, home / n, n.lower()) for n in ('Desktop', 'Documents', 'Downloads', 'Pictures', 'Music', 'Videos')]
     cand += [('Backup', Path(shared.FILES_DIR), 'backup'), ('Camera', Path(shared.FILES_DIR) / 'Camera', 'camera'), ('Screenshots', Path(shared.FILES_DIR) / 'Screenshots', 'screenshots')]
+    trash_dir = Path(shared.FILES_DIR) / 'file types' / 'trash'
+    try:
+        trash_dir.mkdir(parents=True, exist_ok=True)        # so the place always opens, even before anything was trashed
+    except OSError:
+        pass
+    cand.append(('Trash', trash_dir, 'trash'))
+    cfg = _places_cfg()
     for nm, pth, ic in cand:
         r = _rel(pth) if pth.is_dir() else None
-        if r is not None:
-            places.append({'name': nm, 'path': r, 'icon': ic})
+        if r is not None and not (nm != 'Trash' and (nm in cfg['hidden'] or r in cfg['hidden'])):
+            places.append({'name': nm, 'path': r, 'icon': ic, 'fixed': nm == 'Trash'})
+    have = {p['path'] for p in places}
+    for a in cfg['added']:
+        try:
+            tgt = safe_join_browse(root, *a['path'].split('/')) if a['path'] else root
+            if tgt.is_dir() and a['path'] not in have:
+                places.append({'name': a['name'], 'path': a['path'], 'icon': 'folder', 'custom': True})
+                have.add(a['path'])
+        except Exception:
+            pass
     return jsonify({
-        'places': places, 'backup': _rel(shared.FILES_DIR), 'is_root': str(root) == '/',
+        'places': places, 'backup': _rel(shared.FILES_DIR), 'trash': _rel(trash_dir), 'is_root': str(root) == '/',
         'items': page_items,
         'path': subpath,
         'breadcrumbs': breadcrumbs,
@@ -286,6 +302,175 @@ def _inside(path, root):
     return path == root or path.is_relative_to(root)
 
 
+# ─── Places: the folders listed in the sidebar (the built-in ones can be hidden, and you can add your own) ──
+def _places_cfg():
+    try:
+        d = json.loads(shared.SETTINGS_FILE.read_text()).get('files_places') or {}
+    except Exception:
+        d = {}
+    added = [a for a in d.get('added', []) if isinstance(a, dict) and isinstance(a.get('path'), str) and isinstance(a.get('name'), str)]
+    hidden = [h for h in d.get('hidden', []) if isinstance(h, str)]
+    return {'added': added, 'hidden': hidden}
+
+
+def _save_places_cfg(cfg):
+    try:
+        settings = json.loads(shared.SETTINGS_FILE.read_text()) if shared.SETTINGS_FILE.exists() else {}
+    except Exception:
+        settings = {}
+    settings['files_places'] = cfg
+    shared.SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
+
+
+@bp.route('/api/files/places', methods=['POST'])
+def files_places():
+    """{"action": "add", "path": "<folder>", "name": "<label>"} | {"action": "remove", "path": "<folder>", "name": "<label>"} | {"action": "reset"}"""
+    data = request.get_json(silent=True) or {}
+    action, path = data.get('action'), str(data.get('path') or '')
+    cfg = _places_cfg()
+    if action == 'reset':
+        cfg = {'added': [], 'hidden': []}
+    elif action == 'add':
+        if not path:
+            return jsonify({'error': 'Pick a folder inside the drive'}), 400
+        tgt = safe_join_browse(_root(), *path.split('/'))
+        if not tgt.is_dir():
+            return jsonify({'error': 'Not a folder'}), 404
+        name = (str(data.get('name') or '').strip() or tgt.name)[:60]
+        cfg['hidden'] = [h for h in cfg['hidden'] if h != path]                     # a built-in one you hid comes back
+        if not any(a['path'] == path for a in cfg['added']):
+            cfg['added'].append({'name': name, 'path': path})
+    elif action == 'remove':
+        before = len(cfg['added'])
+        cfg['added'] = [a for a in cfg['added'] if a['path'] != path]
+        if len(cfg['added']) == before:                                              # a built-in place: hide it
+            nm = str(data.get('name') or '')
+            if nm == 'Trash':
+                return jsonify({'error': 'Trash stays'}), 400
+            if nm and nm not in cfg['hidden']:
+                cfg['hidden'].append(nm)
+    else:
+        return jsonify({'error': 'bad action'}), 400
+    _save_places_cfg(cfg)
+    return jsonify({'ok': True})
+
+
+# ─── Upload: put a file from this device into a Files folder ─────────────────
+UPLOAD_RESERVE = 2 * 1024 ** 3            # never fill the disk: keep 2 GiB free
+UPLOAD_CHUNK = 1 << 20
+
+
+def _upload_limit():
+    try:
+        return int(os.environ.get('DECLOUD_UPLOAD_MAX_MB', '20480')) * 1024 * 1024
+    except ValueError:
+        return 20480 * 1024 * 1024
+
+
+def _clean_upload_name(name):
+    """A bare file name, or None: no folders, no hidden or dot-only names, no control characters."""
+    if not isinstance(name, str):
+        return None
+    name = name.strip()
+    if (not name or name in ('.', '..') or name.startswith('.') or '/' in name or '\\' in name
+            or any(ord(c) < 32 for c in name) or len(name.encode('utf-8', 'surrogatepass')) > 240):
+        return None
+    return name
+
+
+@bp.route('/api/files/upload', methods=['PUT'])
+@limiter.exempt
+def files_upload():
+    """Store one file in a Files folder. Query: dir=<folder relative to the root>, name=<file name>. The body is the raw file.
+    Never replaces anything: if the name is taken the new file becomes 'name (2).ext'."""
+    name = _clean_upload_name(request.args.get('name', ''))
+    if name is None:
+        return jsonify({'error': 'Bad file name'}), 400
+    rel = request.args.get('dir', '')
+    if any(part.startswith('.') and part not in ('', '.') for part in rel.split('/')):
+        return jsonify({'error': 'Uploads cannot go into hidden folders'}), 403      # ~/.ssh, ~/.config and the like
+    root = _root()
+    folder = safe_join_browse(root, *rel.split('/')) if rel else root
+    if not folder.is_dir():
+        return jsonify({'error': 'Folder not found'}), 404
+    size, limit = request.content_length, _upload_limit()
+    if size is None:
+        return jsonify({'error': 'Content-Length required'}), 411
+    if size > limit:
+        return jsonify({'error': 'File too large'}), 413
+    request.max_content_length = limit + UPLOAD_CHUNK       # the app-wide 100 MB cap is for everything else
+    try:
+        if _shutil.disk_usage(folder).free < size + UPLOAD_RESERVE:
+            return jsonify({'error': 'Not enough free disk space'}), 507
+    except OSError as e:
+        return jsonify({'error': str(e)}), 500
+    tmp = folder / ('.upload-' + secrets.token_hex(8))
+    got = 0
+    try:
+        with open(tmp, 'wb') as f:
+            while True:
+                chunk = request.stream.read(UPLOAD_CHUNK)
+                if not chunk:
+                    break
+                got += len(chunk)
+                if got > size:
+                    return jsonify({'error': 'Body longer than Content-Length'}), 400
+                f.write(chunk)
+        if got != size:
+            return jsonify({'error': 'Upload was cut short'}), 400
+        stem, ext = os.path.splitext(name)
+        dest = folder / name
+        for n in range(2, 1000):
+            try:
+                os.link(tmp, dest)                          # atomic, and refuses to replace an existing file
+                break
+            except FileExistsError:
+                dest = folder / f'{stem} ({n}){ext}'
+        else:
+            return jsonify({'error': 'Too many files with that name'}), 409
+        audit.log('file_upload', str(dest))
+        return jsonify({'ok': True, 'name': dest.name, 'size': got})
+    except OSError as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+
+
+CROSS_DISK_FOLDER_LIMIT = 2 * 1024 ** 3        # a folder from another disk is copied into Trash first: refuse big ones
+
+
+def _folder_trash_refusal(folder, trash):
+    """Why this folder must not be moved to Trash, or '' if it can. The folder is already resolved."""
+    home = Path.home().resolve()
+    if folder == trash or trash.is_relative_to(folder) or folder.is_relative_to(trash):
+        return 'That folder holds the Trash'
+    if folder == home or home.is_relative_to(folder) or folder.parent == folder:
+        return 'That folder holds your home folder'
+    try:
+        names = {Path(shared.FILES_DIR).resolve()} | {home / n for n in ('Desktop', 'Documents', 'Downloads', 'Pictures', 'Music', 'Videos')}
+    except OSError:
+        names = set()
+    if folder in names:
+        return 'That is one of your main folders: remove its contents instead'
+    try:
+        if os.stat(folder).st_dev != os.stat(trash).st_dev:      # another disk: shutil.move would copy everything, then delete
+            total = 0
+            for dp, _dn, fn in os.walk(folder):
+                for f in fn:
+                    try:
+                        total += os.lstat(os.path.join(dp, f)).st_size
+                    except OSError:
+                        pass
+                if total > CROSS_DISK_FOLDER_LIMIT:
+                    return 'This folder is on another disk and too big to copy into Trash (over 2 GB)'
+    except OSError as e:
+        return str(e)
+    return ''
+
+
 @bp.route('/api/lego/trash', methods=['POST'])
 def lego_trash():
     """Move a file to /file types/trash/ inside Files."""
@@ -300,18 +485,25 @@ def lego_trash():
 
     if not _inside(target_resolved, files_root_resolved):
         return jsonify({'error': 'path outside Files'}), 403
-    if not target_resolved.is_file():
-        return jsonify({'error': 'can only trash files'}), 400
     if target.is_symlink():
         return jsonify({'error': 'cannot trash symlinks'}), 400
+    is_dir = target_resolved.is_dir()
+    if not is_dir and not target_resolved.is_file():
+        return jsonify({'error': 'not a file or folder'}), 400
 
     trash_dir = (shared.FILES_DIR / 'file types' / 'trash')
     trash_dir.mkdir(parents=True, exist_ok=True)
+    if is_dir:
+        if target_resolved == files_root_resolved.resolve() or files_root_resolved.resolve().is_relative_to(target_resolved):
+            return jsonify({'error': 'cannot trash the drive root or a folder that holds it'}), 400      # a "../" path is pulled back to the root: never trash that
+        why = _folder_trash_refusal(target_resolved, trash_dir.resolve())
+        if why:
+            return jsonify({'error': why}), 400
     dest = trash_dir / target_resolved.name
 
     if dest.exists():
-        stem = target_resolved.stem
-        suffix = target_resolved.suffix
+        stem = target_resolved.name if is_dir else target_resolved.stem
+        suffix = '' if is_dir else target_resolved.suffix
         i = 1
         while dest.exists():
             dest = trash_dir / f'{stem}_{i}{suffix}'
@@ -327,6 +519,45 @@ def lego_trash():
         return jsonify({'ok': True, 'moved_to': moved_to})
     except Exception as e:
         return jsonify({'error': f'trash error: {str(e)}'}), 500
+
+
+@bp.route('/api/lego/delete', methods=['POST'])
+def lego_delete():
+    """Delete files and folders for good, but only ones that are already in the Trash folder. Body: {"paths": [...]} or {"empty": true}."""
+    data = request.get_json(silent=True) or {}
+    trash = (Path(shared.FILES_DIR) / 'file types' / 'trash')
+    try:
+        trash_real = trash.resolve()
+    except OSError:
+        return jsonify({'error': 'no trash folder'}), 404
+    if data.get('empty'):
+        if not trash_real.is_dir():
+            return jsonify({'ok': True, 'deleted': 0, 'failed': 0})
+        targets = [c for c in trash_real.iterdir() if not c.is_symlink()]
+    else:
+        paths = data.get('paths')
+        if not isinstance(paths, list) or not paths or len(paths) > 2000 or not all(isinstance(x, str) and x for x in paths):
+            return jsonify({'error': 'paths required'}), 400
+        targets = []
+        for sub in paths:
+            t = safe_join_browse(_root(), *sub.split('/'))
+            targets.append(t)
+    deleted = failed = 0
+    for t in targets:
+        try:
+            real = t.resolve()
+            if t.is_symlink() or not (real.is_file() or real.is_dir()) or real == trash_real or not real.is_relative_to(trash_real):
+                failed += 1                                  # not a file or folder inside the Trash folder: never touched
+                continue
+            if real.is_dir():
+                _shutil.rmtree(real)
+            else:
+                real.unlink()
+            audit.log('file_delete', str(real))
+            deleted += 1
+        except OSError:
+            failed += 1
+    return jsonify({'ok': True, 'deleted': deleted, 'failed': failed})
 
 
 # ─── API: Lego Shred & Poof ────────────────────────────────

@@ -5854,7 +5854,7 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
 .lnk:hover { text-decoration: underline; }
 .lnk.bold { font-weight: 700; }
 .sp-pbody { position: relative; padding: 0 24px 32px; }
-.sp-pbody::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 232px; background: linear-gradient(rgba(0,0,0,.6), #121212); z-index: 0; }
+.sp-pbody::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 232px; background: linear-gradient(rgba(0,0,0,.6), rgba(0,0,0,0)); z-index: 0; }
 .sp-pbody > * { position: relative; z-index: 1; }
 .sp-home .sp-pbody::before { display: none; }
 .sp-actions { display: flex; align-items: center; gap: 32px; padding: 24px 0; }
@@ -6939,3 +6939,95 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
 .sp-np-foot .sp-np-qual { flex: 1; min-width: 0; margin: 0; padding: 0 6px; justify-content: center; white-space: nowrap; overflow: hidden; font-size: 10.5px; }
 .sp-np-foot .sp-q-txt { overflow: hidden; text-overflow: ellipsis; }
 .sp-np-foot:has(#sp-np-remote:not(:empty)) .sp-np-qual { display: none; }
+
+/* dropping files onto the Files screen */
+.fm-screen.fm-drop .fm-main { outline: 2px dashed var(--accent, #3b82f6); outline-offset: -8px; background: color-mix(in srgb, var(--accent, #3b82f6) 8%, transparent); }
+
+/* streaming quality sheet: one slider per kind of network */
+.sp-qs { padding: 4px 20px 18px; display: flex; flex-direction: column; gap: 22px; }
+.sp-qs-block { display: flex; flex-direction: column; gap: 6px; }
+.sp-qs-h { display: flex; align-items: center; justify-content: space-between; }
+.sp-qs-h b { font-size: 17px; }
+.sp-qs-now { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #121212; background: var(--sp-green, #1db954); padding: 3px 8px; border-radius: 99px; }
+.sp-qs-val { display: flex; flex-direction: column; gap: 2px; min-height: 52px; }
+.sp-qs-big { font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+.sp-qs-val small { color: #a7a7a7; font-size: 13px; line-height: 1.35; }
+.sp-qs input[type=range] { width: 100%; touch-action: pan-x; accent-color: var(--sp-green, #1db954); height: 32px; margin: 4px 0 0; }
+.sp-qs-ends { display: flex; justify-content: space-between; color: #a7a7a7; font-size: 12px; }
+.sp-qs-fine { color: #8a8a8a; font-size: 12.5px; line-height: 1.4; margin: 0; }
+.sp-qs input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; height: 32px; }
+.sp-qs input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--sp-green, #1db954) var(--p, 0%), #535353 var(--p, 0%)); }
+.sp-qs input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.sp-qs input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: #535353; }
+.sp-qs input[type=range]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--sp-green, #1db954); }
+.sp-qs input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; }
+.wm[data-mzt="spotify"] .sp-qs input[type=range]::-webkit-slider-thumb { opacity: 1; width: 24px; height: 24px; margin-top: -10px; background: #fff; }
+.wm[data-mzt="spotify"] .sp-qs input[type=range]::-moz-range-thumb { opacity: 1; width: 24px; height: 24px; background: #fff; }
+.wm[data-mzt="spotify"] .sp-qs input[type=range] { height: 32px; }
+
+/* the little equaliser: on the phone's song rows (the number column is hidden there) ... */
+@media (max-width: 760px) {
+  .wm[data-mzt="spotify"] .sp-row.playing .tt small::before { content: ""; display: inline-block; width: 13px; height: 13px; margin-right: 6px; vertical-align: -1px; background: center / contain no-repeat var(--sp-eq); }
+  .wm.paused[data-mzt="spotify"] .sp-row.playing .tt small::before { background-image: var(--sp-eq-still); }
+}
+/* ... and on whatever is playing from: the album, playlist, artist or Liked Songs, in lists and on cards */
+.wm[data-mzt="spotify"] .playing-ctx b { color: var(--sp-green); }
+.wm[data-mzt="spotify"] .playing-ctx b::before { content: ""; display: inline-block; width: 13px; height: 13px; margin-right: 6px; vertical-align: -1px; background: center / contain no-repeat var(--sp-eq); }
+.wm.paused[data-mzt="spotify"] .playing-ctx b::before { background-image: var(--sp-eq-still); }
+.sp-rn { display: flex; gap: 10px; padding: 6px 20px 20px; }
+.sp-rn input { flex: 1; min-width: 0; background: #3e3e3e; color: #fff; border: 0; border-radius: 6px; padding: 14px; font: inherit; font-size: 16px; }
+.sp-rn button { border: 0; border-radius: 99px; padding: 0 22px; font: 700 15px inherit; background: #fff; color: #000; }
+.sp-rn button:disabled { opacity: .5; }
+
+.wm[data-mzt="spotify"] { --sp-eq: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231ed760'%3E%3Crect x='4' y='10' width='4' height='10'%3E%3Canimate attributeName='height' values='10;18;6;10' dur='.9s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='10;2;14;10' dur='.9s' repeatCount='indefinite'/%3E%3C/rect%3E%3Crect x='10' y='4' width='4' height='16'%3E%3Canimate attributeName='height' values='16;6;18;16' dur='.7s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='4;14;2;4' dur='.7s' repeatCount='indefinite'/%3E%3C/rect%3E%3Crect x='16' y='8' width='4' height='12'%3E%3Canimate attributeName='height' values='12;18;8;12' dur='.8s' repeatCount='indefinite'/%3E%3Canimate attributeName='y' values='8;2;12;8' dur='.8s' repeatCount='indefinite'/%3E%3C/rect%3E%3C/svg%3E"); --sp-eq-still: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231ed760'%3E%3Crect x='4' y='10' width='4' height='10'/%3E%3Crect x='10' y='4' width='4' height='16'/%3E%3Crect x='16' y='8' width='4' height='12'/%3E%3C/svg%3E"); }
+.wm[data-mzt="spotify"] .sp-li.playing-ctx .sp-lit b,
+.wm[data-mzt="spotify"]:not(.side-collapsed) .sp-li.playing-ctx .sp-lit b,
+.wm[data-mzt="spotify"]:not(.side-collapsed) .sp-li.playing-ctx:hover .sp-lit b { color: var(--sp-green); }
+
+/* playlist edit mode: pick several songs, then move or remove them together */
+.wm[data-mzt="spotify"] .sp-selbar { display: flex; align-items: center; gap: 6px; margin: 0 -16px; padding: 8px 16px; background: #181818; border-bottom: 1px solid #282828; font-size: 13px; color: #b3b3b3; overflow-x: auto; }
+.wm[data-mzt="spotify"] .sp-selbar span { flex: 1; white-space: nowrap; }
+.wm[data-mzt="spotify"] .sp-selbar.on span { color: #fff; font-weight: 700; flex: 1 0 auto; }
+.wm[data-mzt="spotify"] .sp-selbar button { height: 30px; padding: 0 12px; border: 1px solid #535353; border-radius: 15px; background: none; color: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; flex: none; }
+.wm[data-mzt="spotify"] .sp-selbar button.rm { color: #ff6b6b; border-color: #7a3030; }
+.wm[data-mzt="spotify"] .sp-selbar button:disabled { opacity: .5; }
+.wm[data-mzt="spotify"] .sp-echk { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #727272; margin-right: 10px; box-sizing: border-box; display: inline-block; vertical-align: middle; }
+.wm[data-mzt="spotify"] .sp-echk.on { background: var(--sp-green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center/14px no-repeat; border-color: var(--sp-green); }
+.wm[data-mzt="spotify"] .sp-row.esel { background: rgba(255,255,255,.1); }
+
+.wm[data-mzt="spotify"] .sp-row.esel { background: rgba(255,255,255,.1); }
+.sp-dsel { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 28px; background: #282828; box-shadow: 0 8px 28px rgba(0,0,0,.6); color: #fff; font-size: 13px; white-space: nowrap; }
+.sp-dsel span { font-weight: 700; padding: 0 4px; }
+.sp-dsel button { height: 30px; padding: 0 14px; border: 1px solid #535353; border-radius: 15px; background: none; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.sp-dsel button:hover { border-color: #fff; }
+.sp-dsel button.rm { color: #ff6b6b; border-color: #7a3030; }
+/* the playing indicator on grid cards (search results, shelves) as well as library rows */
+.wm[data-mzt="spotify"] .sp-cardx.playing-ctx .sp-ct { color: var(--sp-green); }
+.wm[data-mzt="spotify"] .sp-cardx.playing-ctx .sp-ct::before { content: ""; display: inline-block; width: 13px; height: 13px; margin-right: 6px; vertical-align: -1px; background: center / contain no-repeat var(--sp-eq); }
+.wm.paused[data-mzt="spotify"] .sp-cardx.playing-ctx .sp-ct::before { background-image: var(--sp-eq-still); }
+.wm[data-mzt="spotify"] .sp-rec.playing-ctx b, .wm[data-mzt="spotify"] .sp-quick.playing-ctx b { color: var(--sp-green); }
+
+/* swiping the mini player sideways: whatever slides must stay inside its rounded rectangle */
+.wm[data-mzt="spotify"] .wm-transport.swiping { overflow: hidden; }
+
+/* phone: artist and album names inside song rows are plain text, so scrolling can never open them; long-press the row for "Go to artist" */
+@media (max-width: 760px) {
+  #music-screen .sp-row a[data-act], #music-screen .sp-qi-row a[data-act], #music-screen .qrow a[data-act] { pointer-events: none; }
+}
+
+/* touch feedback: applied on touch-down by a small script, so it shows before the tap is confirmed */
+#music-screen :is(.sp-row, .sp-li, .sp-quick, .sp-rec, .sp-qi-row, .sp-addrow, .sp-mi, .sp-topres, .sp-tile).pressed { background: rgba(255,255,255,.1); transition: none; }
+#music-screen .sp-cardx.pressed { opacity: .72; transition: none; }
+#music-screen .sp-chip.pressed { filter: brightness(1.35); transition: none; }
+#music-screen .sp-tabbar button.pressed { opacity: .6; transition: none; }
+
+/* pull to refresh */
+.sp-ptr { position: fixed; left: 50%; top: calc(var(--safe-top) + 10px); z-index: 70; width: 38px; height: 38px; margin-left: 0; display: grid; place-items: center; border-radius: 50%; background: #2c2c2c; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transform: translate(-50%, -40px); }
+.sp-ptr.spin svg { animation: sp-ptr-spin .8s linear infinite; }
+@keyframes sp-ptr-spin { to { transform: rotate(360deg); } }
+
+/* phone: soft shadows are nearly invisible on the dark page but costly to draw on every new cover, so they are smaller */
+@media (max-width: 760px) {
+  .wm[data-mzt="spotify"] .sp-np-art { box-shadow: 0 8px 20px rgba(0,0,0,.45); }
+  .wm[data-mzt="spotify"] .sp-cover .wm-art { box-shadow: none; }
+}

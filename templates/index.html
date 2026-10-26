@@ -10,9 +10,9 @@
   <meta name="theme-color" content="#0a0a0f">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-  <link rel="stylesheet" href="/static/css/app.css?v=270">
-  <link rel="stylesheet" href="/static/css/onboarding.css?v=270">
-  <link rel="stylesheet" href="/static/css/gallery.css?v=270">
+  <link rel="stylesheet" href="/static/css/app.css?v=302">
+  <link rel="stylesheet" href="/static/css/onboarding.css?v=302">
+  <link rel="stylesheet" href="/static/css/gallery.css?v=302">
   <link rel="stylesheet" href="/static/vendor/xterm/xterm.min.css">
   <title>DeCloud</title>
 </head>
@@ -332,6 +332,7 @@
         <button id="fm-v-grid" onclick="fmSetView('grid')" aria-label="Icon view" title="Icons"><i data-i="grid"></i></button>
       </div>
       <button class="fm-ib" id="fm-sort" onclick="fmSortMenu(event)" aria-label="Sort" title="Sort"><i data-i="sort"></i></button>
+      <button class="fm-ib" id="fm-upload" onclick="fmUploadPick()" aria-label="Upload files" title="Upload files"><i data-i="upload"></i></button>
       <button class="fm-ib" id="fm-more" onclick="fmMoreMenu(event)" aria-label="More" title="More"><i data-i="more"></i></button>
     </div>
   </div>
@@ -1291,36 +1292,36 @@
 </div>
 
 <script src="/static/js/thinking-orbs.js"></script>
-<script src="/static/js/modules/auth.js?v=270"></script>
-<script src="/static/js/modules/onboarding.js?v=270"></script>
-<script src="/static/js/modules/core.js?v=270"></script>
-<script src="/static/js/modules/nav.js?v=270"></script>
-<script src="/static/js/modules/media-session.js?v=270"></script>
-<script src="/static/js/modules/home.js?v=270"></script>
- <script src="/static/js/modules/liquid.js?v=270"></script>
- <script src="/static/js/modules/musicgen.js?v=270"></script>
- <script src="/static/js/modules/models.js?v=270"></script>
-<script src="/static/js/modules/projects.js?v=270"></script>
-<script src="/static/js/modules/audiobooks.js?v=270"></script>
-<script src="/static/js/modules/ui-kit.js?v=270"></script>
-<script src="/static/js/modules/gallery.js?v=270"></script>
-<script src="/static/js/modules/lego.js?v=270"></script>
-<script src="/static/js/modules/logs.js?v=270"></script>
-<script src="/static/js/modules/terminal.js?v=270"></script>
-<script src="/static/js/modules/osint.js?v=270"></script>
-<script src="/static/js/modules/universe.js?v=270"></script>
-<script src="/static/js/modules/system.js?v=270"></script>
-<script src="/static/js/modules/ollama.js?v=270"></script>
-<script src="/static/js/modules/comfy.js?v=270"></script>
-<script src="/static/js/modules/lego3d.js?v=270"></script>
-<script src="/static/js/modules/voice.js?v=270"></script>
-<script src="/static/js/modules/journal.js?v=270"></script>
-<script src="/static/js/modules/legos3d.js?v=270"></script>
-<script src="/static/js/modules/settings.js?v=270"></script>
-<script src="/static/js/modules/telemetry.js?v=270"></script>
-<script src="/static/js/modules/desktop.js?v=270"></script>
-<script src="/static/js/modules/music.js?v=270"></script>
-<script src="/static/js/modules/music-spotify.js?v=270"></script>
+<script src="/static/js/modules/auth.js?v=302"></script>
+<script src="/static/js/modules/onboarding.js?v=302"></script>
+<script src="/static/js/modules/core.js?v=302"></script>
+<script src="/static/js/modules/nav.js?v=302"></script>
+<script src="/static/js/modules/media-session.js?v=302"></script>
+<script src="/static/js/modules/home.js?v=302"></script>
+ <script src="/static/js/modules/liquid.js?v=302"></script>
+ <script src="/static/js/modules/musicgen.js?v=302"></script>
+ <script src="/static/js/modules/models.js?v=302"></script>
+<script src="/static/js/modules/projects.js?v=302"></script>
+<script src="/static/js/modules/audiobooks.js?v=302"></script>
+<script src="/static/js/modules/ui-kit.js?v=302"></script>
+<script src="/static/js/modules/gallery.js?v=302"></script>
+<script src="/static/js/modules/lego.js?v=302"></script>
+<script src="/static/js/modules/logs.js?v=302"></script>
+<script src="/static/js/modules/terminal.js?v=302"></script>
+<script src="/static/js/modules/osint.js?v=302"></script>
+<script src="/static/js/modules/universe.js?v=302"></script>
+<script src="/static/js/modules/system.js?v=302"></script>
+<script src="/static/js/modules/ollama.js?v=302"></script>
+<script src="/static/js/modules/comfy.js?v=302"></script>
+<script src="/static/js/modules/lego3d.js?v=302"></script>
+<script src="/static/js/modules/voice.js?v=302"></script>
+<script src="/static/js/modules/journal.js?v=302"></script>
+<script src="/static/js/modules/legos3d.js?v=302"></script>
+<script src="/static/js/modules/settings.js?v=302"></script>
+<script src="/static/js/modules/telemetry.js?v=302"></script>
+<script src="/static/js/modules/desktop.js?v=302"></script>
+<script src="/static/js/modules/music.js?v=302"></script>
+<script src="/static/js/modules/music-spotify.js?v=302"></script>
 
 <!-- ═══ ONBOARDING OVERLAY ═══ -->
 <div id="onboarding-overlay" class="onboarding-overlay" style="display:none">

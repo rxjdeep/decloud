@@ -37,6 +37,15 @@ public class MainActivity extends Activity {
             }
         });
         setContentView(root);
+        // Android's own back swipe would swallow the page's edge-swipe back. Android lets an app claim at most 200dp of height per edge,
+        // so a 40dp-wide strip in the middle of the left edge is the page's; the rest of the edge keeps the system gesture.
+        root.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                float d = getResources().getDisplayMetrics().density;
+                int h = b - t, strip = Math.round(200 * d), top = Math.max(0, (h - strip) / 2);
+                v.setSystemGestureExclusionRects(java.util.Collections.singletonList(new android.graphics.Rect(0, top, Math.round(40 * d), top + Math.min(strip, h))));
+            }
+        });
         WindowInsetsController c = getWindow().getInsetsController();       // only exists once the window has content: asking earlier is what crashed the first build
         if (c != null) c.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);   // white icons
         attachWeb();
@@ -73,12 +82,41 @@ public class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); route(i); }
 
     private void route(Intent i) {                             // launcher shortcuts: long-press the icon for Music, Gallery, Files
-        if (i != null && i.hasExtra("hash")) Web.go(i.getStringExtra("hash"));
+        if (i == null) return;
+        if (i.hasExtra("hash")) Web.go(i.getStringExtra("hash"));
+        else if (Intent.ACTION_SEND.equals(i.getAction()) && i.getStringExtra(Intent.EXTRA_TEXT) != null) {     // shared text: search for it
+            String t = i.getStringExtra(Intent.EXTRA_TEXT).trim();
+            if (t.length() > 200) t = t.substring(0, 200);
+            Web.js("if (window.mzShareSearch) mzShareSearch(" + org.json.JSONObject.quote(t) + "); else addEventListener('load', function () { mzShareSearch && mzShareSearch(" + org.json.JSONObject.quote(t) + "); });");
+        }
     }
 
-    @Override protected void onResume() { super.onResume(); Web.visible = true; Web.wake(); }
+    // The system back swipe at the left edge would swallow the page's own edge swipe, so while DeCloud is on screen its sensitivity is 0.
+    // The value you had is kept in preferences and put back the moment the app leaves the screen (or, if it died first, the next time it opens).
+    private static final String[] EDGES = { "back_gesture_inset_scale_left" };
+    private static float sane(float v) { return v < 0.05f ? 1f : v; }          // 0 is what this app sets, never what you chose: a stray 0 is never kept as "your" value
+    private void edges(boolean off) {
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("edge", MODE_PRIVATE);
+            android.content.ContentResolver cr = getContentResolver();
+            if (checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != PackageManager.PERMISSION_GRANTED) return;
+            if (sp.contains("orig")) { sp.edit().putFloat("orig_" + EDGES[0], sp.getFloat("orig", 1f)).remove("orig").apply(); }       // the first version kept one value
+            for (String k : EDGES) {
+                String key = "orig_" + k;
+                if (off) {
+                    if (!sp.contains(key)) sp.edit().putFloat(key, sane(android.provider.Settings.Secure.getFloat(cr, k, 1f))).apply();
+                    android.provider.Settings.Secure.putFloat(cr, k, 0f);
+                } else if (sp.contains(key)) {
+                    android.provider.Settings.Secure.putFloat(cr, k, sane(sp.getFloat(key, 1f)));
+                    sp.edit().remove(key).apply();
+                }
+            }
+        } catch (Exception ignored) { }
+    }
 
-    @Override protected void onPause() { super.onPause(); Web.visible = false; Web.maybeSleep(); }
+    @Override protected void onResume() { super.onResume(); Web.visible = true; Web.wake(); edges(true); }
+
+    @Override protected void onPause() { super.onPause(); Web.visible = false; Web.maybeSleep(); edges(false); }
 
     @Override protected void onDestroy() {
         super.onDestroy();

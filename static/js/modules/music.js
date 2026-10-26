@@ -199,7 +199,8 @@ async function mzLoad() {
   if (!mz.loaded) content.innerHTML = '<div class="wm-empty">Loading your library…</div>';
   else mzRender();
   try {
-    var r = await fetch('/api/music/library');
+    var fresh = mz.freshNext; mz.freshNext = false;
+    var r = await fetch('/api/music/library' + (fresh ? '?fresh=1' : ''));
     if (!r.ok) throw new Error('HTTP ' + r.status);
     var d = await r.json();
     setTimeout(function () { mzLibCacheWrite(d); }, 1500);       // after the screen has drawn: stringifying the whole library is not free
@@ -210,6 +211,7 @@ async function mzLoad() {
       mz.origQueue = null;
     }
     mz.loaded = true;
+    mzInPlRefresh();
     if (!had) {
       if (mz.pendingMsg) { var pm = mz.pendingMsg; mz.pendingMsg = null; mzOnState(pm); }
       mzRestoreState();
@@ -316,6 +318,11 @@ function mzTipHtml() {
 
 // ─── window controls + phone player ────────────────────
 function mzIsMobile() { return !!(window.matchMedia && matchMedia('(max-width: 760px)').matches); }
+// every track that sits in at least one playlist, for the tick on Now Playing
+function mzInPlRefresh() {
+  fetch('/api/music/inplaylists').then(function (r) { return r.json(); })
+    .then(function (d) { if (d && d.ids) { mz.inPl = new Set(d.ids); if (typeof mzSp !== 'undefined' && mzSp && mzSp.npRefresh) mzSp.npRefresh(); } }).catch(function () {});
+}
 function mzNowTap(e) {
   if (e && e.target && e.target.closest('a, button')) return;                   // a link or button inside the bar handles itself
   if (typeof mzSp !== 'undefined' && mzSp && mzSp.justDragged && mzSp.justDragged()) return;       // the finger was swiping, not tapping
@@ -630,7 +637,7 @@ function mzSnapshot() {
   return {
     q: q.map(function (t) { return t.f; }), qi: mz.qi - from,
     pos: musicAudio && isFinite(musicAudio.currentTime) ? Math.round(musicAudio.currentTime * 10) / 10 : 0,
-    playing: !!(musicAudio && !musicAudio.paused), sh: mz.shuffle, rp: mz.repeat,
+    playing: !!(musicAudio && !musicAudio.paused), sh: mz.shuffle, rp: mz.repeat, cx: mz.playCtx || null,
   };
 }
 function mzSaveState(force) {
@@ -651,7 +658,7 @@ function mzBody() {
   var st = mzSnapshot(), cur = mzCur();
   var sig = mzQueueSig(), full = sig !== mzLastSig;
   var from = full ? Math.max(0, mz.qi - 100) : mzSnapFrom;        // index offset stays fixed between full pushes
-  var body = { dev: mzMe(), label: mzDeviceLabel(), cur: cur.f, qi: mz.qi - from, pos: st.pos, playing: st.playing, sh: st.sh, rp: st.rp };
+  var body = { dev: mzMe(), label: mzDeviceLabel(), cur: cur.f, qi: mz.qi - from, pos: st.pos, playing: st.playing, sh: st.sh, rp: st.rp, cx: st.cx };
   if (full) body.q = mz.queue.slice(from, from + 1500).map(function (t) { return t.f; });
   return { body: body, sig: sig, from: from };
 }
@@ -762,7 +769,7 @@ function mzApplyRemote(st) {
   if (at < 0) return;
   var prev = mzCur();
   mz.queue = tracks; mz.qi = at; mz.origQueue = null;
-  mz.shuffle = !!st.sh; mz.repeat = st.rp || 'off';
+  mz.shuffle = !!st.sh; mz.repeat = st.rp || 'off'; mz.playCtx = st.cx || null;
   musicCurrentIdx = mzCur().i;
   if (!prev || prev.f !== mzCur().f || mz.view.type === 'now') mzUpdateNow(true);
   else { mzUpdateModes(); mzSyncHeart(); }
@@ -828,11 +835,77 @@ function mzTryPlay(from) {
   var p = musicAudio.play();
   if (p && p.catch) p.catch(function () { mzSetPlayIcon(false); if (from) mzSend({ t: 'blocked', to: from }); });
 }
-function mzStreamUrl(t) { return '/api/music/stream/' + mzEnc(t.f) + (t.sx === 'wav' ? '?x=wav' : ''); }
+// ─── streaming quality: Original, or a lower-bitrate MP3 copy the server makes once and keeps ───
+var MZ_STEPS = [64, 96, 128, 192, 256, 320, 0];                  // kbps, smallest to best; 0 = the original file
+function mzQualityPrefs() {                                       // {wifi, cell}: what to ask for on each kind of network
+  var p = mz.prefs, old = p.quality;
+  if (p.qWifi === undefined && p.qCell === undefined && old) {   // the single setting from before: Auto meant "original on Wi-Fi, 128 on mobile data"
+    var n = old === 'orig' ? 0 : old === 'auto' ? -1 : parseInt(old, 10) || 0;
+    return { wifi: n < 0 ? 0 : n, cell: n < 0 ? 128 : n };
+  }
+  return { wifi: p.qWifi === undefined ? 0 : p.qWifi, cell: p.qCell === undefined ? 128 : p.qCell };
+}
+function mzOnMobileData() { var c = navigator.connection || {}; return c.type === 'cellular'; }
+function mzQualityRate() {                                       // kbps to ask for right now, or 0 for the original
+  var q = mzQualityPrefs();
+  return mzOnMobileData() ? q.cell : q.wifi;
+}
+function mzStepLabel(k) { return k ? k + ' kbps' : 'Original'; }
+function mzQualityLabel() { var q = mzQualityPrefs(); return 'Wi-Fi ' + mzStepLabel(q.wifi) + ' · Mobile ' + mzStepLabel(q.cell); }
+function mzStepNote(k) {
+  if (!k) return 'Full quality. Lossless files use the most data, often 8 MB or more a minute.';
+  var mb = k * 60 / 8 / 1000;
+  return 'About ' + (mb < 1 ? mb.toFixed(1) : Math.round(mb * 10) / 10) + ' MB per minute · ' + (k >= 256 ? 'very high' : k >= 160 ? 'high' : k >= 112 ? 'normal' : 'data saver') + ' (MP3)';
+}
+function mzStreamUrl(t) {
+  var rate = mzQualityRate(), id = '/api/music/stream/' + mzEnc(t.f);
+  if (rate) return id + '?q=' + rate;
+  return id + (t.sx === 'wav' ? '?x=wav' : '');
+}
+// the next song is converted while this one plays, so it starts at once
+function mzPrewarmNext() {
+  var rate = mzQualityRate(), nx = mz.queue[mz.qi + 1];
+  if (!rate || !nx || mz.remote) return;
+  fetch('/api/music/prewarm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: nx.f, q: rate }) }).catch(function () {});
+}
+function mzSetQuality(which, kbps) {                              // which: 'wifi' | 'cell'
+  var before = mzQualityRate();
+  if (which === 'wifi') mz.prefs.qWifi = kbps; else mz.prefs.qCell = kbps;
+  mz.prefs.quality = undefined; if (mz.prefs.qWifi === undefined) mz.prefs.qWifi = mzQualityPrefs().wifi; if (mz.prefs.qCell === undefined) mz.prefs.qCell = mzQualityPrefs().cell;
+  mzSavePrefs();
+  var t = mzCur();
+  if (mzQualityRate() !== before && t && musicAudio && musicAudio.src && !mz.remote) {      // the song that is playing now uses it: keep the place
+    var pos = musicAudio.currentTime || 0, was = !musicAudio.paused;
+    mzStartCurrent(pos); if (was) mzTryPlay(null);
+  }
+  if (typeof mzSp !== 'undefined' && mzSp && mzSp.npQualRefresh) mzSp.npQualRefresh();
+}
+function mzQualityMenu() {
+  var q = mzQualityPrefs(), now = mzOnMobileData() ? 'cell' : 'wifi';
+  function block(which, title) {
+    var v = which === 'cell' ? q.cell : q.wifi, i = Math.max(0, MZ_STEPS.indexOf(v));
+    return '<div class="sp-qs-block" data-k="' + which + '"><div class="sp-qs-h"><b>' + title + '</b>' + (now === which ? '<span class="sp-qs-now">in use now</span>' : '') + '</div>' +
+      '<div class="sp-qs-val"><span class="sp-qs-big">' + mzStepLabel(MZ_STEPS[i]) + '</span><small>' + mzStepNote(MZ_STEPS[i]) + '</small></div>' +
+      '<input type="range" min="0" max="' + (MZ_STEPS.length - 1) + '" step="1" value="' + i + '" aria-label="' + title + '">' +
+      '<div class="sp-qs-ends"><span>Smallest</span><span>Original</span></div></div>';
+  }
+  mzSp.menuSheet({ title: 'Streaming quality', items: [], body: '<div class="sp-qs">' + block('cell', 'On mobile data') + block('wifi', 'On Wi-Fi') +
+    '<p class="sp-qs-fine">A song is converted once on your server and kept, so playing it again costs nothing extra. Seeking works at every quality.</p></div>',
+    mount: function (el) {
+      Array.prototype.forEach.call(el.querySelectorAll('.sp-qs-block'), function (blk) {
+        var inp = blk.querySelector('input'), big = blk.querySelector('.sp-qs-big'), note = blk.querySelector('small');
+        function fill() { inp.style.setProperty('--p', (parseInt(inp.value, 10) / (MZ_STEPS.length - 1) * 100) + '%'); }
+        fill();
+        inp.addEventListener('input', function () { fill(); var k = MZ_STEPS[parseInt(inp.value, 10)]; big.textContent = mzStepLabel(k); note.textContent = mzStepNote(k); mzHaptic('tick'); });
+        inp.addEventListener('change', function () { mzSetQuality(blk.dataset.k, MZ_STEPS[parseInt(inp.value, 10)]); });
+      });
+    } });
+}
 function mzStartCurrent(pos) {
   var t = mzCur(); if (!t) return;
   mz.counted = false; mz.resumeAt = pos || 0; mz.fb = false;
   musicAudio.src = mzStreamUrl(t);
+  setTimeout(mzPrewarmNext, 1500);
 }
 
 // active device ← command from a remote (or from the server during a transfer)
@@ -915,8 +988,9 @@ function mzApplyState(st, opts) {
   if (at < 0) return false;                      // the track is gone from the library
   var prev = mzCur(), sameTrack = prev && prev.f === curId && musicAudio && musicAudio.src;
   mz.queue = tracks; mz.qi = at; mz.origQueue = null;
-  mz.shuffle = !!st.sh; mz.repeat = st.rp || 'off';
+  mz.shuffle = !!st.sh; mz.repeat = st.rp || 'off'; mz.playCtx = st.cx || null;
   if (!musicAudio) musicAudio = mzEl('music-audio');
+  musicAudio.loop = mz.repeat === 'one';
   var t = mzCur(), pos = st.pos || 0;
   musicCurrentIdx = t.i;
   if (sameTrack) {
@@ -968,8 +1042,15 @@ async function mzSync() {
 }
 
 // ─── queue / playback ────────────────────────────────────
+// where the music is coming from (an album, playlist, artist or Liked Songs), so that item can show it is playing
+function mzViewCtx() {
+  var v = mz.view || {};
+  if (v.type === 'album' || v.type === 'playlist' || v.type === 'artist') return { k: v.type, v: v.key };
+  return v.type === 'favorites' ? { k: 'liked', v: '' } : null;
+}
 function mzPlayList(list, start, forceShuffle) {
   if (!list.length) return;
+  var cx = mz.nextCtx || (list === mz.ctx ? mzViewCtx() : null); mz.nextCtx = null;
   if (!musicAudio) musicAudio = mzEl('music-audio');
   if (forceShuffle) mz.shuffle = true;
   var q = list.slice(), qi;
@@ -977,8 +1058,8 @@ function mzPlayList(list, start, forceShuffle) {
     var first = q.splice(forceShuffle ? Math.floor(Math.random() * q.length) : start, 1)[0];
     q = [first].concat(mzShuffled(q)); qi = 0;
   } else qi = start;
-  if (mz.remote) { mzRemoteLoad(q, qi); return; }
-  mz.origQueue = list.slice(); mz.queue = q; mz.qi = qi;
+  if (mz.remote) { mz.playCtx = cx; mzRemoteLoad(q, qi); return; }
+  mz.origQueue = list.slice(); mz.queue = q; mz.qi = qi; mz.playCtx = cx;
   mzHaptic('play');
   mzStart();
   mzUpdateModes();
@@ -986,7 +1067,7 @@ function mzPlayList(list, start, forceShuffle) {
 // "play this list" while another device is playing: it plays there (like Spotify Connect)
 function mzRemoteLoad(q, qi) {
   var from = Math.max(0, qi - 100), ids = q.slice(from, from + 1500).map(function (t) { return t.f; });
-  var st = { q: ids, qi: qi - from, pos: 0, playing: true, sh: mz.shuffle, rp: mz.repeat };
+  var st = { q: ids, qi: qi - from, pos: 0, playing: true, sh: mz.shuffle, rp: mz.repeat, cx: mz.playCtx || null };
   mzCmd('load', null, st);
   mz.rs = { st: st, at: Date.now() };
   mzApplyRemote(st);
@@ -998,6 +1079,7 @@ function mzStart() {
   if (!musicAudio) musicAudio = mzEl('music-audio');
   musicCurrentIdx = t.i; mz.counted = false; mz.resumeAt = 0;
   mz.fb = false; musicAudio.src = mzStreamUrl(t);
+  setTimeout(mzPrewarmNext, 1500);
   if (mz.ac && mz.ac.state !== 'running') { try { mz.ac.resume().catch(function () {}); } catch (_) {} }   // the next song must not wait for an unlock
   mzSaveState(true);
   mzTryPlay(null);
@@ -1025,8 +1107,9 @@ function togglePlayMusic() {
   if (!musicAudio) return;
   if (!musicAudio.src && mzCur()) { mzStartCurrent(0); mzTryPlay(null); return; }
   if (!musicAudio || !musicAudio.src) { if (mz.loaded && musicPlaylist.length) mzPlayList(musicPlaylist, 0, true); return; }
-  if (musicAudio.paused) { var p = musicAudio.play(); if (p && p.catch) p.catch(function () {}); }
-  else musicAudio.pause();
+  // the icon changes on the tap itself; the audio element's own play/pause events can lag behind (a stream has to start first)
+  if (musicAudio.paused) { mzSetPlayIcon(true); var p = musicAudio.play(); if (p && p.catch) p.catch(function () { mzSetPlayIcon(!musicAudio.paused); }); }
+  else { mzSetPlayIcon(false); musicAudio.pause(); }
 }
 function mzStop() {
   if (mz.remote) { mzCmd('pause'); mzCmd('seek', 0); mzRemoteOptimistic(false); mz.rs.st.pos = 0; return; }
@@ -1059,6 +1142,7 @@ function mzUpdateModes() {
   var s = mzEl('wm-shuffle'), r = mzEl('wm-repeat');
   if (s) { s.classList.toggle('on', mz.shuffle); s.setAttribute('aria-pressed', mz.shuffle ? 'true' : 'false'); s.title = mz.shuffle ? 'Shuffle: on' : 'Shuffle: off'; }
   if (r) { r.classList.toggle('on', mz.repeat !== 'off'); r.setAttribute('aria-pressed', mz.repeat !== 'off' ? 'true' : 'false'); r.title = mz.repeat === 'off' ? 'Repeat: off' : mz.repeat === 'all' ? 'Repeat: all songs' : 'Repeat: this song'; r.innerHTML = mz.repeat === 'one' ? MZ_ICON.repeatOne : MZ_ICON.repeat; }
+  if (musicAudio) musicAudio.loop = mz.repeat === 'one';          // looped natively: with the screen off the page may not get to run its 'ended' handler in time
   if (typeof appModesPush === 'function') appModesPush();
 }
 function mzQueueNext(t) {
@@ -1141,6 +1225,7 @@ function mzBindAudio() {
     musicAudio.src = '/api/music/stream/' + mzEnc(t.f) + '?fb=1';
     mzTryPlay(null);
   };
+  musicAudio.loop = mz.repeat === 'one';
   musicAudio.onended = function () {
     if (mz.repeat === 'one') { musicAudio.currentTime = 0; musicAudio.play(); return; }
     mzAdvance(true);
@@ -1150,9 +1235,11 @@ function mzBindAudio() {
 function mzSetPlayIcon(playing) {
   var i = mzEl('wm-play-icon'); if (i) i.innerHTML = playing ? MZ_ICON.pause : MZ_ICON.play;
   var w = document.querySelector('#music-screen .wm'); if (w) w.classList.toggle('paused', !playing);
+  if (typeof mzSp !== 'undefined' && mzSp && mzSp.npPlayIcon) mzSp.npPlayIcon(playing);      // the full-screen player shows it at once, not at its next 250 ms poll
 }
 function mzUpdateNow(quiet) {
   var t = mzCur(); if (!t) return;
+  if (typeof mzSp !== 'undefined' && mzSp && mzSp.markCtx) mzSp.markCtx();
   mzNowText(t);
   mzEl('wm-now-art').outerHTML = mzArt(t, 160, 'wm-now-art', 'wm-now-art');
   var wA = document.querySelector('#music-screen .wm');
@@ -1166,6 +1253,7 @@ function mzUpdateNow(quiet) {
   }
   if (mz.view.type === 'now') mzRender(); else mzMarkPlaying();
   mzUpdateModes(); mzSyncHeart();
+  if (typeof mzSp !== 'undefined' && mzSp && mzSp.npRefresh) mzSp.npRefresh();             // the open player follows the new song now, not at its next poll
 }
 
 // ─── visualizer: Trap Nation ───────────────────────────────────────────────────────
@@ -1489,6 +1577,17 @@ function mzSearch(v) {
   }, 120);
 }
 
+// text shared into the app from another app (Android's Share sheet): open Search with it, once the library is there
+function mzShareSearch(q) {
+  var tries = 0;
+  (function go() {
+    if (!mz.loaded && tries++ < 60) { setTimeout(go, 250); return; }
+    location.hash = '#music';
+    var si = mzEl('wm-search-input'); if (si) si.value = q;
+    mzSearch(q);
+  })();
+}
+
 // ─── themes ──────────────────────────────────────────────
 var MZ_NP_ICON = {
   glossy: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
@@ -1523,6 +1622,7 @@ function mzThemeMenu(e) {
     var th = [{ label: 'Glossy Black', on: mz.theme === 'glossy', run: function () { mzSetTheme('glossy'); } }, { label: 'Spotify', on: mz.theme === 'spotify', run: function () { mzSetTheme('spotify'); } }];
     if (typeof navigator.vibrate === 'function' && (mz.coarse || /Android/i.test(navigator.userAgent))) { th.push({ sep: true }); th.push({ label: 'Vibration feedback', on: mz.prefs.haptics !== false, run: function () { mzToggleHaptics(); } }); }
     th.push({ sep: true }); th.push({ label: 'Back to DeCloud', run: function () { goHome(); } });
+    th.unshift({ label: 'Streaming quality', sub: mzQualityLabel(), run: function () { setTimeout(mzQualityMenu, 330); } }, { sep: true });
     mzSp.menuSheet({ title: 'Settings', items: th });
     return;
   }
@@ -1530,6 +1630,7 @@ function mzThemeMenu(e) {
   function it(v, label) { return '<button data-act="theme" data-v="' + v + '">' + (mz.theme === v ? '✓ ' : '\u2003') + label + '</button>'; }
   m.innerHTML = '<div class="wm-menu-h">Theme</div>' + it('glossy', 'Glossy Black') + it('spotify', 'Spotify') +
     (typeof navigator.vibrate === 'function' && (mz.coarse || /Android/i.test(navigator.userAgent)) ? '<hr><button data-act="haptics">' + (mz.prefs.haptics === false ? '\u2003' : '✓ ') + 'Vibration feedback</button>' : '') +
+    '<hr><button data-act="quality">Streaming quality…</button>' +
     '<hr><button data-act="exit">Back to DeCloud</button>';
   m.style.display = '';
   var r = e.currentTarget.getBoundingClientRect(), mr = m.getBoundingClientRect();
@@ -1647,6 +1748,7 @@ function mzBindUI() {
       case 'theme': mzCloseMenu(); mzSetTheme(v); break;
       case 'xfer': mzCloseMenu(); mzTransfer(v); break;
       case 'haptics': mzCloseMenu(); mzToggleHaptics(); break;
+      case 'quality': mzCloseMenu(); mzQualityMenu(); break;
       case 'exit': mzCloseMenu(); goHome(); break;
       default: if (typeof mzSp !== 'undefined' && mzSp && mzSp.click) mzSp.click(a, el, e);
     }

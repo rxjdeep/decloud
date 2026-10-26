@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">DeCloud</string>
     <string name="sc_music">Music</string>
+    <string name="sc_liked">Liked Songs</string>
+    <string name="sc_search">Search</string>
     <string name="sc_gallery">Gallery</string>
     <string name="sc_files">Files</string>
 </resources>

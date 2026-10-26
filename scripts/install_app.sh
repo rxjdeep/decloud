@@ -19,6 +19,7 @@ scp "${SCP_OPTS[@]}" "$APK" "$PHONE:/data/local/tmp/decloud.apk"
 ssh "${SSH_OPTS[@]}" "$PHONE" "
   pm install -r /data/local/tmp/decloud.apk &&
   { pm grant $PKG android.permission.POST_NOTIFICATIONS 2>/dev/null || true; } &&
+  { pm grant $PKG android.permission.WRITE_SECURE_SETTINGS 2>/dev/null || true; } &&
   am start -n $PKG/.MainActivity &&
   rm -f /data/local/tmp/decloud.apk
 "

@@ -33,6 +33,15 @@ document.addEventListener('contextmenu', e => {
 // ─── Service Worker ──────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js?v=107').catch(() => {});
+  // a new version arrived while an old page was showing: reload into it, but never while something is playing
+  var shellStale = false;
+  function shellPlaying() { return Array.prototype.some.call(document.querySelectorAll('audio'), function (a) { return !a.paused && !a.ended; }); }
+  function shellReload() { if (!shellPlaying()) location.reload(); }
+  navigator.serviceWorker.addEventListener('message', function (e) {
+    if (!e.data || e.data.t !== 'shell-updated') return;
+    if (performance.now() < 10000) shellReload(); else shellStale = true;
+  });
+  document.addEventListener('visibilitychange', function () { if (shellStale && !document.hidden) { shellStale = false; shellReload(); } });
 }
 
 // ─── Init (wrapped in try-catch so one failure doesn't brick everything) ─

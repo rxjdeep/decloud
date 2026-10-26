@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- the Voice feature's microphone -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- granted once over adb: lets the app switch off the system back swipe at the left edge while it is open (the page has its own edge swipe) -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
 
     <application android:label="@string/app_name" android:icon="@drawable/ic_launcher" android:allowBackup="false"
         android:usesCleartextTraffic="false" android:theme="@style/AppTheme">
@@ -24,6 +26,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- "Share" a song name or link from another app: DeCloud opens its Search with that text -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>

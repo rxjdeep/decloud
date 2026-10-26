@@ -32,6 +32,45 @@ final class Notif {
             .setContentIntent(open).addAction(go).setAutoCancel(true).setOnlyAlertOnce(true).build());
     }
 
+    private static long lastRun;
+
+    /** The ongoing "Sending..." notification with a Stop button, so a slow upload can be stopped without opening the app. */
+    static void running(Context c, String text) {
+        long now = System.currentTimeMillis();
+        if (now - lastRun < 1500) return;
+        lastRun = now;
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        nm.createNotificationChannel(new NotificationChannel("run", "Backup in progress", NotificationManager.IMPORTANCE_LOW));
+        int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
+        PendingIntent open = PendingIntent.getActivity(c, 2, new Intent(c, MainActivity.class), flags);
+        PendingIntent stop = PendingIntent.getBroadcast(c, 2, new Intent(c, ActionReceiver.class).setAction("io.decloud.pusher.STOP"), flags);
+        nm.notify(3, new Notification.Builder(c, "run").setSmallIcon(android.R.drawable.stat_sys_upload).setContentTitle("Backing up").setContentText(text)
+            .addAction(new Notification.Action.Builder(Icon.createWithResource(c, android.R.drawable.ic_media_pause), "Stop", stop).build())
+            .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open).build());
+    }
+
+    static void runningClear(Context c) { lastRun = 0; c.getSystemService(NotificationManager.class).cancel(3); }
+
+    private static String lastFail = "";
+
+    /** Tells you when files could not be sent, instead of leaving it to be found by opening the app. */
+    static void failed(Context c, String text) {
+        if (text.equals(lastFail)) return;
+        lastFail = text;
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        nm.createNotificationChannel(new NotificationChannel("fail", "Backup problems", NotificationManager.IMPORTANCE_DEFAULT));
+        PendingIntent open = PendingIntent.getActivity(c, 1, new Intent(c, MainActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        nm.notify(2, new Notification.Builder(c, "fail").setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle("Backup didn't finish").setContentText(text).setStyle(new Notification.BigTextStyle().bigText(text))
+            .setContentIntent(open).setAutoCancel(true).setOnlyAlertOnce(true).build());
+    }
+
+    static void failedClear(Context c) {
+        if (lastFail.isEmpty()) return;
+        lastFail = "";
+        c.getSystemService(NotificationManager.class).cancel(2);
+    }
+
     static void clear(Context c) {
         if (lastCount == 0) return;
         lastCount = 0; lastBytes = 0;

@@ -4,7 +4,7 @@ Off unless DECLOUD_BACKUP_TOKEN is set (24+ characters). The phone uses that tok
 session, so a leaked phone credential can only add files: it cannot read, list, overwrite or delete.
 Files land under DECLOUD_BACKUP_DIR (default <files dir>/Backups/s23) in four fixed folders."""
 from flask import Blueprint, jsonify, request
-import hmac, os, secrets, shutil, threading, time
+import fcntl, hashlib, hmac, os, secrets, shutil, threading, time
 from pathlib import Path
 
 import audit
@@ -85,7 +85,7 @@ def check():
     files = data.get('files')
     if not isinstance(files, list) or len(files) > MAX_CHECK:
         return jsonify({'error': 'files must be a list of at most %d entries' % MAX_CHECK}), 400
-    need, bad = [], 0
+    need, bad, partial = [], 0, {}
     for item in files:
         rel = item[0] if isinstance(item, (list, tuple)) and item else None
         dest = _dest(rel)
@@ -93,9 +93,89 @@ def check():
             bad += 1
         elif not dest.exists():
             need.append(rel)
+            try:                                                # an interrupted upload of this file: how far it got
+                have = _part(dest).stat().st_size
+                if 0 < have < int(item[1]):
+                    partial[rel] = have
+            except (OSError, ValueError, IndexError, TypeError):
+                pass
     if need:
         audit.log('backup_sync', '%d new of %d' % (len(need), len(files)))
-    return jsonify({'need': need, 'bad': bad})
+    return jsonify({'need': need, 'bad': bad, 'partial': partial})
+
+
+def _part(dest):
+    """The half-sent copy of a file: a fixed name per destination, so the next attempt finds it and carries on."""
+    return dest.parent / ('.part-r-' + hashlib.sha1(str(dest).encode('utf-8', 'surrogatepass')).hexdigest()[:16])
+
+
+def _put_resumable(dest, total):
+    """A phone that sends ?total=<whole size>&off=<bytes already sent> can stop and carry on: what arrived is kept until the file is complete."""
+    limit = _max_file()
+    if total <= 0 or total > limit:
+        return jsonify({'error': 'File too large' if total > limit else 'Bad total'}), 413 if total > limit else 400
+    off = request.args.get('off', 0, type=int) or 0
+    size = request.content_length
+    if size is None:
+        return jsonify({'error': 'Content-Length required'}), 411
+    if off < 0 or off + size != total:
+        return jsonify({'error': 'Offset and length do not add up to the total'}), 400
+    request.max_content_length = limit + CHUNK
+    part = _part(dest)
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if shutil.disk_usage(dest.parent).free < size + FREE_RESERVE:
+            return jsonify({'error': 'Not enough free disk space'}), 507
+        now = time.time()
+        for old in dest.parent.glob('.part-r-*'):               # abandoned for a week: gone
+            try:
+                if now - old.stat().st_mtime > 7 * 86400 and old != part:
+                    old.unlink()
+            except OSError:
+                pass
+        have = part.stat().st_size if part.exists() else 0
+        if off > 0 and have != off:
+            return jsonify({'error': 'Offset does not match what the server has', 'have': have}), 409
+        f = open(part, 'ab' if off > 0 else 'wb')
+    except OSError as e:
+        return jsonify({'error': str(e)}), 500
+    with f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)         # another upload of the same file is running
+        except OSError:
+            return jsonify({'error': 'This file is already being uploaded'}), 409
+        got = 0
+        while True:
+            try:
+                chunk = request.stream.read(CHUNK)
+            except Exception:                                      # the phone dropped the connection mid-body
+                break
+            if not chunk:
+                break
+            got += len(chunk)
+            if got > size:
+                return jsonify({'error': 'Body longer than Content-Length'}), 400
+            f.write(chunk)
+        f.flush()
+        if got != size:
+            return jsonify({'error': 'Upload was cut short', 'have': off + got}), 400      # kept: the next attempt carries on from here
+    try:
+        m = float(request.args.get('m', '')) / 1000.0
+        if 0 < m < 4102444800:
+            os.utime(part, (m, m))
+    except ValueError:
+        pass
+    try:
+        os.link(part, dest)                                       # atomic, and refuses to replace an existing file
+        existed = False
+    except FileExistsError:
+        existed = True
+    finally:
+        try:
+            part.unlink()
+        except OSError:
+            pass
+    return jsonify({'ok': True, 'existed': existed})
 
 
 @bp.route('/api/backup/file', methods=['PUT'])
@@ -107,6 +187,9 @@ def put_file():
         return jsonify({'error': 'Bad path'}), 400
     if dest.exists():
         return jsonify({'ok': True, 'existed': True})
+    total = request.args.get('total', type=int)
+    if total is not None:
+        return _put_resumable(dest, total)
     size, limit = request.content_length, _max_file()
     if size is None:
         return jsonify({'error': 'Content-Length required'}), 411

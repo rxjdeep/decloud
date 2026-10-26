@@ -185,6 +185,20 @@ function appMediaPush(force) {
   try { app.nowPlaying(appMeta.title, appMeta.artist, appMeta.album, appMeta.art ? new URL(appMeta.art, location.href).href : '', playing, pos, dur); } catch (e) { /* the app went away */ }
 }
 
+// The app keeps the screen on while the full-screen player is open and a song is playing
+var appAwake = false;
+function appAwakeSync() {
+  var app = window.DeCloudApp;
+  if (!app || !app.keepScreenOn) return;
+  var w = document.querySelector('#music-screen .wm');
+  var want = !!(appPlaying && !document.hidden && w && w.classList.contains('np-open'));
+  if (want === appAwake) return;
+  appAwake = want;
+  try { app.keepScreenOn(want); } catch (e) { /* the app went away */ }
+}
+setInterval(appAwakeSync, 1500);
+document.addEventListener('visibilitychange', appAwakeSync);
+
 // shuffle and repeat, for the app's player buttons. Only music has them: for an audiobook the app is told 'none' and shows neither.
 var appModes = '';
 function appModesPush() {

@@ -5,6 +5,16 @@
             <extra android:name="hash" android:value="music" />
         </intent>
     </shortcut>
+    <shortcut android:shortcutId="liked" android:icon="@drawable/ic_launcher" android:shortcutShortLabel="@string/sc_liked">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.decloud.app" android:targetClass="io.decloud.app.MainActivity">
+            <extra android:name="hash" android:value="music/favorites" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="search" android:icon="@drawable/ic_launcher" android:shortcutShortLabel="@string/sc_search">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="io.decloud.app" android:targetClass="io.decloud.app.MainActivity">
+            <extra android:name="hash" android:value="music/search" />
+        </intent>
+    </shortcut>
     <shortcut android:shortcutId="gallery" android:shortcutShortLabel="@string/sc_gallery" android:icon="@drawable/ic_launcher">
         <intent android:action="android.intent.action.VIEW" android:targetPackage="io.decloud.app" android:targetClass="io.decloud.app.MainActivity">
             <extra android:name="hash" android:value="gallery" />

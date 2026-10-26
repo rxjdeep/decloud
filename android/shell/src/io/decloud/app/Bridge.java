@@ -17,13 +17,22 @@ final class Bridge {
     @JavascriptInterface public void nowPlaying(String title, String artist, String album, String art, boolean playing, double pos, double dur) {
         Web.playing = playing && title != null && !title.isEmpty();
         MediaService.update(app, clip(title), clip(artist), clip(album), clip(art), playing, (long) (pos * 1000), (long) (dur * 1000));
-        Web.H.post(new Runnable() { @Override public void run() { Web.maybeSleep(); } });
+        Web.sleepSoon(Web.playing);
     }
 
     /**
      * navigator.vibrate for the page: a JSON array of milliseconds, vibrate / pause / vibrate ..., exactly as the web API takes it.
      * A new call replaces the one in progress and [] or 0 stops it, like in Chrome. Only while the app is on screen.
      */
+    /** The screen stays on while the full-screen player is open and music plays. Needs no permission: it is a window flag. */
+    @JavascriptInterface public void keepScreenOn(final boolean on) {
+        Web.H.post(new Runnable() { @Override public void run() {
+            if (Web.act == null) return;
+            if (on) Web.act.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else Web.act.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } });
+    }
+
     @JavascriptInterface public void vibrate(String pattern) {
         try {
             Vibrator v = app.getSystemService(Vibrator.class);

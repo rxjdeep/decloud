@@ -185,7 +185,7 @@ var mzSp = (function () {
       try { var r = await fetch('/api/music/playlist/' + encodeURIComponent(v)); mz.plCache[v] = (await r.json()).ids || []; } catch (_) { mz.plCache[v] = []; }
     }
     var list = collectionTracks(k, v);
-    if (list.length) mzPlayList(list, 0);
+    if (list.length) { mz.nextCtx = { k: k, v: v }; mzPlayList(list, 0); }
   }
 
   // ─── sidebar ───────────────────────────────────────────
@@ -242,15 +242,50 @@ var mzSp = (function () {
   function artistLinks(t) {
     return mzArtistLinks(t, 'lnk', 'artist');
   }
+  // Moving several songs at once: they all shift by the same distance as the grabbed one, so gaps between them stay; the others fill the rest in order.
+  function groupShown(shown, sel, dragged, to) {
+    var n = shown.length, at = [];
+    shown.forEach(function (id, i) { if (sel.has(id)) at.push(i); });
+    var delta = Math.max(-at[0], Math.min(n - 1 - at[at.length - 1], to - shown.indexOf(dragged))), out = new Array(n), rest = [];
+    at.forEach(function (i) { out[i + delta] = shown[i]; });
+    shown.forEach(function (id) { if (!sel.has(id)) rest.push(id); });
+    var k = 0; for (var i = 0; i < n; i++) if (out[i] === undefined) out[i] = rest[k++];
+    return out;
+  }
+  // While dragging: the grabbed row follows the pointer; with a selection the other selected rows follow it and the rest slide out of the way.
+  function dragLayout(d, y) {
+    var n = d.rows.length, to = Math.max(0, Math.min(n - 1, Math.round((d.top0 + y) / d.h)));
+    if (d.sel) {
+      var res = groupShown(d.ids, d.sel, d.ids[d.from], to);
+      d.rows.forEach(function (r, j) {
+        var ty = d.sel.has(d.ids[j]) ? Math.max(-j * d.h, Math.min((n - 1 - j) * d.h, y)) : (res.indexOf(d.ids[j]) - j) * d.h;
+        r.style.transform = ty ? 'translateY(' + ty + 'px)' : '';
+      });
+      d.to = to; return;
+    }
+    d.rows.forEach(function (r, j) {
+      if (j === d.from) return;
+      var sh = (d.from < j && j <= to) ? -d.h : (to <= j && j < d.from) ? d.h : 0;
+      r.style.transform = sh ? 'translateY(' + sh + 'px)' : '';
+    });
+    d.to = to;
+  }
+  function selBar(ed) {
+    var n = ed.sel.size, off = ed.saving ? ' disabled' : '';
+    var all = ed.draft.filter(function (id) { return mz.byId.has(id); }).length;
+    if (!n) return '<div class="sp-selbar"><span>Tap songs to select them</span><button data-act="sp-sel-all"' + off + '>Select all</button></div>';
+    return '<div class="sp-selbar on"><span>' + n + ' selected</span><button data-act="sp-sel-top"' + off + '>Top</button><button data-act="sp-sel-bottom"' + off + '>Bottom</button><button class="rm" data-act="sp-sel-rm"' + off + '>Remove</button>' +
+      (n < all ? '<button data-act="sp-sel-all"' + off + '>All</button>' : '') + '<button data-act="sp-sel-none"' + off + '>Clear</button></div>';
+  }
   function rowHtml(t, i, o) {
     var cur = mzCur(), playing = cur && cur.f === t.f;
     var n = o.num === 'n' ? (t.n || i + 1) : i + 1;
     var title = '<div class="tt"><b>' + esc(t.t) + '</b><small>' + (t.ex ? EB : '') + (o.hideArtist ? '' : artistLinks(t)) + '</small></div>';
     var EDITEND = '<button class="sp-rmbtn" data-act="sp-edit-rm" data-c="' + i + '" aria-label="Remove from playlist"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10" fill="#e5484d"/><line x1="7" y1="12" x2="17" y2="12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button>' +
       '<span class="sp-grip" aria-label="Drag to reorder" role="button"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><rect x="4" y="7" width="16" height="2" rx="1"/><rect x="4" y="11" width="16" height="2" rx="1"/><rect x="4" y="15" width="16" height="2" rx="1"/></svg></span>';
-    return '<div class="sp-row trk' + (playing ? ' playing' : '') + (mz.sel === i ? ' sel' : '') + (o.cls ? ' ' + o.cls : '') + '" data-act="' + (o.edit ? 'sp-edit-row' : 'row') + '" data-c="' + i + '" data-t="' + esc(t.f) + '">' +
+    return '<div class="sp-row trk' + (playing ? ' playing' : '') + (o.edit && edit && edit.sel && edit.sel.has(t.f) ? ' esel' : '') + (mz.sel === i ? ' sel' : '') + (o.cls ? ' ' + o.cls : '') + '" data-act="' + (o.edit ? 'sp-edit-row' : 'row') + '" data-c="' + i + '" data-t="' + esc(t.f) + '">' +
       '<span class="c0"><i class="n">' + n + '</i><i class="eq"></i><button class="pl" data-act="play-row" data-c="' + i + '" aria-label="Play">' + I.play + '</button></span>' +
-      '<span class="c1">' + (o.cover ? trackCov(t, 100, 'sm') : '') + title + '</span>' +
+      '<span class="c1">' + (o.edit ? '<span class="sp-echk' + (edit && edit.sel && edit.sel.has(t.f) ? ' on' : '') + '" aria-hidden="true"></span>' : '') + (o.cover ? trackCov(t, 100, 'sm') : '') + title + '</span>' +
       (o.album ? '<span class="c-alb"><a class="lnk" data-act="album" data-v="' + esc(t.li) + '">' + esc(t.al) + '</a></span>' : '') +
       (o.date ? '<span class="c-date">' + dateStr(t.a) + '</span>' : '') +
       (o.plays ? '<span class="c-plays">' + (t.pc ? t.pc.toLocaleString() : '') + '</span>' : '') +
@@ -452,7 +487,7 @@ var mzSp = (function () {
         return listPage({ title: pl ? pl.name : 'Playlist', cover: plCov(pl, 300), tint: (pl && pl.c) || (pt[0] && pt[0].c), hue: mzHue(pl ? pl.name : 'p'),
           edit: !!ed, actionsExtra: !ed && mzIsMobile() && pt.length ? pen : '',
           more: ed || !pl ? '' : '<button class="sp-mmore" data-act="sp-plmenu" data-v="' + esc(pl.id) + '" aria-label="More options"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>',
-          bar: ed ? '<div class="sp-editbar"><button class="cancel" data-act="sp-edit-cancel"' + (ed.saving ? ' disabled' : '') + '>Cancel</button><b>Editing playlist</b><button class="done" data-act="sp-edit-done"' + (ed.saving ? ' disabled' : '') + '>' + (ed.saving ? 'Saving…' : 'Done') + '</button></div>' : '' }, pt);
+          bar: ed ? '<div class="sp-editbar"><button class="cancel" data-act="sp-edit-cancel"' + (ed.saving ? ' disabled' : '') + '>Cancel</button><b>Editing playlist</b><button class="done" data-act="sp-edit-done"' + (ed.saving ? ' disabled' : '') + '>' + (ed.saving ? 'Saving…' : 'Done') + '</button></div>' + selBar(ed) : '' }, pt);
       }
       case 'album': {
         var al = mz.albums.get(v.key); if (!al) return missing();
@@ -575,6 +610,7 @@ var mzSp = (function () {
     if (mz.view === same) content.scrollTop = keep;
     tint(mzEl('sp-page'), vw.tint, vw.hue || 230);
     mzMarkPlaying();
+    SP.markCtx(); SP.dselSync();
     barsSoon();
   };
   SP.miniTint = function (t) {
@@ -618,7 +654,7 @@ var mzSp = (function () {
       case 'sp-home': mzGo('home'); break;
       case 'sp-edit': {
         var ids0 = mz.plCache[mz.view.key]; if (!ids0 || mz.view.type !== 'playlist') break;
-        edit = { pid: mz.view.key, draft: ids0.slice(), base: ids0.length, saving: false }; mzHaptic('tick'); mzRender(); break;
+        edit = { pid: mz.view.key, draft: ids0.slice(), base: ids0.length, saving: false, sel: new Set() }; mzHaptic('tick'); mzRender(); break;
       }
       case 'sp-edit-cancel': {
         if (!edit || edit.saving) break;
@@ -631,9 +667,26 @@ var mzSp = (function () {
         if (!edit || edit.saving) break;
         var at = []; edit.draft.forEach(function (id, i) { if (mz.byId.has(id)) at.push(i); });
         var di = at[parseInt(el.dataset.c, 10)]; if (di === undefined) break;
-        edit.draft.splice(di, 1); mzHaptic('tick'); mzRender(); break;
+        edit.sel.delete(edit.draft[di]); edit.draft.splice(di, 1); mzHaptic('tick'); mzRender(); break;
       }
-      case 'sp-edit-row': break;
+      case 'sp-edit-row': {                                          // tap a song while editing: select it, to move or remove several at once
+        if (!edit || edit.saving || !el.dataset.t) break;
+        if (edit.sel.has(el.dataset.t)) edit.sel.delete(el.dataset.t); else edit.sel.add(el.dataset.t);
+        mzHaptic('tick'); mzRender(); break;
+      }
+      case 'sp-sel-all': case 'sp-sel-none': case 'sp-sel-top': case 'sp-sel-bottom': case 'sp-sel-rm': {
+        if (!edit || edit.saving) break;
+        var known = edit.draft.filter(function (id) { return mz.byId.has(id); });
+        if (a === 'sp-sel-all') edit.sel = new Set(known);
+        else if (a === 'sp-sel-none') edit.sel = new Set();
+        else {
+          var chosen = edit.draft.filter(function (id) { return edit.sel.has(id); }), others = edit.draft.filter(function (id) { return !edit.sel.has(id); });
+          if (a === 'sp-sel-top') edit.draft = chosen.concat(others);
+          else if (a === 'sp-sel-bottom') edit.draft = others.concat(chosen);
+          else { edit.draft = others; edit.sel = new Set(); }
+        }
+        mzHaptic('tick'); mzRender(); break;
+      }
       case 'sp-search': mzGo('search'); if (!mzUseSheet()) mzEl('wm-search-input').focus(); break;
       case 'sp-chip': libFilter = libFilter === v ? '' : v; if (mz.view.type === 'library') SP.render(); else mzEl('wm-side').innerHTML = sideHtml(); break;
       case 'sp-sort': libSort = libSort === 'recent' ? 'alpha' : 'recent'; if (mz.view.type === 'library') SP.render(); else mzEl('wm-side').innerHTML = sideHtml(); break;
@@ -659,7 +712,7 @@ var mzSp = (function () {
       case 'sp-playartist': case 'sp-shuffleartist': {
         var ar = mz.artists.get(String(v).replace(/^artist:/, '')); if (!ar) break;
         var all = ar.tracks.slice().sort(function (x, y) { return (y.pc || 0) - (x.pc || 0); });
-        mzPlayList(all, 0, a === 'sp-shuffleartist'); if (a === 'sp-shuffleartist') SP.render(); break;
+        mz.nextCtx = { k: 'artist', v: ar.id }; mzPlayList(all, 0, a === 'sp-shuffleartist'); if (a === 'sp-shuffleartist') SP.render(); break;
       }
       case 'sp-aboutmore': mz.spAboutMore = mz.spAboutMore === v ? '' : v; SP.aboutRepaint(v); break;
       case 'sp-popmore': mz.spPopMore = mz.spPopMore === v ? '' : v; SP.render(); break;
@@ -901,22 +954,92 @@ var mzSp = (function () {
   // keep the sheet's contents in step with playback (local, or mirrored from another device)
   // what the file is: format, bitrate, and for lossless the sample rate / bit depth (a small line under the controls)
   var LOSSLESS = { flac: 1, wav: 1, alac: 1, aiff: 1, aif: 1, ape: 1, wv: 1 };
+  // the album / playlist / artist / Liked Songs that is playing right now gets a green title and the little equaliser, wherever it is listed
+  // desktop playlist: ctrl/cmd-click and shift-click pick several songs; a small bar moves or removes them, and dragging one drags them all
+  var dsel = { pid: null, ids: new Set(), last: null };
+  SP.dselSync = function () {
+    var bar = document.getElementById('sp-dsel');
+    if (dsel.pid && (mz.theme !== 'spotify' || mz.view.type !== 'playlist' || mz.view.key !== dsel.pid)) { dsel.pid = null; dsel.ids = new Set(); dsel.last = null; }
+    if (edit) return;
+    var rows = document.querySelectorAll('#wm-content .sp-row.trk[data-t]');
+    Array.prototype.forEach.call(rows, function (r) { r.classList.toggle('esel', dsel.ids.has(r.dataset.t)); });
+    if (!dsel.ids.size) { if (bar) bar.remove(); return; }
+    if (!bar) { bar = document.createElement('div'); bar.id = 'sp-dsel'; bar.className = 'sp-dsel'; (document.getElementById('music-screen') || document.body).appendChild(bar); }
+    bar.innerHTML = '<span>' + dsel.ids.size + ' selected</span><button data-act="sp-dsel-top">Move to top</button><button data-act="sp-dsel-bottom">Move to bottom</button><button class="rm" data-act="sp-dsel-rm">Remove</button><button data-act="sp-dsel-none">Clear</button>';
+  };
+  function dselApply(kind) {
+    var pid = dsel.pid, ids = mz.plCache[pid]; if (!pid || !ids) return;
+    var chosen = ids.filter(function (id) { return dsel.ids.has(id); }), others = ids.filter(function (id) { return !dsel.ids.has(id); });
+    var next = kind === 'top' ? chosen.concat(others) : kind === 'bottom' ? others.concat(chosen) : others;
+    if (kind === 'rm') { dsel.ids = new Set(); dsel.last = null; }
+    mz.plCache[pid] = next; mzRender();
+    jpost('/api/music/playlist/' + encodeURIComponent(pid) + '/order', { ids: next, base: ids.length }).catch(function (err) {
+      if (/changed elsewhere/.test(err.message || '')) { delete mz.plCache[pid]; mzToast('This playlist changed elsewhere. Reloaded it'); }
+      else { mz.plCache[pid] = ids; mzToast('Could not save the new order'); }
+      mzRender();
+    });
+  }
+  window.addEventListener('click', function (e) {
+    if (mz.theme !== 'spotify' || mz.view.type !== 'playlist' || edit || !e.target.closest) return;
+    var bt = e.target.closest('#sp-dsel button');
+    if (bt) { e.stopPropagation(); e.preventDefault(); var k = bt.dataset.act.slice(8); if (k === 'none') { dsel.ids = new Set(); dsel.last = null; SP.dselSync(); } else dselApply(k); return; }
+    if (typeof mzIsMobile === 'function' && mzIsMobile()) return;
+    var row = e.target.closest('#wm-content .sp-row.trk[data-t]');
+    if (!row || e.target.closest('button, input, .star, .sp-lk') || !(e.ctrlKey || e.metaKey || e.shiftKey)) return;
+    e.stopPropagation(); e.preventDefault();
+    var id = row.dataset.t;
+    if (dsel.pid !== mz.view.key) dsel = { pid: mz.view.key, ids: new Set(), last: null };
+    if (e.shiftKey && dsel.last) {
+      var all = Array.prototype.map.call(document.querySelectorAll('#wm-content .sp-row.trk[data-t]'), function (r) { return r.dataset.t; });
+      var a0 = all.indexOf(dsel.last), b0 = all.indexOf(id);
+      if (a0 >= 0 && b0 >= 0) all.slice(Math.min(a0, b0), Math.max(a0, b0) + 1).forEach(function (x) { dsel.ids.add(x); });
+    } else { if (dsel.ids.has(id)) dsel.ids.delete(id); else dsel.ids.add(id); dsel.last = id; }
+    SP.dselSync();
+  }, true);
+  SP.npRefresh = function () { if (npIsOpen && mzCur() && sheet()) npSync(); };
+  SP.npPlayIcon = function (playing) { var b = sheet() && mzEl('sp-np-play'); if (b && npLast.playing !== playing) { npLast.playing = playing; b.innerHTML = playing ? NP.pause : NP.play; } };
+  SP.markCtx = function () {
+    var root = mzEl('music-screen'); if (!root) return;
+    Array.prototype.forEach.call(root.querySelectorAll('.playing-ctx'), function (e) { e.classList.remove('playing-ctx'); });
+    var c = mz.playCtx; if (!c || !mzCur()) return;
+    Array.prototype.forEach.call(root.querySelectorAll('[data-k][data-v]'), function (e) {
+      if (e.dataset.k === c.k && e.dataset.v === c.v && e.tagName !== 'BUTTON' && !e.closest('button, .sp-rx')) e.classList.add('playing-ctx');
+    });
+  };
+  SP.npQualRefresh = function () { var t = mzCur(); if (t) npQual(t); };
   function npQual(t) {
     var el = mzEl('sp-np-qual'); if (!el) return;
     var fmt = String(t.sx || '').toLowerCase();
     if (!fmt) { el.hidden = true; return; }
-    var parts = [];
+    var parts = [], rate = typeof mzQualityRate === 'function' ? mzQualityRate() : 0;
+    if (rate) {                                                    // what is actually being streamed: the converted copy, not the file
+      el.hidden = false;
+      el.innerHTML = '<span class="sp-q-fmt">MP3</span><span class="sp-q-txt">' + rate + ' kbps \u2022 from ' + esc(fmt.toUpperCase()) + '</span>';
+      return;
+    }
     if (LOSSLESS[fmt]) parts.push('Lossless');
     if (t.br) parts.push(t.br + ' kbps');
     el.hidden = false;
     el.innerHTML = '<span class="sp-q-fmt">' + esc(fmt.toUpperCase()) + '</span>' + (parts.length ? '<span class="sp-q-txt">' + esc(parts.join(' \u2022 ')) + '</span>' : '');
   }
 
+  // "Playing from …" follows what the queue was started from (playlist, artist, Liked Songs), falling back to the song's album
+  function npFrom(t) {
+    var c = mz.playCtx, k = 'album', v = t.li, name = t.al || t.t, what = 'album', act = 'np-album';
+    if (c && c.k === 'playlist') { var pl = mz.playlists.filter(function (x) { return x.id === c.v; })[0]; if (pl) { what = 'playlist'; name = pl.name; act = 'playlist'; v = pl.id; } }
+    else if (c && c.k === 'artist') { var ar = mz.artists.get(c.v); if (ar) { what = 'artist'; name = ar.name; act = 'np-artist'; v = ar.id; } }
+    else if (c && c.k === 'liked') { what = 'playlist'; name = 'Liked Songs'; act = 'nav'; v = 'favorites'; }
+    var key = what + '|' + name + '|' + v;
+    if (npLast.from === key) return; npLast.from = key;
+    var box = mzEl('sp-np-from'); box.parentNode.querySelector('small').textContent = 'Playing from ' + what;
+    box.innerHTML = v ? '<a class="npl" data-act="' + act + '" data-v="' + esc(v) + '">' + esc(name) + '</a>' : esc(name);
+  }
+
   function npSync(force) {
     var t = mzCur(), n = sheet(); if (!t || !n) return;
+    npFrom(t);
     if (force === true || npTrack !== t.f) {
       npTrack = t.f; npLast = {};
-      mzEl('sp-np-from').innerHTML = t.li ? '<a class="npl" data-act="np-album" data-v="' + esc(t.li) + '">' + esc(t.al || t.t) + '</a>' : esc(t.al || t.t);
       mzEl('sp-np-title').innerHTML = t.li ? '<a class="npl" data-act="np-album" data-v="' + esc(t.li) + '">' + esc(t.t) + '</a>' : esc(t.t);
       mzEl('sp-np-artist').innerHTML = mzArtistLinks(t, 'npl', 'np-artist');
       mzEl('sp-np-art').innerHTML = cov(t.c, t.h, t.al || t.t, 640, '');
@@ -930,7 +1053,7 @@ var mzSp = (function () {
     if (bar && npLast.bar !== bar) { npLast.bar = bar; setBars(bar); }
     var playing = mz.remote ? !!(mz.rs && mz.rs.st.playing) : !!(musicAudio && !musicAudio.paused);
     if (npLast.playing !== playing) { npLast.playing = playing; mzEl('sp-np-play').innerHTML = playing ? NP.pause : NP.play; }
-    var fav = !!(t.fav || t.inpl);                                 // a tick when the song is liked or in any playlist
+    var fav = !!(t.fav || t.inpl || (mz.inPl && mz.inPl.has(t.f)));                                 // a tick when the song is liked or in any playlist
     if (npLast.fav !== fav) { npLast.fav = fav; var h = mzEl('sp-np-heart'); h.innerHTML = fav ? NP.liked : NP.like; h.classList.toggle('on', fav); }
     mzEl('sp-np-shuffle').classList.toggle('on', !!mz.shuffle);
     var rep = mz.repeat;
@@ -1096,8 +1219,9 @@ var mzSp = (function () {
     }).join('');
     var el = document.createElement('div'); el.id = 'sp-msheet'; el.className = 'sp-addsheet sp-msheet';
     el.innerHTML = '<div class="sp-addback"></div><div class="sp-addpanel" role="dialog" aria-modal="true" aria-label="' + esc(o.title || 'Options') + '"><div class="sp-addtop"><div class="sp-addgrab"></div>' +
-      (o.head || (o.title ? '<div class="sp-addhead">' + esc(o.title) + '</div>' : '')) + '</div><div class="sp-addscroll">' + rows + '</div></div>';
+      (o.head || (o.title ? '<div class="sp-addhead">' + esc(o.title) + '</div>' : '')) + '</div><div class="sp-addscroll">' + rows + (o.body || '') + '</div></div>';
     (rootEl() || document.body).appendChild(el);
+    if (o.mount) o.mount(el);
     var panel = el.querySelector('.sp-addpanel'), scroller = el.querySelector('.sp-addscroll');
     var closing = false, openedAt = Date.now(), swipedAt = 0, lastScroll = 0;
     var entry = mzSheetOpenEntry(function () { hide(); });                       // Back closes just this sheet
@@ -1231,6 +1355,7 @@ var mzSp = (function () {
   SP.playlistMenu = function (pl) {
     var head = '<div class="sp-mhead">' + plCov(pl, 100, 'sm') + '<span class="sp-mt"><b>' + esc(pl.name) + '</b><small>Playlist • ' + plural(pl.n || 0, 'song') + '</small></span></div>';
     SP.menuSheet({ title: pl.name, head: head, items: [
+      { icon: MI.queue, label: 'Rename', run: function () { setTimeout(function () { SP.renamePlaylist(pl); }, 330); } },
       { icon: TRASH, label: 'Delete playlist', run: function () {
         if (!window.confirm('Delete the playlist "' + pl.name + '"? The songs stay in your library.')) return;
         var had = mz.plCache[pl.id] ? Promise.resolve(mz.plCache[pl.id].slice())
@@ -1249,6 +1374,23 @@ var mzSp = (function () {
         }).catch(function (e) { mzHaptic('warn'); mzToast(e.message || 'Could not delete the playlist'); });
       } }
     ] });
+  };
+  SP.renamePlaylist = function (pl) {
+    SP.menuSheet({ title: 'Rename playlist', items: [], body: '<div class="sp-rn"><input id="sp-rn-in" type="text" maxlength="120" autocomplete="off" value="' + esc(pl.name) + '" aria-label="Playlist name"><button type="button" class="sp-rn-ok">Save</button></div>',
+      mount: function (el) {
+        var inp = el.querySelector('#sp-rn-in'), ok = el.querySelector('.sp-rn-ok');
+        function save() {
+          var name = inp.value.trim();
+          if (!name || name === pl.name) { el._close && el._close(); return; }
+          ok.disabled = true;
+          jpost('/api/music/playlist/' + encodeURIComponent(pl.id) + '/rename', { name: name }).then(function () {
+            pl.name = name; el._close && el._close(); mzToast('Renamed to "' + name + '"'); mzRender();
+          }).catch(function (e) { ok.disabled = false; mzHaptic('warn'); mzToast(e.message || 'Could not rename'); });
+        }
+        ok.addEventListener('click', save);
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+        setTimeout(function () { inp.focus(); inp.select(); }, 380);
+      } });
   };
   (function () {
     var timer = 0, sx = 0, sy = 0, swallow = 0;
@@ -1291,8 +1433,10 @@ var mzSp = (function () {
   SP.qualMenu = function (t) {
     var fmt = String(t.sx || '').toLowerCase(), rows = [];
     function add(label, val) { if (val) rows.push({ label: label, sub: String(val), run: function () {} }); }
-    add('Format', fmt.toUpperCase() + (LOSSLESS[fmt] ? ' (lossless)' : ' (lossy)'));
-    add('Bitrate', t.br && t.br + ' kbps');
+    var rate = typeof mzQualityRate === 'function' ? mzQualityRate() : 0;
+    add('Playing as', rate ? 'MP3 at ' + rate + ' kbps (converted for streaming)' : 'The original file');
+    add('File format', fmt.toUpperCase() + (LOSSLESS[fmt] ? ' (lossless)' : ' (lossy)'));
+    add('File bitrate', t.br && t.br + ' kbps');
     add('Sample rate', t.sr && (t.sr / 1000).toString().replace(/\.0+$/, '') + ' kHz');
     add('Bit depth', t.bd && t.bd + '-bit');
     add('Channels', t.ch && (t.ch === 1 ? 'Mono' : t.ch === 2 ? 'Stereo' : t.ch + ' channels'));
@@ -1361,6 +1505,7 @@ var mzSp = (function () {
       mark(el.querySelector('.sp-addrow.liked'), t.fav);
       el.querySelectorAll('.sp-addrow.pl').forEach(function (r) { mark(r, inSet && inSet.has(r.dataset.id)); });
       el.classList.toggle('loading', !inSet);
+      if (inSet && mz.inPl) { if (inSet.size) mz.inPl.add(t.f); else mz.inPl.delete(t.f); }
       if (t === mzCur()) { t.inpl = !!(inSet && inSet.size); npSync(true); }
     }
     paint();
@@ -1487,7 +1632,7 @@ var mzSp = (function () {
       .then(function () {
         mz.plCache[ed.pid] = ed.draft;
         var p = mz.playlists.filter(function (x) { return x.id === ed.pid; })[0]; if (p) p.n = ed.draft.length;
-        edit = null; mzToast('Playlist updated'); mzHaptic('like'); mzRender();
+        edit = null; mzInPlRefresh(); mzToast('Playlist updated'); mzHaptic('like'); mzRender();
       })
       .catch(function (err) {
         ed.saving = false; mzHaptic('warn');
@@ -1501,21 +1646,11 @@ var mzSp = (function () {
   (function () {
     var D = null;
     function content() { return mzEl('wm-content'); }
-    function slot(d, y) { return Math.max(0, Math.min(d.rows.length - 1, Math.round((d.top0 + y) / d.h))); }
-    function layout(d, y) {
-      var to = slot(d, y);
-      d.rows.forEach(function (r, j) {
-        if (j === d.from) return;
-        var sh = (d.from < j && j <= to) ? -d.h : (to <= j && j < d.from) ? d.h : 0;
-        r.style.transform = sh ? 'translateY(' + sh + 'px)' : '';
-      });
-      d.to = to;
-    }
     function move(e) {
       if (!D) return;
       D.cy = e.clientY;
       var y = D.cy - D.sy + (content().scrollTop - D.scroll0);
-      D.row.style.transform = 'translateY(' + y + 'px)'; layout(D, y);
+      if (!D.sel) D.row.style.transform = 'translateY(' + y + 'px)'; dragLayout(D, y);
     }
     function scrollLoop() {
       if (!D) return;
@@ -1530,13 +1665,15 @@ var mzSp = (function () {
       var d = D; D = null; cancelAnimationFrame(d.raf);
       document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', end); document.removeEventListener('pointercancel', end);
       d.rows.forEach(function (r) { r.style.transform = ''; r.style.transition = ''; r.classList.remove('moving'); });
-      d.row.classList.remove('dragging'); content().classList.remove('reordering');
+      d.rows.forEach(function (r) { r.classList.remove('dragging'); }); content().classList.remove('reordering');
       if (e.type === 'pointercancel' || d.to === d.from) return;
       var ids = edit && edit.draft; if (!ids) return;
       // rows show only tracks the library knows; the draft also keeps any it doesn't, in their slots
       var at = []; ids.forEach(function (id, i) { if (mz.byId.has(id)) at.push(i); });
       if (at.length !== d.rows.length) return;
-      var shown = at.map(function (i) { return ids[i]; }), m = shown.splice(d.from, 1)[0]; shown.splice(d.to, 0, m);
+      var shown = at.map(function (i) { return ids[i]; }), grabbed = shown[d.from];
+      if (edit.sel.size > 1 && edit.sel.has(grabbed)) shown = groupShown(shown, edit.sel, grabbed, d.to);        // the whole selection moves
+      else { var m = shown.splice(d.from, 1)[0]; shown.splice(d.to, 0, m); }
       var next = ids.slice(); at.forEach(function (i, k) { next[i] = shown[k]; });
       edit.draft = next; mzHaptic('tick'); mzRender();
     }
@@ -1545,8 +1682,9 @@ var mzSp = (function () {
       var row = g.closest('.sp-row'), list = row && row.parentElement; if (!row || !list || !edit || mz.view.type !== 'playlist') return;
       e.preventDefault(); e.stopPropagation();
       var rows = Array.prototype.slice.call(list.querySelectorAll('.sp-row.trk')), from = rows.indexOf(row); if (from < 0) return;
-      D = { row: row, rows: rows, from: from, to: from, h: row.offsetHeight, top0: from * row.offsetHeight, sy: e.clientY, cy: e.clientY, scroll0: content().scrollTop, raf: 0 };
-      rows.forEach(function (r) { r.classList.add('moving'); });
+      D = { row: row, rows: rows, ids: rows.map(function (r) { return r.dataset.t; }), from: from, to: from, h: row.offsetHeight, top0: from * row.offsetHeight, sy: e.clientY, cy: e.clientY, scroll0: content().scrollTop, raf: 0 };
+      if (edit.sel.size > 1 && edit.sel.has(D.ids[from])) D.sel = edit.sel;
+      rows.forEach(function (r) { r.classList.add('moving'); if (D.sel && D.sel.has(r.dataset.t)) r.classList.add('dragging'); });
       row.classList.add('dragging'); content().classList.add('reordering'); mzHaptic('tick');
       document.addEventListener('pointermove', move); document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
       D.raf = requestAnimationFrame(scrollLoop);
@@ -1591,21 +1729,11 @@ var mzSp = (function () {
   (function () {
     var P = null, D = null, swallow = 0;
     function content() { return mzEl('wm-content'); }
-    function slot(d, y) { return Math.max(0, Math.min(d.rows.length - 1, Math.round((d.top0 + y) / d.h))); }
-    function layout(d, y) {
-      var to = slot(d, y);
-      d.rows.forEach(function (r, j) {
-        if (j === d.from) return;
-        var sh = (d.from < j && j <= to) ? -d.h : (to <= j && j < d.from) ? d.h : 0;
-        r.style.transform = sh ? 'translateY(' + sh + 'px)' : '';
-      });
-      d.to = to;
-    }
     function move(e) {
       if (!D) return;
       D.cy = e.clientY;
       var y = D.cy - D.sy + (content().scrollTop - D.scroll0);
-      D.row.style.transform = 'translateY(' + y + 'px)'; layout(D, y);
+      if (!D.sel) D.row.style.transform = 'translateY(' + y + 'px)'; dragLayout(D, y);
     }
     function scrollLoop() {
       if (!D) return;
@@ -1622,8 +1750,9 @@ var mzSp = (function () {
       if (from < 0 || shown.length !== known.length || shown.some(function (id, i) { return id !== known[i]; })) {   // sorted by a column: the rows are not in playlist order
         P = null; document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); mzToast('Clear the sorting to reorder this playlist'); return;
       }
-      D = { row: row, rows: rows, from: from, to: from, h: row.offsetHeight, top0: from * row.offsetHeight, sy: P.y, cy: e.clientY, scroll0: content().scrollTop, raf: 0, pid: mz.view.key };
-      rows.forEach(function (r) { r.classList.add('moving'); });
+      D = { row: row, rows: rows, ids: shown, from: from, to: from, h: row.offsetHeight, top0: from * row.offsetHeight, sy: P.y, cy: e.clientY, scroll0: content().scrollTop, raf: 0, pid: mz.view.key };
+      if (dsel.pid === D.pid && dsel.ids.size > 1 && dsel.ids.has(shown[from])) D.sel = dsel.ids;
+      rows.forEach(function (r) { r.classList.add('moving'); if (D.sel && D.sel.has(r.dataset.t)) r.classList.add('dragging'); });
       row.classList.add('dragging'); content().classList.add('reordering');
       D.raf = requestAnimationFrame(scrollLoop);
     }
@@ -1637,12 +1766,14 @@ var mzSp = (function () {
       P = null; if (!D) return;
       var d = D; D = null; cancelAnimationFrame(d.raf); swallow = Date.now();
       d.rows.forEach(function (r) { r.style.transform = ''; r.style.transition = ''; r.classList.remove('moving'); });
-      d.row.classList.remove('dragging'); content().classList.remove('reordering');
+      d.rows.forEach(function (r) { r.classList.remove('dragging'); }); content().classList.remove('reordering');
       if (e.type === 'pointercancel' || d.to === d.from || mz.view.type !== 'playlist' || mz.view.key !== d.pid) return;
       var ids = mz.plCache[d.pid]; if (!ids) return;
       var at = []; ids.forEach(function (id, i) { if (mz.byId.has(id)) at.push(i); });         // tracks the library does not know keep their slots
       if (at.length !== d.rows.length) return;
-      var shown = at.map(function (i) { return ids[i]; }), m = shown.splice(d.from, 1)[0]; shown.splice(d.to, 0, m);
+      var shown = at.map(function (i) { return ids[i]; }), grabbed = shown[d.from];
+      if (dsel.pid === d.pid && dsel.ids.size > 1 && dsel.ids.has(grabbed)) shown = groupShown(shown, dsel.ids, grabbed, d.to);
+      else { var m = shown.splice(d.from, 1)[0]; shown.splice(d.to, 0, m); }
       var next = ids.slice(); at.forEach(function (i, k) { next[i] = shown[k]; });
       mz.plCache[d.pid] = next; mzRender();
       jpost('/api/music/playlist/' + encodeURIComponent(d.pid) + '/order', { ids: next, base: ids.length }).catch(function (err) {
@@ -1661,6 +1792,116 @@ var mzSp = (function () {
     }, true);
     document.addEventListener('click', function (e) {                                      // letting go of a drag must not also play the track
       if (Date.now() - swallow < 350) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+  })();
+
+  // Back from the left screen edge: the page follows the finger, and letting go far enough (or flicking) goes back
+  (function () {
+    var G = null, EDGE = 36;
+    function content() { return mzEl('wm-content'); }
+    function reset(animate) {
+      var c = content(); if (!c) return;
+      c.style.transition = animate ? 'transform .2s ease, opacity .2s ease' : 'none';
+      c.style.transform = ''; c.style.opacity = '';
+      if (animate) setTimeout(function () { c.style.transition = ''; }, 220);
+    }
+    document.addEventListener('touchstart', function (e) {
+      G = null; var f = e.touches[0];
+      if (!f || e.touches.length !== 1 || f.clientX > EDGE || mz.theme !== 'spotify' || !mzIsMobile() || edit || npIsOpen) return;
+      if (typeof navCanBack !== 'function' || !navCanBack()) return;
+      G = { x: f.clientX, y: f.clientY, on: false, v: 0, last: { x: f.clientX, t: performance.now() } };
+    }, { capture: true, passive: true });
+    document.addEventListener('touchmove', function (e) {
+      if (!G) return;
+      var f = e.touches[0], dx = f.clientX - G.x, dy = f.clientY - G.y, now = performance.now();
+      if (!G.on) { if (Math.abs(dy) > Math.abs(dx) * 1.2 && Math.abs(dy) > 8) { G = null; return; } if (dx < 10) return; G.on = true; }
+      G.v = 0.6 * G.v + 0.4 * ((f.clientX - G.last.x) / Math.max(1, now - G.last.t)); G.last = { x: f.clientX, t: now };
+      var c = content(); if (!c) return;
+      var w = window.innerWidth;
+      c.style.transition = 'none'; c.style.transform = 'translateX(' + Math.max(0, dx) * 0.8 + 'px)'; c.style.opacity = String(1 - Math.min(.5, dx / w));
+      if (!G.past && dx > w * 0.3) { G.past = true; mzHaptic('detent'); } else if (dx < w * 0.3) G.past = false;
+    }, { capture: true, passive: true });
+    function end(e) {
+      var g = G; G = null; if (!g || !g.on) return;
+      var go = e.type !== 'touchcancel' && (g.past || g.v > 0.6);
+      reset(!go);
+      if (go) { lastDragAt = Date.now(); history.back(); }
+    }
+    document.addEventListener('touchend', end, { capture: true, passive: true });
+    document.addEventListener('touchcancel', end, { capture: true, passive: true });
+  })();
+
+  // Pull down at the top of a page to reload the library (the spinner follows the finger, then spins while it loads)
+  (function () {
+    var P = null, el = null, busy = false, LIMIT = 64;
+    function node() {
+      if (el && el.isConnected) return el;
+      el = document.createElement('div'); el.className = 'sp-ptr';
+      el.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>';
+      (document.querySelector('#music-screen .wm') || document.body).appendChild(el); return el;
+    }
+    function paint(y, spin) {
+      var n = node(); n.style.transition = spin === 'out' ? 'transform .22s ease, opacity .22s ease' : 'none';
+      n.style.opacity = y > 4 || spin ? '1' : '0';
+      n.style.transform = 'translate(-50%, ' + y + 'px)' + (spin ? '' : ' rotate(' + y * 4 + 'deg)');
+      n.classList.toggle('spin', spin === true);
+    }
+    document.addEventListener('touchstart', function (e) {
+      P = null; if (busy || mz.theme !== 'spotify' || !mzIsMobile() || e.touches.length !== 1 || edit) return;
+      var c = mzEl('wm-content'); if (!c || !c.contains(e.target) || c.scrollTop > 0 || npIsOpen) return;
+      if (e.target.closest('input, .sp-grip, .sp-cards, .sp-chips')) return;
+      P = { x: e.touches[0].clientX, y: e.touches[0].clientY, on: false };
+    }, { capture: true, passive: true });
+    document.addEventListener('touchmove', function (e) {
+      if (!P) return;
+      var dy = e.touches[0].clientY - P.y, dx = e.touches[0].clientX - P.x, c = mzEl('wm-content');
+      if (!P.on) { if (dy < -4 || Math.abs(dx) > Math.abs(dy)) { P = null; return; } if (dy < 12) return; if (c.scrollTop > 0) { P = null; return; } P.on = true; }
+      var pull = Math.min(LIMIT + 16, (dy - 12) * 0.5); paint(pull + 8, false);
+      if (pull >= LIMIT && !P.past) { P.past = true; mzHaptic('detent'); } else if (pull < LIMIT) P.past = false;
+    }, { capture: true, passive: true });
+    function release(e) {
+      var p = P; P = null; if (!p || !p.on) return;
+      if (p.past && e.type !== 'touchcancel') {
+        busy = true; paint(LIMIT * 0.6 + 8, true); mz.freshNext = true;
+        var t0 = Date.now();
+        loadMusic().then(function () { return new Promise(function (r) { setTimeout(r, Math.max(0, 600 - (Date.now() - t0))); }); })
+          .catch(function () { mzToast('Could not refresh'); })
+          .then(function () { paint(-40, 'out'); busy = false; if (el) el.style.opacity = '0'; });
+      } else paint(-40, 'out');
+    }
+    document.addEventListener('touchend', release, { capture: true, passive: true });
+    document.addEventListener('touchcancel', release, { capture: true, passive: true });
+  })();
+
+  // Touch feedback the moment a finger lands (not after the browser has decided it is a tap); dropped as soon as the finger scrolls
+  (function () {
+    var SEL = '.sp-row, .sp-li, .sp-quick, .sp-rec, .sp-cardx, .sp-chip, .sp-tabbar button, .sp-qi-row, .sp-addrow, .sp-mi, .sp-topres, .sp-tile', cur = null, x0 = 0, y0 = 0;
+    function clear() { if (cur) { cur.classList.remove('pressed'); cur = null; } }
+    document.addEventListener('touchstart', function (e) {
+      clear();
+      var f = e.touches[0]; if (!f || e.touches.length > 1) return;
+      var el = e.target.closest && e.target.closest(SEL); if (!el || !el.closest('#music-screen') || el.closest('.sp-editbar')) return;
+      cur = el; x0 = f.clientX; y0 = f.clientY; el.classList.add('pressed');
+    }, { capture: true, passive: true });
+    document.addEventListener('touchmove', function (e) { var f = e.touches[0]; if (cur && f && (Math.abs(f.clientX - x0) > 6 || Math.abs(f.clientY - y0) > 6)) clear(); }, { capture: true, passive: true });
+    ['touchend', 'touchcancel'].forEach(function (n) { document.addEventListener(n, function () { var el = cur; cur = null; if (el) setTimeout(function () { el.classList.remove('pressed'); }, 90); }, { capture: true, passive: true }); });
+    document.addEventListener('scroll', clear, { capture: true, passive: true });
+  })();
+
+  // Scrolling must never open an artist or album: a finger that lands on a name to stop a fling, or drags across it, is not a tap
+  (function () {
+    var lastScroll = 0, t0 = null;
+    document.addEventListener('scroll', function () { lastScroll = Date.now(); }, { capture: true, passive: true });
+    document.addEventListener('touchstart', function (e) {
+      var f = e.touches[0]; if (!f) return;
+      t0 = { x: f.clientX, y: f.clientY, rolling: Date.now() - lastScroll < 180, moved: false };            // the list was still moving: this touch only stops it
+    }, { capture: true, passive: true });
+    document.addEventListener('touchmove', function (e) {
+      var f = e.touches[0]; if (t0 && f && (Math.abs(f.clientX - t0.x) > 8 || Math.abs(f.clientY - t0.y) > 8)) t0.moved = true;
+    }, { capture: true, passive: true });
+    window.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('#music-screen a[data-act]'); if (!a) return;
+      if (Date.now() - lastScroll < 120 || (t0 && (t0.rolling || t0.moved) && Date.now() - lastScroll < 400)) { e.stopPropagation(); e.preventDefault(); }
     }, true);
   })();
 
@@ -1757,12 +1998,23 @@ var mzSp = (function () {
     var g = null;
     function begin(e) {
       if (e.target.closest('button, input, a') || (e.pointerType === 'mouse' && e.button !== 0)) return;
-      g = { id: e.pointerId, el: e.currentTarget, y0: e.clientY, last: { y: e.clientY, t: performance.now() }, v: 0, moved: false };
+      g = { id: e.pointerId, el: e.currentTarget, x0: e.clientX, y0: e.clientY, last: { y: e.clientY, t: performance.now() }, v: 0, moved: false };
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}      // keeps the drag alive when the pointer leaves the small mini player
     }
     function move(e) {
       if (!g || e.pointerId !== g.id) return;
       var dy = e.clientY - g.y0;                                   // < 0 = finger moving up
+      if (!g.moved && !g.h) {                                      // sideways on the mini player: skip to the next / previous song
+        var dx0 = e.clientX - g.x0;
+        if (Math.abs(dx0) >= 10 && Math.abs(dx0) > Math.abs(dy) * 1.2) g.h = true;
+      }
+      if (g.h) {
+        var dx = e.clientX - g.x0, nw = mzEl('wm-now');
+        if (!g.hp && Math.abs(dx) > 70) { g.hp = true; mzHaptic('detent'); } else if (g.hp && Math.abs(dx) <= 70) g.hp = false;
+        if (tr) tr.classList.add('swiping');
+        if (nw) { nw.style.transition = 'none'; nw.style.transform = 'translateX(' + dx * 0.55 + 'px)'; nw.style.opacity = String(Math.max(.35, 1 - Math.abs(dx) / 320)); }
+        return;
+      }
       if (!g.moved) {
         if (Math.abs(dy) < 8) return;
         if (dy > 0) { g = null; return; }                          // the mini player only opens upward
@@ -1782,13 +2034,19 @@ var mzSp = (function () {
       if (!g || e.pointerId !== g.id) return;
       var d = g; g = null;
       try { d.el.releasePointerCapture(e.pointerId); } catch (_) {}
+      if (d.h) {
+        var dxe = e.clientX - d.x0, nw2 = mzEl('wm-now'); lastDragAt = Date.now();
+        if (nw2) { nw2.style.transition = 'transform .22s ease, opacity .22s ease'; nw2.style.transform = ''; nw2.style.opacity = ''; setTimeout(function () { nw2.style.transition = ''; if (tr) tr.classList.remove('swiping'); }, 260); }
+        if (Math.abs(dxe) > 70 && mzCur()) { if (dxe < 0) nextSong(); else prevSong(); }
+        return;
+      }
       if (!d.moved) { if (phone() && mzCur()) mzNowTap(); return; }   // a tap on the mini player (the click is retargeted by the capture, so handle it here)
       lastDragAt = Date.now();
       var h = sheetH(), dy = e.clientY - d.y0;
       if (-dy > h * 0.2 || d.v < -0.4) { navSet('music/player'); SP.npSet(true, true, Math.abs(d.v) > 0.4 ? Math.abs(d.v) : 0); }
       else SP.npSet(false, true, Math.abs(d.v) > 0.4 ? Math.abs(d.v) : 0);
     }
-    function cancel(e) { if (g && e.pointerId === g.id) { var d = g; g = null; if (d.moved) SP.npSet(false, true); } }
+    function cancel(e) { if (g && e.pointerId === g.id) { var d = g; g = null; if (d.h) { var nw = mzEl('wm-now'); if (tr) tr.classList.remove('swiping'); if (nw) { nw.style.transform = ''; nw.style.opacity = ''; nw.style.transition = ''; } } else if (d.moved) SP.npSet(false, true); } }
     if (tr) {
       tr.addEventListener('pointerdown', function (e) { if (phone() && mzCur()) begin(e); });
       tr.addEventListener('pointermove', move);

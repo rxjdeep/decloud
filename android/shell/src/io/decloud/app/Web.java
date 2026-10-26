@@ -65,6 +65,18 @@ final class Web {
         return view;
     }
 
+    private static final Runnable SLEEP = new Runnable() { @Override public void run() { maybeSleep(); } };
+
+    /**
+     * The page reports "not playing" for a moment at the end of every song, just before it starts the loop or the next one.
+     * Putting the page to sleep right then freezes it before it can do that, so the music stops until the app is opened again.
+     * Wait a few seconds instead, and cancel if playing comes back.
+     */
+    static void sleepSoon(boolean playingNow) {
+        H.removeCallbacks(SLEEP);
+        if (!playingNow) H.postDelayed(SLEEP, 6000);
+    }
+
     /** The WebView held the process alive for nothing: when nothing plays and the app is not on screen, let it rest. */
     static void maybeSleep() {
         if (view == null || visible || playing) return;

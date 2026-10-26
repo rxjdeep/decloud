@@ -20,6 +20,11 @@ public class PushJob extends JobService {
             case Sched.SEND_BIG: why = "you asked to send the large files"; break;
             default: why = "job " + p.getJobId();
         }
+        if (getSharedPreferences("s", 0).getBoolean("paused", false) && (p.getJobId() == Sched.PERIODIC || p.getJobId() == Sched.ON_NEW_MEDIA)) {
+            Log.add(this, "job " + p.getJobId() + " skipped: backups are paused");
+            if (p.getJobId() == Sched.ON_NEW_MEDIA) Sched.onNewMedia(this);
+            return false;
+        }
         Log.add(this, "job " + p.getJobId() + " started: " + why);
         Sync.note(this, "running...");
         new Thread(new Runnable() { @Override public void run() {
@@ -28,6 +33,7 @@ public class PushJob extends JobService {
             catch (Exception e) {
                 Log.add(PushJob.this, "PASS FAILED: " + e.getClass().getSimpleName() + ": " + e.getMessage() + " (Android will retry later)");
                 Sync.note(PushJob.this, "failed: " + e.getMessage());
+                Notif.failed(PushJob.this, "Couldn't reach the server (" + e.getClass().getSimpleName() + "). It will try again soon.");
                 retry = true;                                  // the system retries with backoff
             }
             if (p.getJobId() == Sched.ON_NEW_MEDIA) Sched.onNewMedia(PushJob.this);
