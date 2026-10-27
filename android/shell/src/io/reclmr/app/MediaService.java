@@ -38,6 +38,7 @@ public class MediaService extends Service {
         if (playing) return;
         Log.add(MediaService.this, "paused for a while: removing the controls");
         running = false;
+        locks(false);
         stopForeground(STOP_FOREGROUND_REMOVE); foreground = false;
         getSystemService(NotificationManager.class).cancel(ID);
         stopSelf();
@@ -108,7 +109,10 @@ public class MediaService extends Service {
         // The service lets go only after a real pause.
         Web.H.removeCallbacks(idleStop);
         if (!playing) Web.H.postDelayed(idleStop, IDLE_MS);
-        locks(playing);
+        // The CPU and Wi-Fi locks are kept through the gap between two songs, and let go only when the pause turns out to be real
+        // (idleStop). Releasing them the moment a song ends let a phone with its screen off fall asleep before the page could start
+        // the next song, which then only began when you woke the phone.
+        if (playing) locks(true);
         if (!art.isEmpty() && !art.equals(artShown)) loadArt(art);
         return START_NOT_STICKY;
     }

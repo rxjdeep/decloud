@@ -22,7 +22,8 @@ ssh "${SSH_OPTS[@]}" "$PHONE" "
   pm install -r /data/local/tmp/reclmr.apk &&
   { pm grant $PKG android.permission.POST_NOTIFICATIONS 2>/dev/null || true; } &&
   { pm grant $PKG android.permission.WRITE_SECURE_SETTINGS 2>/dev/null || true; } &&
+  { cmd deviceidle whitelist +$PKG >/dev/null 2>&1 || true; } &&
   am start -n $PKG/.MainActivity &&
   rm -f /data/local/tmp/reclmr.apk
 "
-echo "Installed reclmr ($PKG). reclmr Backup was not touched."
+echo "Installed reclmr ($PKG), exempt from Doze so music keeps changing songs with the screen off (undo: cmd deviceidle whitelist -$PKG on the phone). reclmr Backup was not touched."
