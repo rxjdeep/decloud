@@ -1148,6 +1148,65 @@ def _parse_lrc(text):
     return [l for l in lines if l[1]] or []
 
 
+_whisper = {}
+_whisper_lock = threading.Lock()
+_WORD = re.compile(r"\w{3,}", re.U)
+
+
+def _words(text):
+    return set(_WORD.findall((text or '').lower()))
+
+
+def _pick_by_ear(groups, heard):
+    """Which of several different sets of lyrics fits what was heard at the start of the song. groups: [(lines, hit), ...].
+    Returns the best index, or None when no set is clearly better than the others."""
+    heard = _words(heard)
+    if len(heard) < 4:
+        return None
+    scores = []
+    for lines, _ in groups:
+        bag = _words(' '.join(x[1] for x in lines if x[0] is not None and x[0] < 80000))
+        scores.append(len(heard & bag) / len(heard))
+    order = sorted(range(len(groups)), key=lambda i: -scores[i])
+    best = order[0]
+    if scores[best] < .2 or (len(order) > 1 and scores[best] - scores[order[1]] < .08):
+        return None
+    return best
+
+
+def _listen(tid, seconds=75):
+    """What is sung in the first stretch of a song, as text (the speech model already used by the voice feature, run on the server). '' if it cannot be done."""
+    conf = _nd_conf()
+    if not conf:
+        return ''
+    try:
+        import numpy as np
+        up = requests.get(f'{conf[0]}/rest/stream.view', params=_nd_params(conf, {'id': tid, 'format': 'mp3', 'maxBitRate': 64}),
+                          stream=True, timeout=(5, 30))
+        if up.status_code >= 400 or 'json' in up.headers.get('Content-Type', '') or 'xml' in up.headers.get('Content-Type', ''):
+            up.close()
+            return ''
+        buf = b''
+        for chunk in up.iter_content(65536):
+            buf += chunk
+            if len(buf) >= 8000 * seconds + 30000:           # 64 kbit/s is 8000 bytes a second
+                break
+        up.close()
+        r = subprocess.run(['ffmpeg', '-v', 'error', '-i', 'pipe:0', '-t', str(seconds), '-f', 's16le', '-ac', '1', '-ar', '16000', 'pipe:1'],
+                           input=buf, capture_output=True, timeout=40)
+        if not r.stdout:
+            return ''
+        audio = np.frombuffer(r.stdout, dtype=np.int16).astype(np.float32) / 32768.0
+        with _whisper_lock:                                   # one at a time: it uses the processor hard
+            if 'm' not in _whisper:
+                from faster_whisper import WhisperModel
+                _whisper['m'] = WhisperModel('base', device='cpu', compute_type='int8', local_files_only=True)
+            segs, _ = _whisper['m'].transcribe(audio, beam_size=1, vad_filter=False)
+            return ' '.join(sg.text for sg in segs)
+    except Exception:
+        return ''
+
+
 _NAME_JUNK = re.compile(r'\(.*?\)|\[.*?\]|\b(feat|ft|featuring|with|prod)\b.*|[^\w ]', re.I | re.U)
 
 
@@ -1174,7 +1233,7 @@ def _same_song(h, title, artists, dur):
     return False
 
 
-def _lrclib(title, artist, album, dur, artists=None):
+def _lrclib(title, artist, album, dur, artists=None, tid=None):
     """Best match from lrclib.net: synced lyrics if it has them, else plain ones. [] when nothing fits.
     Songs tagged with an English title often have both the sung lyrics and an English translation on the site (same times, same length);
     when a result carries an original-script title (スローモーションリプレイ), the sung-language lyrics win over the translation."""
@@ -1216,6 +1275,15 @@ def _lrclib(title, artist, album, dur, artists=None):
         orig = [(h, ln) for h, ln in cands if share(' '.join(x[1] for x in ln)) >= 0.3]
         cands = orig or cands
     if cands:
+        close = [c for c in cands if abs((c[0].get('duration') or 0) - dur) <= min(abs((x[0].get('duration') or 0) - dur) for x in cands) + 1.5]
+        distinct = {}
+        for h, ln in close:                                    # versions of one song carry different lyrics (an alternate take, a mislabelled upload): tell them apart by their first lines
+            distinct.setdefault(' '.join(re.sub(r'\W', '', x[1].lower()) for x in ln[:5]), (ln, h))
+        if tid and len(distinct) > 1:
+            groups = list(distinct.values())
+            i = _pick_by_ear(groups, _listen(tid))
+            if i is not None:
+                return {'synced': True, 'lines': groups[i][0]}
         h, ln = min(cands, key=lambda c: abs((c[0].get('duration') or 0) - dur))
         return {'synced': True, 'lines': ln}
     for h in hits:
@@ -1296,7 +1364,7 @@ def music_lyrics(tid):
         got = None
         try:
             c = json.loads(f.read_text())
-            if c.get('v') == 3 and (c.get('lines') or time.time() - c.get('at', 0) < 7 * 86400):
+            if c.get('v') == 4 and (c.get('lines') or time.time() - c.get('at', 0) < 7 * 86400):
                 got = {'synced': c.get('synced', False), 'lines': c.get('lines', [])}
         except (OSError, ValueError):
             pass
@@ -1304,13 +1372,13 @@ def music_lyrics(tid):
             t = next((x for x in _library_data().get('tracks', []) if x['f'] == tid), None)
             if t and t.get('d'):
                 artist = (t.get('as') or [[0, t.get('ar', '')]])[0][1]
-                res = _lrclib(t['t'], artist, t.get('al', ''), t['d'], [x[1] for x in (t.get('as') or [])] or [t.get('ar', '')])
+                res = _lrclib(t['t'], artist, t.get('al', ''), t['d'], [x[1] for x in (t.get('as') or [])] or [t.get('ar', '')], tid)
                 if res is None:
                     return jsonify(out)
                 got = res if res else {'synced': False, 'lines': []}
                 try:
                     _LYR_DIR.mkdir(exist_ok=True)
-                    f.write_text(json.dumps({'v': 3, 'at': time.time(), **got}, ensure_ascii=False))
+                    f.write_text(json.dumps({'v': 4, 'at': time.time(), **got}, ensure_ascii=False))
                 except OSError:
                     pass
         if got and got['lines'] and (got['synced'] or not out['lines']):

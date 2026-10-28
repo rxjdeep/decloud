@@ -31,3 +31,20 @@ def test_the_same_original_script_name_matches_by_name():
 def test_like_ignores_case_punctuation_and_brackets():
     assert _like('Don\'t Stop (Remastered)', 'dont stop', .72)
     assert not _like('abc', 'xyz', .72)
+
+
+def test_pick_by_ear_chooses_the_lyrics_that_were_sung():
+    from routes.music import _pick_by_ear
+    a = [(14000, "This is so I don't ever have to see you again"), (19000, 'Oh I just wanna be able to breathe')]
+    b = [(5000, '(Charlie Shuffler)'), (24000, 'Hold on, baby, could you wait here?'), (27000, "Promise I'll be right back")]
+    heard = "Don't play quick. Hold on baby, could you wait here? Promise I'll be right back"
+    assert _pick_by_ear([(a, {}), (b, {})], heard) == 1
+    assert _pick_by_ear([(b, {}), (a, {})], heard) == 0
+
+
+def test_pick_by_ear_gives_up_when_unsure():
+    from routes.music import _pick_by_ear
+    a = [(1000, 'love you baby tonight')]
+    b = [(1000, 'love you baby tomorrow')]
+    assert _pick_by_ear([(a, {}), (b, {})], 'love you baby') is None          # fits both equally
+    assert _pick_by_ear([(a, {}), (b, {})], 'ok') is None                      # too little heard

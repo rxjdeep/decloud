@@ -8,9 +8,18 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.11"
+VERSION = "0.7.12"
 
 CHANGELOG = [
+    {
+        "version": "0.7.12",
+        "date": "2026-10-28",
+        "changes": [
+            "Lyrics: tell versions of a song apart by listening",
+            "Lyrics: when the lyrics site has several different versions of a song with the same length (an alternate take, a mislabelled upload), the first seconds of the song are listened to with the server's speech model and the set of lyrics that fits is used, once per song",
+            "Saved lyrics are looked up again",
+        ]
+    },
     {
         "version": "0.7.11",
         "date": "2026-10-28",
