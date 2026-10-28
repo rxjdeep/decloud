@@ -7,6 +7,7 @@ import hashlib
 import json
 import secrets
 import datetime
+import difflib
 import requests
 import os
 import re
@@ -1147,11 +1148,38 @@ def _parse_lrc(text):
     return [l for l in lines if l[1]] or []
 
 
-def _lrclib(title, artist, album, dur):
+_NAME_JUNK = re.compile(r'\(.*?\)|\[.*?\]|\b(feat|ft|featuring|with|prod)\b.*|[^\w ]', re.I | re.U)
+
+
+def _norm_name(s):
+    return re.sub(r'\s+', ' ', _NAME_JUNK.sub(' ', (s or '').lower())).strip()
+
+
+def _like(a, b, cut):
+    """Whether two song or artist names are the same thing written a little differently (case, punctuation, (feat. ...), a trailing word)."""
+    a, b = _norm_name(a), _norm_name(b)
+    if not a or not b:
+        return False
+    return a == b or (min(len(a), len(b)) >= 4 and (a in b or b in a)) or difflib.SequenceMatcher(None, a, b).ratio() >= cut
+
+
+def _same_song(h, title, artists, dur):
+    """A search hit counts only if its title and artist match the song being played. Entries filed under an original-script name
+    (the sung language) cannot be compared with an English tag, so those pass on an almost exact length instead."""
+    t, a = h.get('trackName') or '', h.get('artistName') or ''
+    if _like(t, title, .72) and any(_like(a, x, .7) for x in artists):
+        return True
+    if re.search(r'[\u0400-\u04ff\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af\u0900-\u097f\u0a00-\u0a7f]', t + a):
+        return abs((h.get('duration') or 0) - dur) <= 2
+    return False
+
+
+def _lrclib(title, artist, album, dur, artists=None):
     """Best match from lrclib.net: synced lyrics if it has them, else plain ones. [] when nothing fits.
     Songs tagged with an English title often have both the sung lyrics and an English translation on the site (same times, same length);
     when a result carries an original-script title (スローモーションリプレイ), the sung-language lyrics win over the translation."""
     hdr = {'User-Agent': 'reclmr (self-hosted music player)'}
+    artists = artists or [artist]
     hits, ok = [], False
     for url, params in (('https://lrclib.net/api/get', {'track_name': title, 'artist_name': artist, 'album_name': album, 'duration': int(dur)}),
                         ('https://lrclib.net/api/search', {'track_name': title, 'artist_name': artist}),
@@ -1174,6 +1202,7 @@ def _lrclib(title, artist, album, dur):
     if not ok:
         return None                                           # could not ask: do not remember an empty answer
     hits = [h for h in hits if abs((h.get('duration') or 0) - dur) <= 4]
+    hits = [h for h in hits if _same_song(h, title, artists, dur)]      # the site's search is loose: a song of about the same length is not necessarily this song
     if any(h.get('instrumental') for h in hits) and not any(h.get('syncedLyrics') or h.get('plainLyrics') for h in hits):
         return []
     nonlatin = re.compile(r'[\u0400-\u04ff\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af\u0900-\u097f\u0a00-\u0a7f]')
@@ -1267,7 +1296,7 @@ def music_lyrics(tid):
         got = None
         try:
             c = json.loads(f.read_text())
-            if c.get('v') == 2 and (c.get('lines') or time.time() - c.get('at', 0) < 7 * 86400):
+            if c.get('v') == 3 and (c.get('lines') or time.time() - c.get('at', 0) < 7 * 86400):
                 got = {'synced': c.get('synced', False), 'lines': c.get('lines', [])}
         except (OSError, ValueError):
             pass
@@ -1275,13 +1304,13 @@ def music_lyrics(tid):
             t = next((x for x in _library_data().get('tracks', []) if x['f'] == tid), None)
             if t and t.get('d'):
                 artist = (t.get('as') or [[0, t.get('ar', '')]])[0][1]
-                res = _lrclib(t['t'], artist, t.get('al', ''), t['d'])
+                res = _lrclib(t['t'], artist, t.get('al', ''), t['d'], [x[1] for x in (t.get('as') or [])] or [t.get('ar', '')])
                 if res is None:
                     return jsonify(out)
                 got = res if res else {'synced': False, 'lines': []}
                 try:
                     _LYR_DIR.mkdir(exist_ok=True)
-                    f.write_text(json.dumps({'v': 2, 'at': time.time(), **got}, ensure_ascii=False))
+                    f.write_text(json.dumps({'v': 3, 'at': time.time(), **got}, ensure_ascii=False))
                 except OSError:
                     pass
         if got and got['lines'] and (got['synced'] or not out['lines']):

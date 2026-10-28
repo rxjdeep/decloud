@@ -8,9 +8,19 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.10"
+VERSION = "0.7.11"
 
 CHANGELOG = [
+    {
+        "version": "0.7.11",
+        "date": "2026-10-28",
+        "changes": [
+            "Lyrics must match the song",
+            "Lyrics: a search hit from LRCLIB is used only if its title and artist match the song playing (it used to take the closest length, so a different song of about the same length could win)",
+            "saved lyrics are looked up again",
+            "Fixed a Python warning from an old changelog line",
+        ]
+    },
     {
         "version": "0.7.10",
         "date": "2026-10-28",
@@ -95,7 +105,7 @@ CHANGELOG = [
         "date": "2026-10-27",
         "changes": [
             "Home screen wordmark",
-            "Home: a wordmark title (recl/\mr with the slash pair drawn as an accent-gradient A) and a small tagline above the clock",
+            "Home: a wordmark title (recl/\\mr with the slash pair drawn as an accent-gradient A) and a small tagline above the clock",
         ]
     },
     {
