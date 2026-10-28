@@ -33,7 +33,20 @@ final class Bridge {
         } });
     }
 
-    @JavascriptInterface public void vibrate(String pattern) {
+    // The page calls the bridge and waits for the answer, so a vibration done right there stalled the page for as long as the system took to start
+    // it (a few milliseconds, more on a phone that is saving power): a visible hitch at the buzz in the middle of a swipe. It is done on its own thread now.
+    private static final android.os.HandlerThread HAPTIC_THREAD = new android.os.HandlerThread("haptics");
+    private static android.os.Handler hapticHandler;
+    private static synchronized android.os.Handler hapticHandler() {
+        if (hapticHandler == null) { HAPTIC_THREAD.start(); hapticHandler = new android.os.Handler(HAPTIC_THREAD.getLooper()); }
+        return hapticHandler;
+    }
+
+    @JavascriptInterface public void vibrate(final String pattern) {
+        hapticHandler().post(new Runnable() { @Override public void run() { doVibrate(pattern); } });
+    }
+
+    private void doVibrate(String pattern) {
         try {
             Vibrator v = app.getSystemService(Vibrator.class);
             if (v == null || !v.hasVibrator()) return;

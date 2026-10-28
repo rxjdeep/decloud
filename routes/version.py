@@ -8,9 +8,18 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.9"
+VERSION = "0.7.10"
 
 CHANGELOG = [
+    {
+        "version": "0.7.10",
+        "date": "2026-10-28",
+        "changes": [
+            "No stop in the middle of the swipe down",
+            "Now Playing: swiping it away no longer restarts the slide a moment after you let go (the history step did), which was the stop in the middle of the animation",
+            "Android app: vibrations no longer make the page wait for the system, which stalled the swipe at the buzz",
+        ]
+    },
     {
         "version": "0.7.9",
         "date": "2026-10-28",

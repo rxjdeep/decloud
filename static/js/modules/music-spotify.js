@@ -838,6 +838,7 @@ var mzSp = (function () {
       if (vel) setY(0, animate, dur(npY, vel, 200, 420), EASE_FLING); else setY(0, animate, animate && npY && npY < sheetH() * .6 ? dur(npY, 0, 240, 380) : 0);
       clearInterval(npTimer); npTimer = setInterval(function () { if (Date.now() >= npBusy) npSync(); }, 250);
     } else {
+      if (!npIsOpen && sheetFlying()) return;                      // already on its way down (a swipe closed it, then the history step calls this too): restarting the slide here made it stop and ease again mid-way
       if (npIsOpen) mzHaptic('close');
       npIsOpen = false; SP.qSet(false, false); setTimeout(SP.barsSync, 80);
       w.classList.remove('np-open'); n.setAttribute('aria-hidden', 'true'); clearInterval(npTimer);
