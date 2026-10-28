@@ -266,6 +266,7 @@ function mzApplyRoute(parts) {
   if (ok.indexOf(type) < 0) { type = mzDefaultType(); key = ''; }
   if (type === 'now' && !mzCur() && !mzHasSavedState()) type = mzDefaultType();
   if (type !== 'search') { mz.query = ''; var si = mzEl('wm-search-input'); if (si) si.value = ''; }
+  if (mz.loaded && mz.view.type === type && (mz.view.key || '') === key) return;       // the same page (the player or a sheet was just closed): nothing to redraw, which was a visible hitch
   mzScrollSave();
   mz.view = { type: type, key: key }; mz.sel = -1; mz.sort = { col: '', dir: 1 };
   mzLastViewSave();

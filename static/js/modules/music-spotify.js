@@ -800,8 +800,22 @@ var mzSp = (function () {
   var npBusy = 0, npY = 0, npCardsT = 0;
   var EASE_OUT = 'cubic-bezier(.32,.72,0,1)', EASE_FLING = 'cubic-bezier(.2,.75,.3,1)';
   function dur(remaining, v, lo, hi) { return Math.round(Math.max(lo, Math.min(hi, remaining / Math.max(Math.abs(v || 0), .9)))); }   // a fast fling finishes fast, a slow release takes its time
+  // While a finger drags the sheet its position is written once per frame (touch events can come faster than frames, and each write costs a style update)
+  var npRaf = 0, npWant = 0;
+  function dragY(px) { npWant = px; if (!npRaf) npRaf = requestAnimationFrame(function () { npRaf = 0; setY(npWant, false); }); }
+  function dragFlush() { if (npRaf) { cancelAnimationFrame(npRaf); npRaf = 0; setY(npWant, false); } }
+  // Putting a finger on the sheet while it is still sliding catches it where it is (not where it was heading), so it feels like a physical thing
+  function sheetFlying() { var n = sheet(); return !!(n && Date.now() < npBusy && n.style.transition && n.style.transition !== 'none'); }
+  function catchSheet() {
+    var n = sheet(); if (!n) return npY;
+    var y = npY; try { y = new DOMMatrixReadOnly(getComputedStyle(n).transform).m42; } catch (_) {}
+    clearTimeout(npHideT); npRaf && cancelAnimationFrame(npRaf); npRaf = 0;
+    n.style.transition = 'none'; npY = Math.round(y); n.style.transform = 'translate3d(0,' + npY + 'px,0)'; npBusy = Date.now() + 300;
+    return npY;
+  }
   function setY(px, anim, ms, ease) {
     var n = sheet(); if (!n) return;
+    if (anim && npRaf) { cancelAnimationFrame(npRaf); npRaf = 0; }
     npBusy = Date.now() + (anim ? (ms || 420) + 120 : 300);
     n.style.transition = anim ? 'transform ' + (ms || 420) + 'ms ' + (ease || EASE_OUT) : 'none';
     npY = Math.round(px);
@@ -817,7 +831,7 @@ var mzSp = (function () {
       npIsOpen = true;
       n.style.visibility = 'visible'; n.setAttribute('aria-hidden', 'false'); w.classList.add('np-open');
       if (animate) npBusy = Date.now() + 560;                      // the cards and tint wait until the slide has finished
-      npSync(true);
+      npSync();                                                    // (already done when the drag began; a full redo here was a hitch at the start of the slide)
       if (animate && !n.classList.contains('shown')) { setY(sheetH(), false); void n.offsetHeight; }   // start from just below the screen
       if (!n.classList.contains('shown')) { var sc0 = mzEl('sp-np-scroll'); if (sc0) sc0.scrollTop = 0; }       // always opens at the player, not where you left the cards
       n.classList.add('shown');
@@ -825,7 +839,7 @@ var mzSp = (function () {
       clearInterval(npTimer); npTimer = setInterval(function () { if (Date.now() >= npBusy) npSync(); }, 250);
     } else {
       if (npIsOpen) mzHaptic('close');
-      npIsOpen = false; SP.qSet(false, false); SP.barsSync();
+      npIsOpen = false; SP.qSet(false, false); setTimeout(SP.barsSync, 80);
       w.classList.remove('np-open'); n.setAttribute('aria-hidden', 'true'); clearInterval(npTimer);
       var ms = vel ? dur(sheetH() - npY, vel, 180, 400) : 420;
       setY(sheetH(), animate, ms, vel ? EASE_FLING : EASE_OUT);
@@ -1987,11 +2001,14 @@ var mzSp = (function () {
     n.addEventListener('touchstart', function (e) {
       if (!phone() || e.touches.length !== 1) { td = null; return; }
       var f = e.touches[0], now = performance.now();
-      td = { x: f.clientX, y: f.clientY, drag: false, v: 0, t0: now, last: { y: f.clientY, t: now }, tgt: e.target };
+      var caught = sheetFlying();
+      if (caught && sc) sc.style.overflowY = 'hidden';                 // the content must not scroll along while the finger moves the sheet
+      td = { x: f.clientX, y: f.clientY, drag: false, v: 0, t0: now, last: { y: f.clientY, t: now }, tgt: e.target, H: sheetH(), caught: caught, base: caught ? catchSheet() : 0 };
     }, { passive: true });
     n.addEventListener('touchmove', function (e) {
       if (!td) return;
       var f = e.touches[0], dy = f.clientY - td.y, dx = f.clientX - td.x;
+      if (!td.drag && td.caught) { if (Math.abs(dy) < 2) return; td.drag = true; td.y = f.clientY; dy = 0; }      // caught mid-slide: follows the finger either way at once
       if (!td.drag) {
         if (td.tgt.closest && td.tgt.closest('input[type=range]')) { td = null; return; }                // the seek bar is dragged sideways: leave it alone
         if (sc && sc.scrollTop > 0) { td = null; return; }                                               // scrolled down: this is a scroll
@@ -1999,19 +2016,24 @@ var mzSp = (function () {
         td.v = dy / Math.max(16, performance.now() - td.t0); td.drag = true; td.y = f.clientY - 10; dy = 10;
         clearTimeout(npHideT);
       }
-      e.preventDefault();
       var now = performance.now(); td.v = 0.6 * td.v + 0.4 * ((f.clientY - td.last.y) / Math.max(1, now - td.last.t)); td.last = { y: f.clientY, t: now };
-      var past = dy > sheetH() * 0.18; if (past !== td.past) { td.past = past; mzHaptic('detent'); }      // a small buzz as you cross the point of no return
-      setY(Math.max(0, dy), false);
-    }, { passive: false });
+      var pos = Math.min(td.H, Math.max(0, td.base + dy));
+      var past = pos > td.H * 0.18; if (past !== td.past) { td.past = past; mzHaptic('detent'); }      // a small buzz as you cross the point of no return
+      dragY(pos);
+    }, { passive: true });          // passive: the page is at its top and contained, so there is nothing to scroll, and the browser need not wait for this code before it moves on
     function tEnd(e) {
+      if (sc) sc.style.overflowY = '';
       if (!td || !td.drag) { td = null; return; }
       var d = td, f = e.changedTouches[0]; td = null;
-      lastDragAt = Date.now();
-      var h = sheetH(), dy = f.clientY - d.y;
-      if (e.type !== 'touchcancel' && (dy > h * 0.18 || d.v > 0.5)) {
+      lastDragAt = Date.now(); dragFlush();
+      var h = d.H, dy = f.clientY - d.y, pos = Math.min(h, Math.max(0, d.base + dy));
+      var closing = d.caught ? (d.v > 0.3 || (d.v >= -0.3 && pos > h * 0.5)) : (pos > h * 0.18 || d.v > 0.5);       // caught mid-slide: the direction you were going decides
+      if (e.type !== 'touchcancel' && closing) {
         SP.npSet(false, true, d.v);
-        if (nav.cur === 'music/player' && navCanBack()) history.back(); else navSet(mzRoute(mz.view));
+        if (nav.cur === 'music/player' && navCanBack()) history.back(); else if (!d.caught) navSet(mzRoute(mz.view));
+      } else if (d.caught) {                                                                                                         // caught mid-close and let go going up: it opens again
+        SP.npSet(true, true, d.v < -0.4 ? -d.v : 0);
+        if (nav.cur !== 'music/player') navSet('music/player');
       } else setY(0, true, dur(npY, 0, 220, 380));                                                                                // not far enough: spring back
     }
     n.addEventListener('touchend', tEnd); n.addEventListener('touchcancel', tEnd);
@@ -2020,7 +2042,10 @@ var mzSp = (function () {
     var g = null;
     function begin(e) {
       if (e.target.closest('button, input, a') || (e.pointerType === 'mouse' && e.button !== 0)) return;
-      g = { id: e.pointerId, el: e.currentTarget, x0: e.clientX, y0: e.clientY, last: { y: e.clientY, t: performance.now() }, v: 0, moved: false };
+      var cgt = sheetFlying();
+      g = { id: e.pointerId, el: e.currentTarget, x0: e.clientX, y0: e.clientY, last: { y: e.clientY, t: performance.now() }, v: 0, moved: false, H: sheetH(), caught: cgt };
+      g.base = cgt ? catchSheet() : g.H;
+      if (!npIsOpen && mzCur()) npSync();                          // the player's content is built now, while the finger is still, so the first moves of the drag only move the sheet
       try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}      // keeps the drag alive when the pointer leaves the small mini player
     }
     function move(e) {
@@ -2038,19 +2063,19 @@ var mzSp = (function () {
         return;
       }
       if (!g.moved) {
-        if (Math.abs(dy) < 8) return;
-        if (dy > 0) { g = null; return; }                          // the mini player only opens upward
+        if (Math.abs(dy) < (g.caught ? 2 : 8)) return;
+        if (dy > 0 && !g.caught) { g = null; return; }             // the mini player only opens upward (unless the sheet was caught mid-slide)
         g.moved = true;
         clearTimeout(npHideT);
         n.style.visibility = 'visible'; n.classList.add('shown');
-        npSync(true); setY(sheetH(), false);
+        npSync(); if (!g.caught) setY(g.H, false);
       }
       var now = performance.now();
       g.v = 0.6 * g.v + 0.4 * ((e.clientY - g.last.y) / Math.max(1, now - g.last.t));    // px/ms, smoothed
       g.last = { y: e.clientY, t: now };
-      var h = sheetH();
-      var past = -dy > h * 0.2; if (past !== g.past) { g.past = past; mzHaptic('detent'); }
-      setY(Math.max(0, h + dy), false);
+      var h = g.H, pos = Math.min(h, Math.max(0, g.base + dy));
+      var past = pos < h * 0.8; if (past !== g.past) { g.past = past; mzHaptic('detent'); }
+      dragY(pos);
     }
     function end(e) {
       if (!g || e.pointerId !== g.id) return;
@@ -2062,10 +2087,11 @@ var mzSp = (function () {
         if (Math.abs(dxe) > 70 && mzCur()) { if (dxe < 0) nextSong(); else prevSong(); }
         return;
       }
-      if (!d.moved) { if (phone() && mzCur()) mzNowTap(); return; }   // a tap on the mini player (the click is retargeted by the capture, so handle it here)
-      lastDragAt = Date.now();
-      var h = sheetH(), dy = e.clientY - d.y0;
-      if (-dy > h * 0.2 || d.v < -0.4) { navSet('music/player'); SP.npSet(true, true, Math.abs(d.v) > 0.4 ? Math.abs(d.v) : 0); }
+      if (!d.moved) { if (d.caught) SP.npSet(npIsOpen, true); else if (phone() && mzCur()) mzNowTap(); return; }   // a tap on the mini player (the click is retargeted by the capture, so handle it here)
+      lastDragAt = Date.now(); dragFlush();
+      var h = d.H, dy = e.clientY - d.y0, pos = Math.min(h, Math.max(0, d.base + dy));
+      var opening = d.caught ? (d.v < -0.3 || (d.v <= 0.3 && pos < h * 0.5)) : (pos < h * 0.8 || d.v < -0.4);
+      if (opening) { if (nav.cur !== 'music/player') navSet('music/player'); SP.npSet(true, true, Math.abs(d.v) > 0.4 ? Math.abs(d.v) : 0); }
       else SP.npSet(false, true, Math.abs(d.v) > 0.4 ? Math.abs(d.v) : 0);
     }
     function cancel(e) { if (g && e.pointerId === g.id) { var d = g; g = null; if (d.h) { var nw = mzEl('wm-now'); if (tr) tr.classList.remove('swiping'); if (nw) { nw.style.transform = ''; nw.style.opacity = ''; nw.style.transition = ''; } } else if (d.moved) SP.npSet(false, true); } }
