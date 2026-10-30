@@ -863,37 +863,40 @@ function mzStreamUrl(t) {
   if (rate) return id + '?q=' + rate;
   return id + (t.sx === 'wav' ? '?x=wav' : '');
 }
-// The songs after this one are got ready while it plays, so skipping to them is instant: converted on the server (when a lower quality is
-// chosen), their covers fetched into the browser's cache, and the first bytes of the very next song fetched too.
-function mzPrewarmNext() {
-  var rate = mzQualityRate();                                   // 0 = the original: an .m4a gets its index moved to the front
-  if (mz.remote) return;
-  [1, 2].forEach(function (d) {
+// The songs around this one are got ready while it plays, so skipping to them is instant: converted on the server, their covers kept in the
+// browser's cache, and the first bytes of the very next song fetched. It waits a moment so that the song just chosen has the network to itself,
+// and a run of quick skips gets the neighbours of the song it ends on, not of every song it passed.
+var mzPre = { imgs: {}, order: [], audio: '', timer: 0 };
+var MZ_AHEAD_BYTES = 512 * 1024;
+function mzHoldImg(u) {
+  if (mzPre.imgs[u]) return;
+  var im = new Image(); im.decoding = 'async'; im.src = u;
+  mzPre.imgs[u] = im; mzPre.order.push(u);
+  if (mzPre.order.length > 24) delete mzPre.imgs[mzPre.order.shift()];
+}
+function mzAhead() {
+  if (mz.remote || !mz.queue.length) return;
+  var rate = mzQualityRate(), save = navigator.connection && navigator.connection.saveData;
+  [1, 2].forEach(function (d) {                                 // rate 0 = the original: a song that is slow to start gets a quick-starting copy
     var nx = mz.queue[mz.qi + d]; if (!nx) return;
     fetch('/api/music/prewarm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: nx.f, q: rate }) }).catch(function () {});
   });
-}
-var mzPre = { imgs: [], seen: {}, audio: '' };
-var MZ_AHEAD_BYTES = 512 * 1024;
-function mzPreloadAround() {
-  if (mz.remote || !mz.queue.length) return;
-  var save = navigator.connection && navigator.connection.saveData;
   [1, 2, -1].forEach(function (d) {
-    var t = mz.queue[mz.qi + d]; if (!t || !t.c) return;
-    [64, 160, 640].forEach(function (sz) {                      // the sizes the mini player, the colour and the full-screen player use for a song
-      var u = mzCoverUrl(t.c, sz); if (mzPre.seen[u]) return;
-      mzPre.seen[u] = 1; var im = new Image(); im.decoding = 'async'; im.src = u;
-      mzPre.imgs.push(im); if (mzPre.imgs.length > 24) { var old = mzPre.imgs.shift(); delete mzPre.seen[old.src.replace(location.origin, '')]; }
-    });
+    var t = mz.queue[mz.qi + d];
+    if (t && t.c) [64, 160, 640].forEach(function (sz) { mzHoldImg(mzCoverUrl(t.c, sz)); });     // the sizes the mini player, the colour and the full-screen player use
   });
   var nx = mz.queue[mz.qi + 1];
-  if (nx && !save) {                                            // the first stretch of the next song, so it starts without waiting for the network
+  if (nx && !save) {
     var url = mzStreamUrl(nx);
     if (mzPre.audio !== url) {
       mzPre.audio = url;
       fetch(url, { headers: { Range: 'bytes=0-' + (MZ_AHEAD_BYTES - 1) } }).then(function (r) { return r.ok ? r.arrayBuffer() : null; }).catch(function () {});
     }
   }
+}
+function mzPlaySrc(t) {                                            // point the player at a song (the one place that does)
+  mz.fb = false; musicAudio.src = mzStreamUrl(t);
+  clearTimeout(mzPre.timer); mzPre.timer = setTimeout(mzAhead, 600);
 }
 function mzSetQuality(which, kbps) {                              // which: 'wifi' | 'cell'
   var before = mzQualityRate();
@@ -930,10 +933,8 @@ function mzQualityMenu() {
 }
 function mzStartCurrent(pos) {
   var t = mzCur(); if (!t) return;
-  mz.counted = false; mz.resumeAt = pos || 0; mz.fb = false;
-  musicAudio.src = mzStreamUrl(t);
-  setTimeout(mzPrewarmNext, 300);
-  setTimeout(mzPreloadAround, 700);                               // after this song's own cover and first bytes have had the network to themselves
+  mz.counted = false; mz.resumeAt = pos || 0;
+  mzPlaySrc(t);
 }
 
 // active device ← command from a remote (or from the server during a transfer)
@@ -1025,7 +1026,7 @@ function mzApplyState(st, opts) {
     try { musicAudio.currentTime = pos; } catch (_) {}
   } else {
     mz.counted = false; mz.resumeAt = pos;
-    mz.fb = false; musicAudio.src = mzStreamUrl(t);
+    mzPlaySrc(t);
   }
   mzLastSig = tracks.length === st.q.length ? mzQueueSig() : '';   // if tracks went missing the indexes differ: resend in full
   mzSnapFrom = 0;
@@ -1106,9 +1107,7 @@ function mzStart() {
   var t = mzCur(); if (!t) return;
   if (!musicAudio) musicAudio = mzEl('music-audio');
   musicCurrentIdx = t.i; mz.counted = false; mz.resumeAt = 0;
-  mz.fb = false; musicAudio.src = mzStreamUrl(t);
-  setTimeout(mzPrewarmNext, 300);
-  setTimeout(mzPreloadAround, 700);
+  mzPlaySrc(t);
   if (mz.ac && mz.ac.state !== 'running') { try { mz.ac.resume().catch(function () {}); } catch (_) {} }   // the next song must not wait for an unlock
   mzSaveState(true);
   mzTryPlay(null);

@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from shared import MUSIC_EXTS
 import hashlib
+import itertools
 import json
 import secrets
 import datetime
@@ -704,13 +705,34 @@ def _tc_trim(keep=None):
             pass
 
 
-def _transcoded(ident, rate):
-    """Path of the MP3 of this song at `rate` kbps (made now if it does not exist yet), or None if it could not be made."""
-    conf = _nd_conf()
-    if not conf:
+def _tc_name(ident):
+    return re.sub(r'[^A-Za-z0-9_-]', '_', ident)
+
+
+def _upstream(conf, ident, fmt=None, **kw):
+    """Navidrome's stream of a song (`fmt` = None for the file as it is), or None if it is unreachable or answers with an error (Subsonic reports those as JSON/XML)."""
+    params = {'id': ident, 'format': 'raw'} if fmt is None else {'id': ident, 'format': 'mp3', 'maxBitRate': fmt}
+    try:
+        up = requests.get(f'{conf[0]}/rest/stream.view', params=_nd_params(conf, params), stream=True, timeout=(5, 120), **kw)
+    except requests.RequestException:
         return None
-    key = re.sub(r'[^A-Za-z0-9_-]', '_', ident) + f'-{rate}'
-    f = _TC_DIR / (key + '.mp3')
+    ctype = up.headers.get('Content-Type', '')
+    if up.status_code >= 400 or 'json' in ctype or 'xml' in ctype:
+        up.close()
+        return None
+    return up
+
+
+def _save(up, dest):
+    with open(dest, 'wb') as out:
+        for chunk in up.iter_content(1 << 16):
+            out.write(chunk)
+    up.close()
+
+
+def _cached(f, make):
+    """The cached file `f`, built by make(path) the first time (once, even when asked for at the same moment; never with the disk nearly full).
+    None if it could not be made. A file is only ever put in place whole."""
     if f.exists():
         try:
             os.utime(f, None)                                   # played now: last to be cleared
@@ -718,7 +740,7 @@ def _transcoded(ident, rate):
             pass
         return f
     with _tc_lock:
-        lock = _tc_locks.setdefault(key, threading.Lock())
+        lock = _tc_locks.setdefault(f.name, threading.Lock())
     with lock:
         if f.exists():
             return f
@@ -728,23 +750,13 @@ def _transcoded(ident, rate):
                 return None
         except OSError:
             return None
-        tmp = _TC_DIR / (key + '.part-' + secrets.token_hex(4))
+        tmp = f.with_name(f.name + '.part-' + secrets.token_hex(4))
         with _tc_slots:
             try:
-                up = requests.get(f'{conf[0]}/rest/stream.view', params=_nd_params(conf, {'id': ident, 'format': 'mp3', 'maxBitRate': rate}),
-                                  stream=True, timeout=(5, 120))
-                ctype = up.headers.get('Content-Type', '')
-                if up.status_code >= 400 or 'json' in ctype or 'xml' in ctype:
-                    up.close()
-                    return None
-                with open(tmp, 'wb') as out:
-                    for chunk in up.iter_content(1 << 16):
-                        out.write(chunk)
-                up.close()
-                if tmp.stat().st_size < 1024:
+                if not make(tmp) or tmp.stat().st_size < 1024:
                     return None
                 os.replace(tmp, f)
-            except (requests.RequestException, OSError):
+            except (requests.RequestException, OSError, subprocess.SubprocessError):
                 return None
             finally:
                 try:
@@ -753,6 +765,21 @@ def _transcoded(ident, rate):
                     pass
     _tc_trim(f)
     return f
+
+
+def _transcoded(ident, rate):
+    """Path of the MP3 of this song at `rate` kbps (made now if it does not exist yet), or None if it could not be made."""
+    conf = _nd_conf()
+    if not conf:
+        return None
+
+    def make(tmp):
+        up = _upstream(conf, ident, rate)
+        if up is None:
+            return False
+        _save(up, tmp)
+        return True
+    return _cached(_TC_DIR / f'{_tc_name(ident)}-{rate}.mp3', make)
 
 
 # Songs that are slow to start. An .m4a normally has its index (the "moov" box) at the END of the file, so a browser reads the start, finds nothing to play, asks
@@ -791,70 +818,55 @@ def _slow_to_start(ext, head):
     return b'METADATA_BLOCK_PICTURE' in head or b'COVERART' in head
 
 
+_FS_MAX = 120 * 1024 * 1024                                # a longer file (an audiobook) is played as it is: copying it first would make the first request wait
+
+
+def _size_of(headers):
+    total = headers.get('Content-Range', '').rsplit('/', 1)[-1] or headers.get('Content-Length', '')
+    return int(total) if total.isdigit() else 0
+
+
 def _faststart(ident):
     """Path of a quick-starting copy of this song (see above), made now if needed. None when the song starts fine as it is or the copy could not be made."""
     conf = _nd_conf()
     if not conf or _fs_known.get(ident):
         return None
-    key = 'fs-' + re.sub(r'[^A-Za-z0-9_-]', '_', ident)
-    for ext in ('m4a', 'ogg'):
-        f = _TC_DIR / (key + '.' + ext)
-        if f.exists():
-            try:
-                os.utime(f, None)
-            except OSError:
-                pass
-            return f
-    t = next((x for x in _library_data().get('tracks', []) if x['f'] == ident), None)
-    sx = (t or {}).get('sx')
+    sx = next((x['sx'] for x in _library_data().get('tracks', []) if x['f'] == ident), '')
     if sx not in _MP4_EXTS and sx not in _OGG_EXTS:
         _fs_known[ident] = True
         return None
     mp4 = sx in _MP4_EXTS
-    f = _TC_DIR / (key + ('.m4a' if mp4 else '.ogg'))
-    with _tc_lock:
-        lock = _tc_locks.setdefault(key, threading.Lock())
-    with lock:
-        if f.exists():
-            return f
+
+    def make(out):
+        probe = _upstream(conf, ident, headers={'Range': 'bytes=0-1048575'})       # the first megabyte tells whether the copy is needed
+        if probe is None:
+            return False
+        head = b''.join(itertools.islice(probe.iter_content(1 << 16), 16))        # (at most 1 MB, even if the server ignores the Range)
+        size = _size_of(probe.headers)
+        probe.close()
+        if not _slow_to_start(sx, head) or size > _FS_MAX:
+            _fs_known[ident] = True
+            return False
+        up = _upstream(conf, ident)
+        if up is None:
+            return False
+        raw = out.with_name(out.name + '.raw')
         try:
-            _TC_DIR.mkdir(exist_ok=True)
-            if shutil.disk_usage(_TC_DIR).free < 2 * 1024 ** 3:
-                return None
-            r = requests.get(f'{conf[0]}/rest/stream.view', params=_nd_params(conf, {'id': ident, 'format': 'raw'}), headers={'Range': 'bytes=0-1048575'}, timeout=(5, 20))
-            if r.status_code >= 400 or 'json' in r.headers.get('Content-Type', ''):
-                return None
-            if not _slow_to_start(sx, r.content):
-                _fs_known[ident] = True
-                return None
-        except (requests.RequestException, OSError):
-            return None
-        raw, out = _TC_DIR / (key + '.raw-' + secrets.token_hex(4)), _TC_DIR / (key + '.part-' + secrets.token_hex(4))
-        with _tc_slots:
+            _save(up, raw)
+            cmd = ['ffmpeg', '-v', 'error', '-y', '-i', str(raw), '-map', '0:a', '-c', 'copy'] + (['-movflags', '+faststart', '-f', 'mp4'] if mp4 else ['-f', 'ogg']) + [str(out)]
+            return subprocess.run(cmd, capture_output=True, timeout=120).returncode == 0
+        finally:
             try:
-                up = requests.get(f'{conf[0]}/rest/stream.view', params=_nd_params(conf, {'id': ident, 'format': 'raw'}), stream=True, timeout=(5, 120))
-                if up.status_code >= 400 or 'json' in up.headers.get('Content-Type', ''):
-                    up.close()
-                    return None
-                with open(raw, 'wb') as fh:
-                    for chunk in up.iter_content(1 << 16):
-                        fh.write(chunk)
-                up.close()
-                cmd = ['ffmpeg', '-v', 'error', '-y', '-i', str(raw), '-map', '0:a', '-c', 'copy'] + (['-movflags', '+faststart', '-f', 'mp4'] if mp4 else ['-f', 'ogg']) + [str(out)]
-                done = subprocess.run(cmd, capture_output=True, timeout=120)
-                if done.returncode != 0 or not out.exists() or out.stat().st_size < 1024:
-                    return None
-                os.replace(out, f)
-            except (requests.RequestException, OSError, subprocess.SubprocessError):
-                return None
-            finally:
-                for tmp in (raw, out):
-                    try:
-                        tmp.unlink()
-                    except OSError:
-                        pass
-    _tc_trim(f)
-    return f
+                raw.unlink()
+            except OSError:
+                pass
+    return _cached(_TC_DIR / ('fs-' + _tc_name(ident) + ('.m4a' if mp4 else '.ogg')), make)
+
+
+def _send_cached(f, mimetype):
+    resp = send_file(str(f), mimetype=mimetype, conditional=True)
+    resp.headers['Cache-Control'] = 'private, max-age=3600'
+    return resp
 
 
 @bp.route('/api/music/prewarm', methods=['POST'])
@@ -864,7 +876,7 @@ def music_prewarm():
     ident, rate = d.get('id'), d.get('q')
     if _bad_id(ident) or (rate not in TRANSCODE_RATES and rate != 0) or not _nd_conf():
         return jsonify({'error': 'bad request'}), 400
-    threading.Thread(target=_transcoded if rate else _faststart, args=(ident, rate) if rate else (ident,), daemon=True).start()
+    threading.Thread(target=(lambda: _transcoded(ident, rate)) if rate else (lambda: _faststart(ident)), daemon=True).start()
     return jsonify({'ok': True}), 202
 
 
@@ -879,14 +891,10 @@ def music_stream(ident):
         if rate in TRANSCODE_RATES:                        # a lower quality was asked for: a cached MP3, so seeking still works
             f = _transcoded(ident, rate)
             if f is not None:
-                resp = send_file(str(f), mimetype='audio/mpeg', conditional=True)
-                resp.headers['Cache-Control'] = 'private, max-age=3600'
-                return resp
-        fs = _faststart(ident)                             # an .m4a with its index at the end: a copy with it first, so the song starts in one request
+                return _send_cached(f, 'audio/mpeg')
+        fs = _faststart(ident)                             # a song that is slow to start (see above): the quick-starting copy
         if fs is not None:
-            resp = send_file(str(fs), mimetype='audio/ogg' if fs.suffix == '.ogg' else 'audio/mp4', conditional=True)
-            resp.headers['Cache-Control'] = 'private, max-age=3600'
-            return resp
+            return _send_cached(fs, 'audio/ogg' if fs.suffix == '.ogg' else 'audio/mp4')
         # Navidrome labels WAV audio/x-wav; browsers only reliably accept audio/wav
         ctype = 'audio/wav' if request.args.get('x') == 'wav' else None
         return _nd_proxy('stream', {'id': ident, 'format': 'raw'}, ctype=ctype, cache='private, max-age=3600')      # cacheable, so the first bytes fetched ahead of a skip are still there when the song starts

@@ -8,9 +8,21 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.14"
+VERSION = "0.7.15"
 
 CHANGELOG = [
+    {
+        "version": "0.7.15",
+        "date": "2026-10-31",
+        "changes": [
+            "Skipping songs: one simpler, safer path",
+            "One shared way to make and keep a converted song, instead of two copies of the same code",
+            "A long file (an audiobook) is no longer copied before it plays",
+            "The look-ahead check reads at most 1 MB even if the server ignores the range",
+            "Quick skips get the neighbours of the song they end on, not of every song passed",
+            "Covers kept ahead are dropped in order and never leak",
+        ]
+    },
     {
         "version": "0.7.14",
         "date": "2026-10-30",

@@ -25,3 +25,23 @@ def test_which_songs_are_slow_to_start():
     assert _slow_to_start('m4a', box(b'ftyp', 32) + box(b'moov', 100) + b'covr')               # cover picture inside
     assert _slow_to_start('opus', b'OpusTags....METADATA_BLOCK_PICTURE=....')
     assert not _slow_to_start('opus', b'OpusTags....TITLE=x')
+
+
+def test_size_comes_from_the_range_answer_or_the_length():
+    from routes.music import _size_of
+    assert _size_of({'Content-Range': 'bytes 0-1023/5000000'}) == 5_000_000
+    assert _size_of({'Content-Length': '77'}) == 77
+    assert _size_of({'Content-Range': 'bytes 0-1/*'}) == 0 and _size_of({}) == 0
+
+
+def test_a_copy_that_fails_leaves_nothing_behind(tmp_path, monkeypatch):
+    import routes.music as music
+    monkeypatch.setattr(music, '_TC_DIR', tmp_path / 'tc')
+    f = music._TC_DIR / 'a.mp3'
+
+    def broken(tmp):
+        tmp.write_bytes(b'x' * 4096)
+        raise OSError('disk went away')
+    assert music._cached(f, broken) is None and list(music._TC_DIR.iterdir()) == []         # no half-made file, no leftover
+    assert music._cached(f, lambda tmp: tmp.write_bytes(b'x' * 4096) and True) == f and f.exists()
+    assert music._cached(f, broken) == f                                                    # once made it is just served
