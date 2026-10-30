@@ -8,9 +8,19 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.12"
+VERSION = "0.7.13"
 
 CHANGELOG = [
+    {
+        "version": "0.7.13",
+        "date": "2026-10-30",
+        "changes": [
+            "Skipping songs is fast",
+            "Skipping: the covers and the first stretch of the next songs are fetched ahead, so a skip shows the cover and starts the song at once (about 0.6 s instead of 5 s on a slow connection)",
+            "Songs whose file made the browser wait (an index at the end, or a cover picture inside, common in m4a and opus files) get an audio-only copy made once and kept, made ahead for the next songs",
+            "The next two songs are converted ahead, in every quality",
+        ]
+    },
     {
         "version": "0.7.12",
         "date": "2026-10-28",

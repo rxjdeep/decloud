@@ -1079,7 +1079,14 @@ var mzSp = (function () {
       npTrack = t.f; npLast = {};
       mzEl('sp-np-title').innerHTML = t.li ? '<a class="npl" data-act="np-album" data-v="' + esc(t.li) + '">' + esc(t.t) + '</a>' : esc(t.t);
       mzEl('sp-np-artist').innerHTML = mzArtistLinks(t, 'npl', 'np-artist');
-      mzEl('sp-np-art').innerHTML = cov(t.c, t.h, t.al || t.t, 640, '');
+      var artBox = mzEl('sp-np-art');
+      artBox.innerHTML = cov(t.c, t.h, t.al || t.t, 640, '');
+      var big = artBox.querySelector('img');
+      if (big && !big.complete) {                                  // not in the cache yet: the small picture (already fetched for the mini player) stands in, and the sharp one fades over it
+        var wm = artBox.firstChild; if (wm && t.c) wm.style.background = 'center / cover url("' + mzCoverUrl(t.c, 160) + '")';
+        big.style.opacity = '0';
+        big.addEventListener('load', function () { big.style.transition = 'opacity .16s ease-out'; big.style.opacity = '1'; }, { once: true });
+      }
       lyrLoad(t); npQual(t);
       clearTimeout(npCardsT);
       if (Date.now() < npBusy) npCardsT = setTimeout(function () { var c = mzCur(); if (c && npTrack === c.f) npCards(c); }, Math.max(0, npBusy - Date.now()) + 40);

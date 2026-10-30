@@ -46,7 +46,7 @@ def test_quality_copy_is_made_once_and_can_be_seeked(client, auth_headers, nd):
 def test_unknown_quality_is_ignored(client, auth_headers, nd):
     calls, _ = nd
     client.get('/api/music/stream/abc123', query_string={'q': 7}, headers=auth_headers)
-    assert all(c.get('format') == 'raw' for c in calls)
+    assert all(c.get('format') == 'raw' for c in calls if c.get('id') == 'abc123')          # (the library is asked for too, to see what kind of file it is)
 
 
 def test_cache_is_trimmed(client, auth_headers, nd, monkeypatch):

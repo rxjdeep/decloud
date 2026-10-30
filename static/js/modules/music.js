@@ -863,11 +863,37 @@ function mzStreamUrl(t) {
   if (rate) return id + '?q=' + rate;
   return id + (t.sx === 'wav' ? '?x=wav' : '');
 }
-// the next song is converted while this one plays, so it starts at once
+// The songs after this one are got ready while it plays, so skipping to them is instant: converted on the server (when a lower quality is
+// chosen), their covers fetched into the browser's cache, and the first bytes of the very next song fetched too.
 function mzPrewarmNext() {
-  var rate = mzQualityRate(), nx = mz.queue[mz.qi + 1];
-  if (!rate || !nx || mz.remote) return;
-  fetch('/api/music/prewarm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: nx.f, q: rate }) }).catch(function () {});
+  var rate = mzQualityRate();                                   // 0 = the original: an .m4a gets its index moved to the front
+  if (mz.remote) return;
+  [1, 2].forEach(function (d) {
+    var nx = mz.queue[mz.qi + d]; if (!nx) return;
+    fetch('/api/music/prewarm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: nx.f, q: rate }) }).catch(function () {});
+  });
+}
+var mzPre = { imgs: [], seen: {}, audio: '' };
+var MZ_AHEAD_BYTES = 512 * 1024;
+function mzPreloadAround() {
+  if (mz.remote || !mz.queue.length) return;
+  var save = navigator.connection && navigator.connection.saveData;
+  [1, 2, -1].forEach(function (d) {
+    var t = mz.queue[mz.qi + d]; if (!t || !t.c) return;
+    [64, 160, 640].forEach(function (sz) {                      // the sizes the mini player, the colour and the full-screen player use for a song
+      var u = mzCoverUrl(t.c, sz); if (mzPre.seen[u]) return;
+      mzPre.seen[u] = 1; var im = new Image(); im.decoding = 'async'; im.src = u;
+      mzPre.imgs.push(im); if (mzPre.imgs.length > 24) { var old = mzPre.imgs.shift(); delete mzPre.seen[old.src.replace(location.origin, '')]; }
+    });
+  });
+  var nx = mz.queue[mz.qi + 1];
+  if (nx && !save) {                                            // the first stretch of the next song, so it starts without waiting for the network
+    var url = mzStreamUrl(nx);
+    if (mzPre.audio !== url) {
+      mzPre.audio = url;
+      fetch(url, { headers: { Range: 'bytes=0-' + (MZ_AHEAD_BYTES - 1) } }).then(function (r) { return r.ok ? r.arrayBuffer() : null; }).catch(function () {});
+    }
+  }
 }
 function mzSetQuality(which, kbps) {                              // which: 'wifi' | 'cell'
   var before = mzQualityRate();
@@ -906,7 +932,8 @@ function mzStartCurrent(pos) {
   var t = mzCur(); if (!t) return;
   mz.counted = false; mz.resumeAt = pos || 0; mz.fb = false;
   musicAudio.src = mzStreamUrl(t);
-  setTimeout(mzPrewarmNext, 1500);
+  setTimeout(mzPrewarmNext, 300);
+  setTimeout(mzPreloadAround, 700);                               // after this song's own cover and first bytes have had the network to themselves
 }
 
 // active device ← command from a remote (or from the server during a transfer)
@@ -1080,7 +1107,8 @@ function mzStart() {
   if (!musicAudio) musicAudio = mzEl('music-audio');
   musicCurrentIdx = t.i; mz.counted = false; mz.resumeAt = 0;
   mz.fb = false; musicAudio.src = mzStreamUrl(t);
-  setTimeout(mzPrewarmNext, 1500);
+  setTimeout(mzPrewarmNext, 300);
+  setTimeout(mzPreloadAround, 700);
   if (mz.ac && mz.ac.state !== 'running') { try { mz.ac.resume().catch(function () {}); } catch (_) {} }   // the next song must not wait for an unlock
   mzSaveState(true);
   mzTryPlay(null);

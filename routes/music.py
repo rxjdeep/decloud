@@ -690,7 +690,7 @@ def _tc_limit():
 def _tc_trim(keep=None):
     """Keep the cache under its size: the songs not played for longest go first (never the one just made)."""
     try:
-        files = sorted(((f.stat().st_mtime, f.stat().st_size, f) for f in _TC_DIR.glob('*.mp3') if f != keep))
+        files = sorted(((f.stat().st_mtime, f.stat().st_size, f) for pat in ('*.mp3', '*.m4a', '*.ogg') for f in _TC_DIR.glob(pat) if f != keep))
     except OSError:
         return
     total, limit = sum(x[1] for x in files) + (keep.stat().st_size if keep is not None and keep.exists() else 0), _tc_limit()
@@ -755,14 +755,116 @@ def _transcoded(ident, rate):
     return f
 
 
+# Songs that are slow to start. An .m4a normally has its index (the "moov" box) at the END of the file, so a browser reads the start, finds nothing to play, asks
+# for the end, then goes back: three round trips before the first sound. And a song with its cover picture inside it (m4a and opus files from the usual
+# downloaders) makes the browser read the whole picture before it will start: 4 seconds on a slow connection for a song that starts in 0.4 s without it.
+# So these get a copy with the audio only (no re-encoding, nothing is lost; the cover shown in the app comes from Navidrome, not from the file) and, for an
+# m4a, the index first. It is made once, kept with the converted songs, and made ahead for the next songs while the current one plays.
+_MP4_EXTS = ('m4a', 'mp4', 'm4b')
+_OGG_EXTS = ('opus', 'ogg', 'oga')
+_fs_known = {}                                             # id -> True once a song is known to start fine as it is, so it is not looked at again
+
+
+def _moov_first(head):
+    """True if the index comes before the audio in the first bytes of an mp4 file, False if the audio comes first, None if it cannot be told."""
+    pos = 0
+    while pos + 8 <= len(head):
+        size = int.from_bytes(head[pos:pos + 4], 'big')
+        kind = head[pos + 4:pos + 8]
+        if kind == b'moov':
+            return True
+        if kind == b'mdat':
+            return False
+        if size == 1 and pos + 16 <= len(head):
+            size = int.from_bytes(head[pos + 8:pos + 16], 'big')
+        if size < 8:
+            return None
+        pos += size
+    return None
+
+
+def _slow_to_start(ext, head):
+    """Whether a song, judged by the start of its file, would be slow to start: an mp4 whose index is at the end or that carries a cover picture,
+    or an ogg/opus with a cover picture in its tags."""
+    if ext in _MP4_EXTS:
+        return _moov_first(head[:4096]) is False or b'covr' in head
+    return b'METADATA_BLOCK_PICTURE' in head or b'COVERART' in head
+
+
+def _faststart(ident):
+    """Path of a quick-starting copy of this song (see above), made now if needed. None when the song starts fine as it is or the copy could not be made."""
+    conf = _nd_conf()
+    if not conf or _fs_known.get(ident):
+        return None
+    key = 'fs-' + re.sub(r'[^A-Za-z0-9_-]', '_', ident)
+    for ext in ('m4a', 'ogg'):
+        f = _TC_DIR / (key + '.' + ext)
+        if f.exists():
+            try:
+                os.utime(f, None)
+            except OSError:
+                pass
+            return f
+    t = next((x for x in _library_data().get('tracks', []) if x['f'] == ident), None)
+    sx = (t or {}).get('sx')
+    if sx not in _MP4_EXTS and sx not in _OGG_EXTS:
+        _fs_known[ident] = True
+        return None
+    mp4 = sx in _MP4_EXTS
+    f = _TC_DIR / (key + ('.m4a' if mp4 else '.ogg'))
+    with _tc_lock:
+        lock = _tc_locks.setdefault(key, threading.Lock())
+    with lock:
+        if f.exists():
+            return f
+        try:
+            _TC_DIR.mkdir(exist_ok=True)
+            if shutil.disk_usage(_TC_DIR).free < 2 * 1024 ** 3:
+                return None
+            r = requests.get(f'{conf[0]}/rest/stream.view', params=_nd_params(conf, {'id': ident, 'format': 'raw'}), headers={'Range': 'bytes=0-1048575'}, timeout=(5, 20))
+            if r.status_code >= 400 or 'json' in r.headers.get('Content-Type', ''):
+                return None
+            if not _slow_to_start(sx, r.content):
+                _fs_known[ident] = True
+                return None
+        except (requests.RequestException, OSError):
+            return None
+        raw, out = _TC_DIR / (key + '.raw-' + secrets.token_hex(4)), _TC_DIR / (key + '.part-' + secrets.token_hex(4))
+        with _tc_slots:
+            try:
+                up = requests.get(f'{conf[0]}/rest/stream.view', params=_nd_params(conf, {'id': ident, 'format': 'raw'}), stream=True, timeout=(5, 120))
+                if up.status_code >= 400 or 'json' in up.headers.get('Content-Type', ''):
+                    up.close()
+                    return None
+                with open(raw, 'wb') as fh:
+                    for chunk in up.iter_content(1 << 16):
+                        fh.write(chunk)
+                up.close()
+                cmd = ['ffmpeg', '-v', 'error', '-y', '-i', str(raw), '-map', '0:a', '-c', 'copy'] + (['-movflags', '+faststart', '-f', 'mp4'] if mp4 else ['-f', 'ogg']) + [str(out)]
+                done = subprocess.run(cmd, capture_output=True, timeout=120)
+                if done.returncode != 0 or not out.exists() or out.stat().st_size < 1024:
+                    return None
+                os.replace(out, f)
+            except (requests.RequestException, OSError, subprocess.SubprocessError):
+                return None
+            finally:
+                for tmp in (raw, out):
+                    try:
+                        tmp.unlink()
+                    except OSError:
+                        pass
+    _tc_trim(f)
+    return f
+
+
 @bp.route('/api/music/prewarm', methods=['POST'])
 def music_prewarm():
     """Convert a song in the background (the player asks for the next one while the current one plays)."""
     d = request.get_json(silent=True) or {}
     ident, rate = d.get('id'), d.get('q')
-    if _bad_id(ident) or rate not in TRANSCODE_RATES or not _nd_conf():
+    if _bad_id(ident) or (rate not in TRANSCODE_RATES and rate != 0) or not _nd_conf():
         return jsonify({'error': 'bad request'}), 400
-    threading.Thread(target=_transcoded, args=(ident, rate), daemon=True).start()
+    threading.Thread(target=_transcoded if rate else _faststart, args=(ident, rate) if rate else (ident,), daemon=True).start()
     return jsonify({'ok': True}), 202
 
 
@@ -780,9 +882,14 @@ def music_stream(ident):
                 resp = send_file(str(f), mimetype='audio/mpeg', conditional=True)
                 resp.headers['Cache-Control'] = 'private, max-age=3600'
                 return resp
+        fs = _faststart(ident)                             # an .m4a with its index at the end: a copy with it first, so the song starts in one request
+        if fs is not None:
+            resp = send_file(str(fs), mimetype='audio/ogg' if fs.suffix == '.ogg' else 'audio/mp4', conditional=True)
+            resp.headers['Cache-Control'] = 'private, max-age=3600'
+            return resp
         # Navidrome labels WAV audio/x-wav; browsers only reliably accept audio/wav
         ctype = 'audio/wav' if request.args.get('x') == 'wav' else None
-        return _nd_proxy('stream', {'id': ident, 'format': 'raw'}, ctype=ctype)
+        return _nd_proxy('stream', {'id': ident, 'format': 'raw'}, ctype=ctype, cache='private, max-age=3600')      # cacheable, so the first bytes fetched ahead of a skip are still there when the song starts
     return _file_stream(ident)
 
 
