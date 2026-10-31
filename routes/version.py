@@ -8,9 +8,22 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.21"
+VERSION = "0.7.22"
 
 CHANGELOG = [
+    {
+        "version": "0.7.22",
+        "date": "2026-10-31",
+        "changes": [
+            "Files: a proper file manager (new folder, rename, copy/cut/paste, drag to move, details pane)",
+            "New folder, rename in place (F2), cut / copy / paste (Ctrl+X/C/V) and drag-and-drop to move or Ctrl-drag to copy",
+            "Command bar that follows the selection, a details pane with previews, a storage meter and an editable path bar (Ctrl+L)",
+            "Rubber-band selection, resizable columns, type-to-jump, Shift/Ctrl multi-select and full keyboard control",
+            "Phone: long-press to pick several files with checkmarks, a Places drawer, and a two-line list that adapts to any width",
+            "Colour-coded file types with a two-tone folder icon",
+            "Fixed the Up button and Backspace (a variable was shadowing the function) and permanent delete from Trash never reporting success",
+        ]
+    },
     {
         "version": "0.7.21",
         "date": "2026-10-31",

@@ -39,6 +39,15 @@ var UI_ICON = (function () {
     play: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>',
     photos: ic('<rect x="3" y="3" width="18" height="18" rx="4.5"/><circle cx="9" cy="9.5" r="2"/><path d="M21 15.5l-4.8-4.8L7 20.5"/>'),
     swipe: ic('<path d="M7 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M10 10V4a1.5 1.5 0 0 1 3 0v6"/><path d="M13 10.5V6a1.5 1.5 0 0 1 3 0v6.5"/><path d="M16 11.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-2.7L3.5 15a1.6 1.6 0 0 1 2.6-1.8L7 14"/>'),
+    menu: ic('<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>', 2.1),
+    edit: ic('<path d="M4 20h4L19 9l-4-4L4 16z"/><line x1="13.5" y1="6.5" x2="17.5" y2="10.5"/>'),
+    copy: ic('<rect x="9" y="9" width="11" height="11" rx="2.2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>'),
+    cut: ic('<circle cx="6" cy="6" r="2.6"/><circle cx="6" cy="18" r="2.6"/><line x1="20" y1="4" x2="8.1" y2="15.9"/><line x1="14.5" y1="14.5" x2="20" y2="20"/><line x1="8.1" y1="8.1" x2="12" y2="12"/>'),
+    paste: ic('<rect x="5" y="4.5" width="14" height="17" rx="2.2"/><rect x="9" y="2.5" width="6" height="4" rx="1.2"/>'),
+    folderplus: ic('<path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="9.5" y1="13.5" x2="14.5" y2="13.5"/>'),
+    panel: ic('<rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="15" y1="4" x2="15" y2="20"/>'),
+    selectall: ic('<rect x="4" y="4" width="16" height="16" rx="3"/><polyline points="8.5 12.5 11 15 16 9"/>'),
+    open: ic('<path d="M14 4h6v6"/><line x1="20" y1="4" x2="11" y2="13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>'),
     check_circle: ic('<circle cx="12" cy="12" r="9.5"/><polyline points="8 12.5 11 15.5 16 9"/>', 2),
   };
 })();

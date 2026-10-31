@@ -149,9 +149,14 @@ def lego_browse():
                 have.add(a['path'])
         except Exception:
             pass
+    try:
+        du = _shutil.disk_usage(target)
+        disk = {'free': du.free, 'total': du.total}
+    except OSError:
+        disk = None
     return jsonify({
         'places': places, 'backup': _rel(shared.FILES_DIR), 'trash': _rel(trash_dir), 'is_root': str(root) == '/',
-        'items': page_items,
+        'items': page_items, 'disk': disk,
         'path': subpath,
         'breadcrumbs': breadcrumbs,
         'item_count': total,
@@ -437,6 +442,192 @@ def files_upload():
             tmp.unlink()
         except OSError:
             pass
+
+
+# ─── File operations: new folder, rename, copy / move ────────────────────────
+PASTE_LIMIT = 4 * 1024 ** 3                    # one request copies at most this much (a cross-disk move is a copy)
+
+
+class _FmErr(Exception):
+    pass
+
+
+def _fm_rel(p):
+    try:
+        return str(p.relative_to(_root())).replace('\\', '/')
+    except ValueError:
+        return str(p)
+
+
+def _fm_dir(rel):
+    """(folder, error) for a folder named relative to the root. Hidden folders (~/.ssh and the like) are refused."""
+    rel = str(rel or '')
+    if any(part.startswith('.') and part not in ('', '.') for part in rel.split('/')):
+        return None, 'Hidden folders are off limits'
+    root = _root()
+    folder = safe_join_browse(root, *rel.split('/')) if rel else root
+    if not folder.is_dir():
+        return None, 'Folder not found'
+    return folder, ''
+
+
+def _fm_entry(rel):
+    """(path, error) for an existing file or folder named relative to the root. The last part is NOT resolved, so a
+    symlink is seen as one (and refused) instead of acting on whatever it points to."""
+    parts = [x for x in str(rel or '').split('/') if x not in ('', '.')]
+    if not parts or '..' in parts or any(x.startswith('.') for x in parts):
+        return None, 'Bad path'
+    root = _root()
+    parent = safe_join_browse(root, *parts[:-1])
+    if parent != root.joinpath(*parts[:-1]).resolve():
+        return None, 'Outside Files'
+    p = parent / parts[-1]
+    if p.is_symlink():
+        return None, 'Shortcuts (symlinks) cannot be changed here'
+    if not p.exists():
+        return None, 'Not found'
+    return p, ''
+
+
+def _fm_fixed(p):
+    """Why this folder must stay where it is (home, the main folders, Trash, anything that holds them), or ''."""
+    if not p.is_dir():
+        return ''
+    home = Path.home().resolve()
+    trash = (Path(shared.FILES_DIR) / 'file types' / 'trash').resolve()
+    main = {Path(shared.FILES_DIR).resolve(), trash} | {home / n for n in ('Desktop', 'Documents', 'Downloads', 'Pictures', 'Music', 'Videos')}
+    if p in main or home.is_relative_to(p) or trash.is_relative_to(p) or p.parent == p:
+        return 'That is one of your main folders'
+    return ''
+
+
+def _fm_tree_size(p, cap):
+    if not p.is_dir():
+        return p.lstat().st_size
+    total = 0
+    for dp, _dn, fn in os.walk(p):
+        for f in fn:
+            try:
+                total += os.lstat(os.path.join(dp, f)).st_size
+            except OSError:
+                pass
+        if total > cap:
+            break
+    return total
+
+
+def _fm_free_name(folder, name, is_dir):
+    dest = folder / name
+    stem, ext = (name, '') if is_dir else os.path.splitext(name)
+    n = 2
+    while os.path.lexists(dest):
+        dest = folder / f'{stem} ({n}){ext}'
+        n += 1
+        if n > 1000:
+            raise _FmErr('Too many items with that name')
+    return dest
+
+
+@bp.route('/api/files/mkdir', methods=['POST'])
+def files_mkdir():
+    """{"dir": "<folder>", "name": "<new folder name>"}"""
+    data = request.get_json(silent=True) or {}
+    name = _clean_upload_name(data.get('name'))
+    if name is None:
+        return jsonify({'error': 'Bad folder name'}), 400
+    folder, err = _fm_dir(data.get('dir'))
+    if err:
+        return jsonify({'error': err}), 403 if err.startswith('Hidden') else 404
+    dest = folder / name
+    try:
+        dest.mkdir()
+    except FileExistsError:
+        return jsonify({'error': 'Something with that name already exists'}), 409
+    except OSError as e:
+        return jsonify({'error': e.strerror or str(e)}), 500
+    audit.log('file_mkdir', str(dest))
+    return jsonify({'ok': True, 'name': name, 'path': _fm_rel(dest)})
+
+
+@bp.route('/api/files/rename', methods=['POST'])
+def files_rename():
+    """{"path": "<file or folder>", "name": "<new name>"}: stays in the same folder, never replaces anything."""
+    data = request.get_json(silent=True) or {}
+    name = _clean_upload_name(data.get('name'))
+    if name is None:
+        return jsonify({'error': 'Bad name'}), 400
+    src, err = _fm_entry(data.get('path'))
+    if err:
+        return jsonify({'error': err}), 404 if err == 'Not found' else 400
+    why = _fm_fixed(src)
+    if why:
+        return jsonify({'error': why}), 403
+    dest = src.with_name(name)
+    if dest != src:
+        if os.path.lexists(dest) and not (dest.exists() and dest.samefile(src)):
+            return jsonify({'error': 'Something with that name already exists'}), 409
+        try:
+            os.rename(src, dest)
+        except OSError as e:
+            return jsonify({'error': e.strerror or str(e)}), 500
+        audit.log('file_rename', f'{src} -> {dest}')
+    return jsonify({'ok': True, 'name': name, 'path': _fm_rel(dest)})
+
+
+@bp.route('/api/files/paste', methods=['POST'])
+def files_paste():
+    """{"paths": [...], "dir": "<target folder>", "move": true|false}: copies or moves into a folder. A name that is taken
+    becomes 'name (2)'. Answers with one result per path: {path, to} or {path, error}."""
+    data = request.get_json(silent=True) or {}
+    paths, move = data.get('paths'), bool(data.get('move'))
+    if not isinstance(paths, list) or not paths or len(paths) > 500 or not all(isinstance(x, str) for x in paths):
+        return jsonify({'error': 'Nothing to paste'}), 400
+    folder, err = _fm_dir(data.get('dir'))
+    if err:
+        return jsonify({'error': err}), 403 if err.startswith('Hidden') else 404
+    results, budget = [], PASTE_LIMIT
+    for rel in paths:
+        src, err = _fm_entry(rel)
+        if err:
+            results.append({'path': rel, 'error': err})
+            continue
+        try:
+            if move and _fm_fixed(src):
+                raise _FmErr('That is one of your main folders')
+            if src.is_dir() and (folder == src or folder.is_relative_to(src)):
+                raise _FmErr("A folder can't go inside itself")
+            if move and src.parent == folder:
+                results.append({'path': rel, 'to': rel})            # already there
+                continue
+            dest = _fm_free_name(folder, src.name, src.is_dir())
+            copying = not move or os.stat(src).st_dev != os.stat(folder).st_dev
+            if copying:
+                size = _fm_tree_size(src, budget)
+                if size > budget:
+                    raise _FmErr('Too big to copy in one go (over 4 GB)')
+                if _shutil.disk_usage(folder).free < size + UPLOAD_RESERVE:
+                    raise _FmErr('Not enough free disk space')
+                budget -= size
+            if move:
+                _shutil.move(str(src), str(dest))
+            elif src.is_dir():
+                try:
+                    _shutil.copytree(src, dest, symlinks=True)
+                except Exception:
+                    _shutil.rmtree(dest, ignore_errors=True)         # the half-made copy is ours: not there before
+                    raise
+            else:
+                _shutil.copy2(src, dest)
+            audit.log('file_move' if move else 'file_copy', f'{src} -> {dest}')
+            results.append({'path': rel, 'to': _fm_rel(dest)})
+        except _FmErr as e:
+            results.append({'path': rel, 'error': str(e)})
+        except OSError as e:
+            results.append({'path': rel, 'error': e.strerror or str(e)})
+    done = [r for r in results if 'to' in r]
+    if not done:
+        return jsonify({'error': results[0]['error'], 'results': results}), 400
+    return jsonify({'ok': True, 'done': len(done), 'results': results})
 
 
 CROSS_DISK_FOLDER_LIMIT = 2 * 1024 ** 3        # a folder from another disk is copied into Trash first: refuse big ones

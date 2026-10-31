@@ -10,9 +10,9 @@
   <meta name="theme-color" content="#0a0a0f">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-  <link rel="stylesheet" href="/static/css/app.css?v=330">
-  <link rel="stylesheet" href="/static/css/onboarding.css?v=330">
-  <link rel="stylesheet" href="/static/css/gallery.css?v=330">
+  <link rel="stylesheet" href="/static/css/app.css?v=332">
+  <link rel="stylesheet" href="/static/css/onboarding.css?v=332">
+  <link rel="stylesheet" href="/static/css/gallery.css?v=332">
   <link rel="stylesheet" href="/static/vendor/xterm/xterm.min.css">
   <title>Project Recl/\mr</title>
 </head>
@@ -319,34 +319,37 @@
   </div>
 </div>
 
-<!-- ═══ FILES (Finder / Nautilus style) ═══ -->
+<!-- ═══ FILES (a real file manager) ═══ -->
 <div id="lego-screen" class="screen fm-screen">
-  <div class="fm-bar">
-    <button class="fm-ib fm-home" onclick="goHome()" aria-label="Home" title="Home"><i data-i="home"></i></button>
+  <div class="fm-bar" id="fm-bar">
+    <button class="fm-ib fm-m-only" onclick="fmDrawer(true)" aria-label="Places" title="Places"><i data-i="menu"></i></button>
+    <button class="fm-ib fm-d-only fm-home" onclick="goHome()" aria-label="Home screen" title="Home screen"><i data-i="home"></i></button>
     <div class="fm-nav">
-      <button class="fm-ib" id="fm-back" onclick="fmBack()" aria-label="Back" title="Back"><i data-i="back"></i></button>
-      <button class="fm-ib" id="fm-fwd" onclick="history.forward()" aria-label="Forward" title="Forward"><i data-i="fwd"></i></button>
-      <button class="fm-ib" id="fm-up" onclick="fmUp()" aria-label="Enclosing folder" title="Enclosing folder"><i data-i="up"></i></button>
+      <button class="fm-ib fm-d-only" id="fm-back" onclick="fmBack()" aria-label="Back" title="Back (Alt+Left)"><i data-i="back"></i></button>
+      <button class="fm-ib fm-d-only" id="fm-fwd" onclick="history.forward()" aria-label="Forward" title="Forward (Alt+Right)"><i data-i="fwd"></i></button>
+      <button class="fm-ib" id="fm-up" onclick="fmUp()" aria-label="Enclosing folder" title="Enclosing folder (Alt+Up)"><i data-i="up"></i></button>
     </div>
-    <div class="fm-path" id="lego-breadcrumbs"></div>
+    <div class="fm-path" id="lego-breadcrumbs" title="Click to type a path (Ctrl+L)"></div>
     <div class="fm-tools">
-      <label class="fm-search"><i data-i="search"></i><input id="fm-q" type="search" placeholder="Search" autocomplete="off" spellcheck="false" oninput="fmSearch(this.value)"></label>
+      <label class="fm-search"><i data-i="search"></i><input id="fm-q" type="search" placeholder="Search" autocomplete="off" spellcheck="false" oninput="fmSearch(this.value)" onfocus="fmSearching(true)" onblur="fmSearching(false)"></label>
       <div class="fm-seg" role="group" aria-label="View">
         <button id="fm-v-list" onclick="fmSetView('list')" aria-label="List view" title="List"><i data-i="list"></i></button>
         <button id="fm-v-grid" onclick="fmSetView('grid')" aria-label="Icon view" title="Icons"><i data-i="grid"></i></button>
       </div>
-      <button class="fm-ib" id="fm-sort" onclick="fmSortMenu(event)" aria-label="Sort" title="Sort"><i data-i="sort"></i></button>
-      <button class="fm-ib" id="fm-upload" onclick="fmUploadPick()" aria-label="Upload files" title="Upload files"><i data-i="upload"></i></button>
+      <button class="fm-ib fm-d-only" id="fm-sort" onclick="fmSortMenu(event)" aria-label="Sort" title="Sort"><i data-i="sort"></i></button>
+      <button class="fm-ib fm-d-only" id="fm-infob" onclick="fmAct('info')" aria-label="Details" title="Details (Alt+Enter)"><i data-i="panel"></i></button>
       <button class="fm-ib" id="fm-more" onclick="fmMoreMenu(event)" aria-label="More" title="More"><i data-i="more"></i></button>
     </div>
   </div>
+  <div class="fm-cmd" id="fm-cmd"></div>
   <div class="fm-body">
     <aside class="fm-side" id="fm-side" aria-label="Places"></aside>
+    <div class="fm-scrim" onclick="fmDrawer(false)"></div>
     <main class="fm-main">
-      <div class="fm-head" id="fm-head"></div>
       <div class="fm-list" id="lego-list" tabindex="0"></div>
-      <div class="fm-status" id="fm-status"></div>
+      <div class="fm-status"><span id="fm-stl"></span><span id="fm-str"></span></div>
     </main>
+    <aside class="fm-info" id="fm-info" aria-label="Details" hidden></aside>
   </div>
   <div class="fm-menu" id="fm-menu" hidden></div>
   <!-- Swipe mode -->
@@ -1305,36 +1308,36 @@
 </div>
 
 <script src="/static/js/thinking-orbs.js"></script>
-<script src="/static/js/modules/auth.js?v=330"></script>
-<script src="/static/js/modules/onboarding.js?v=330"></script>
-<script src="/static/js/modules/core.js?v=330"></script>
-<script src="/static/js/modules/nav.js?v=330"></script>
-<script src="/static/js/modules/media-session.js?v=330"></script>
-<script src="/static/js/modules/home.js?v=330"></script>
- <script src="/static/js/modules/liquid.js?v=330"></script>
- <script src="/static/js/modules/musicgen.js?v=330"></script>
- <script src="/static/js/modules/models.js?v=330"></script>
-<script src="/static/js/modules/projects.js?v=330"></script>
-<script src="/static/js/modules/audiobooks.js?v=330"></script>
-<script src="/static/js/modules/ui-kit.js?v=330"></script>
-<script src="/static/js/modules/gallery.js?v=330"></script>
-<script src="/static/js/modules/lego.js?v=330"></script>
-<script src="/static/js/modules/logs.js?v=330"></script>
-<script src="/static/js/modules/terminal.js?v=330"></script>
-<script src="/static/js/modules/osint.js?v=330"></script>
-<script src="/static/js/modules/universe.js?v=330"></script>
-<script src="/static/js/modules/system.js?v=330"></script>
-<script src="/static/js/modules/ollama.js?v=330"></script>
-<script src="/static/js/modules/comfy.js?v=330"></script>
-<script src="/static/js/modules/lego3d.js?v=330"></script>
-<script src="/static/js/modules/voice.js?v=330"></script>
-<script src="/static/js/modules/journal.js?v=330"></script>
-<script src="/static/js/modules/legos3d.js?v=330"></script>
-<script src="/static/js/modules/settings.js?v=330"></script>
-<script src="/static/js/modules/telemetry.js?v=330"></script>
-<script src="/static/js/modules/desktop.js?v=330"></script>
-<script src="/static/js/modules/music.js?v=330"></script>
-<script src="/static/js/modules/music-spotify.js?v=330"></script>
+<script src="/static/js/modules/auth.js?v=332"></script>
+<script src="/static/js/modules/onboarding.js?v=332"></script>
+<script src="/static/js/modules/core.js?v=332"></script>
+<script src="/static/js/modules/nav.js?v=332"></script>
+<script src="/static/js/modules/media-session.js?v=332"></script>
+<script src="/static/js/modules/home.js?v=332"></script>
+ <script src="/static/js/modules/liquid.js?v=332"></script>
+ <script src="/static/js/modules/musicgen.js?v=332"></script>
+ <script src="/static/js/modules/models.js?v=332"></script>
+<script src="/static/js/modules/projects.js?v=332"></script>
+<script src="/static/js/modules/audiobooks.js?v=332"></script>
+<script src="/static/js/modules/ui-kit.js?v=332"></script>
+<script src="/static/js/modules/gallery.js?v=332"></script>
+<script src="/static/js/modules/lego.js?v=332"></script>
+<script src="/static/js/modules/logs.js?v=332"></script>
+<script src="/static/js/modules/terminal.js?v=332"></script>
+<script src="/static/js/modules/osint.js?v=332"></script>
+<script src="/static/js/modules/universe.js?v=332"></script>
+<script src="/static/js/modules/system.js?v=332"></script>
+<script src="/static/js/modules/ollama.js?v=332"></script>
+<script src="/static/js/modules/comfy.js?v=332"></script>
+<script src="/static/js/modules/lego3d.js?v=332"></script>
+<script src="/static/js/modules/voice.js?v=332"></script>
+<script src="/static/js/modules/journal.js?v=332"></script>
+<script src="/static/js/modules/legos3d.js?v=332"></script>
+<script src="/static/js/modules/settings.js?v=332"></script>
+<script src="/static/js/modules/telemetry.js?v=332"></script>
+<script src="/static/js/modules/desktop.js?v=332"></script>
+<script src="/static/js/modules/music.js?v=332"></script>
+<script src="/static/js/modules/music-spotify.js?v=332"></script>
 
 <!-- ═══ ONBOARDING OVERLAY ═══ -->
 <div id="onboarding-overlay" class="onboarding-overlay" style="display:none">
