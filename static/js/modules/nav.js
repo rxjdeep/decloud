@@ -135,40 +135,39 @@ window.addEventListener('popstate', function () {
 });
 window.addEventListener('hashchange', function () { navApply(navHash()); });
 
-// A two-finger swipe sideways on a touchpad goes back / forward, like Back and Forward do (a mouse wheel, pinch and Shift+scroll do not count).
-// The first stretch of a swipe decides what it is; one that starts over something that scrolls sideways, or mostly up and down, is left alone.
+// A two-finger swipe sideways on a touchpad goes back / forward, like Back and Forward do (pinch and Shift+scroll do not count).
+// The movement of the whole swipe is added up and judged as it goes: it counts once it is mostly sideways, so a finger that drifts up or down a little
+// still works, and ordinary scrolling never gets there. A swipe that starts over something that can still scroll sideways is left to it.
 (function () {
-  var sx = 0, sy = 0, last = 0, mode = 0, fired = false, hint = null, hideT = 0;           // mode: 0 deciding, 1 a swipe, 2 something else
+  var sx = 0, sy = 0, last = 0, fired = false, tgt = null, hint = null, hideT = 0;
+  var FIRE = 120;                                                                           // pixels of sideways travel
   function scrollsSideways(el, dir) {                                                       // can this element, or one around it, still move that way?
     for (; el && el !== document.body && el.nodeType === 1; el = el.parentElement) {
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return true;
+      if (el.tagName === 'INPUT' && el.type !== 'range' || el.tagName === 'TEXTAREA' || el.isContentEditable) return true;
       var ox = getComputedStyle(el).overflowX;
-      if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 1 && (dir < 0 ? el.scrollLeft > 0 : el.scrollLeft < el.scrollWidth - el.clientWidth - 1)) return true;
+      if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 4 && (dir < 0 ? el.scrollLeft > 0 : el.scrollLeft < el.scrollWidth - el.clientWidth - 1)) return true;
     }
     return false;
   }
   function show(dx) {                                                                       // the arrow: dx < 0 goes back (arrow on the left)
-    var back = dx < 0, p = Math.min(1, Math.abs(dx) / 140);
-    if (!hint) { hint = document.createElement('div'); hint.className = 'swipe-hint'; document.body.appendChild(hint); }
+    var back = dx < 0, p = Math.min(1, Math.abs(dx) / FIRE);
+    if (!hint) { hint = document.createElement('div'); document.body.appendChild(hint); }
     hint.className = 'swipe-hint ' + (back ? 'l' : 'r') + (p >= 1 ? ' go' : '');
     hint.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="' + (back ? '15 5 8 12 15 19' : '9 5 16 12 9 19') + '"/></svg>';
     hint.style.opacity = p; hint.style.transform = 'translateX(' + ((back ? 1 : -1) * (p * 60 - 56)) + 'px)';
     clearTimeout(hideT); hideT = setTimeout(function () { if (hint) hint.style.opacity = 0; }, 220);
   }
   window.addEventListener('wheel', function (e) {
-    if (e.ctrlKey || e.shiftKey || e.deltaMode !== 0) return;
-    var now = performance.now();
-    if (now - last > 200) { sx = sy = 0; mode = 0; fired = false; }                         // a new swipe: the last one has stopped
+    if (e.ctrlKey || e.shiftKey) return;
+    var now = performance.now(), k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;   // some browsers count a touchpad in lines
+    if (now - last > 200) { sx = sy = 0; fired = false; tgt = e.target; }                    // a new swipe: the last one has stopped
     last = now;
-    if (mode === 2 || fired) return;
-    sx += e.deltaX; sy += e.deltaY;
-    if (mode === 0) {
-      if (Math.abs(sx) + Math.abs(sy) < 12) return;
-      mode = Math.abs(sx) > Math.abs(sy) * 2.5 && !scrollsSideways(e.target, sx) ? 1 : 2;
-      if (mode === 2) return;
-    }
+    if (fired) return;
+    sx += e.deltaX * k; sy += e.deltaY * k;
+    if (Math.abs(sx) < 16 || Math.abs(sx) < Math.abs(sy) * 1.5) return;                     // not (yet) a sideways swipe
     if (sx < 0 && !navCanBack()) return;                                                    // nothing behind: leave the app alone
+    if (scrollsSideways(tgt, sx)) return;
     show(sx);
-    if (Math.abs(sx) >= 140) { fired = true; if (sx < 0) history.back(); else history.forward(); }
+    if (Math.abs(sx) >= FIRE) { fired = true; if (sx < 0) history.back(); else history.forward(); }
   }, { passive: true });
 })();

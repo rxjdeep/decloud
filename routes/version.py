@@ -8,9 +8,19 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.16"
+VERSION = "0.7.17"
 
 CHANGELOG = [
+    {
+        "version": "0.7.17",
+        "date": "2026-10-31",
+        "changes": [
+            "Touchpad swipe now works with a real, slightly wobbly finger",
+            "The back/forward swipe adds up the whole movement instead of deciding from the first few events, so a bit of up-and-down drift no longer cancels it",
+            "Touchpads that report movement in lines work too",
+            "A swipe over something that can still scroll sideways scrolls it",
+        ]
+    },
     {
         "version": "0.7.16",
         "date": "2026-10-31",
