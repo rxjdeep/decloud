@@ -149,12 +149,12 @@ window.addEventListener('hashchange', function () { navApply(navHash()); });
     }
     return false;
   }
-  function show(dx) {                                                                       // the arrow: dx < 0 goes back (arrow on the left)
+  function show(dx, none) {                                                                 // the arrow: dx < 0 goes back (arrow on the left); grey when there is nowhere to go
     var back = dx < 0, p = Math.min(1, Math.abs(dx) / FIRE);
     if (!hint) { hint = document.createElement('div'); document.body.appendChild(hint); }
-    hint.className = 'swipe-hint ' + (back ? 'l' : 'r') + (p >= 1 ? ' go' : '');
+    hint.className = 'swipe-hint ' + (back ? 'l' : 'r') + (none ? ' none' : p >= 1 ? ' go' : '');
     hint.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="' + (back ? '15 5 8 12 15 19' : '9 5 16 12 9 19') + '"/></svg>';
-    hint.style.opacity = p; hint.style.transform = 'translateX(' + ((back ? 1 : -1) * (p * 60 - 56)) + 'px)';
+    hint.style.opacity = none ? p * 0.5 : p; hint.style.transform = 'translateX(' + ((back ? 1 : -1) * (p * 60 - 56)) + 'px)';
     clearTimeout(hideT); hideT = setTimeout(function () { if (hint) hint.style.opacity = 0; }, 220);
   }
   window.addEventListener('wheel', function (e) {
@@ -165,9 +165,9 @@ window.addEventListener('hashchange', function () { navApply(navHash()); });
     if (fired) return;
     sx += e.deltaX * k; sy += e.deltaY * k;
     if (Math.abs(sx) < 16 || Math.abs(sx) < Math.abs(sy) * 1.5) return;                     // not (yet) a sideways swipe
-    if (sx < 0 && !navCanBack()) return;                                                    // nothing behind: leave the app alone
     if (scrollsSideways(tgt, sx)) return;
-    show(sx);
-    if (Math.abs(sx) >= FIRE) { fired = true; if (sx < 0) history.back(); else history.forward(); }
+    var none = sx < 0 && !navCanBack();                                                     // nothing behind: show it, but leave the app alone
+    show(sx, none);
+    if (!none && Math.abs(sx) >= FIRE) { fired = true; if (sx < 0) history.back(); else history.forward(); }
   }, { passive: true });
 })();

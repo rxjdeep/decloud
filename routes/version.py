@@ -8,9 +8,17 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.17"
+VERSION = "0.7.18"
 
 CHANGELOG = [
+    {
+        "version": "0.7.18",
+        "date": "2026-10-31",
+        "changes": [
+            "Touchpad swipe always shows its arrow",
+            "A sideways swipe now always shows the arrow, in grey when there is no earlier screen to go back to, so it no longer looks dead at the start of the app",
+        ]
+    },
     {
         "version": "0.7.17",
         "date": "2026-10-31",

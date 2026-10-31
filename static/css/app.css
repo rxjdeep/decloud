@@ -7064,3 +7064,4 @@ body.desktop-mode .home-title .ht-prompt { font-size: 17px; }
   background: rgba(30,30,30,.92); color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.45); pointer-events: none; opacity: 0; will-change: transform, opacity; }
 .swipe-hint.l { left: 0; } .swipe-hint.r { right: 0; }
 .swipe-hint.go { background: #1ed760; color: #000; }
+.swipe-hint.none { background: rgba(60,60,60,.9); color: #888; }
