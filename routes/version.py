@@ -8,9 +8,19 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.18"
+VERSION = "0.7.19"
 
 CHANGELOG = [
+    {
+        "version": "0.7.19",
+        "date": "2026-10-31",
+        "changes": [
+            "Use the browser's own two-finger back/forward swipe",
+            "Removed the home-made swipe handler and its arrow",
+            "The page no longer switches off the browser's sideways overscroll, so Chrome and Brave's own two-finger swipe goes back and forward, as on YouTube",
+            "Pull-to-refresh and up/down rubber-banding stay off",
+        ]
+    },
     {
         "version": "0.7.18",
         "date": "2026-10-31",

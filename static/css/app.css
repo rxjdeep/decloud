@@ -77,7 +77,7 @@
   }
 }
 
-html, body { overscroll-behavior: none; }   /* no pull-to-refresh or rubber-band over the whole app */
+html, body { overscroll-behavior-y: none; }   /* no pull-to-refresh or rubber-band; sideways is left to the browser, so its two-finger swipe goes back / forward */
 
 * {
   margin: 0;
@@ -6444,10 +6444,10 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
   .wm-toast[data-mzt="spotify"] { bottom: 140px; }
   /* full-screen player = a sheet driven by drag gestures (see music-spotify.js) */
   .wm[data-mzt="spotify"] .sp-np { display: flex; flex-direction: column; position: fixed; inset: 0; z-index: 200; box-sizing: border-box; color: #fff;
-    transform: translate3d(0, 100%, 0); visibility: hidden; will-change: transform; touch-action: pan-y; overscroll-behavior: contain; -webkit-user-select: none; user-select: none;
+    transform: translate3d(0, 100%, 0); visibility: hidden; will-change: transform; touch-action: pan-y; overscroll-behavior-y: contain; -webkit-user-select: none; user-select: none;
     padding: 0; background: #121212; }
   /* the player scrolls: the first screen is the player as before (tinted), the cards come after it */
-  .sp-np-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .sp-np-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .sp-np-scroll::-webkit-scrollbar { display: none; }
   .sp-np-main { min-height: calc(100% - 64px); box-sizing: border-box; display: flex; flex-direction: column;
     padding: calc(var(--safe-top) - 5px) 21px 12px; background: linear-gradient(var(--sp-mini) 0%, #121212 82%); }
@@ -6480,11 +6480,11 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
   .wm[data-mzt="spotify"] .wm-content.sp-v-back { animation: sp-v-back .28s cubic-bezier(.22, .9, .28, 1) backwards; }
   /* queue sheet: slides up over the player (swipe up on the player, swipe down on its header to leave) */
   .wm[data-mzt="spotify"] .sp-q { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 0; top: calc(var(--safe-top) + 10px); z-index: 210; box-sizing: border-box; color: #fff;
-    background: #121212; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.6); transform: translate3d(0, 100%, 0); visibility: hidden; will-change: transform; overscroll-behavior: contain; }
+    background: #121212; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.6); transform: translate3d(0, 100%, 0); visibility: hidden; will-change: transform; overscroll-behavior-y: contain; }
   .sp-q-head { flex-shrink: 0; padding: 8px 12px 0; touch-action: none; -webkit-user-select: none; user-select: none; }
   .sp-q-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .sp-q-bar b { font-size: 16px; font-weight: 800; }
-  .sp-q-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 12px calc(var(--safe-bottom) + 16px); }
+  .sp-q-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 0 12px calc(var(--safe-bottom) + 16px); }
   .sp-q-list h3 { margin: 14px 4px 6px; font-size: 14px; font-weight: 700; color: #b3b3b3; }
   .sp-q-empty { padding: 40px 16px; text-align: center; color: #b3b3b3; }
   .sp-qi { position: relative; overflow: hidden; border-radius: 6px; }
@@ -6641,7 +6641,7 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
 .wm[data-mzt="spotify"] .sp-addtop { flex-shrink: 0; padding: 8px 16px 0; }
 .wm[data-mzt="spotify"] .sp-addgrab { width: 38px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.3); margin: 0 auto 12px; }
 .wm[data-mzt="spotify"] .sp-addhead { text-align: center; font-weight: 800; font-size: 16px; padding-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wm[data-mzt="spotify"] .sp-addscroll { overflow-y: auto; min-height: 0; padding: 0 16px calc(16px + var(--safe-bottom)); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.wm[data-mzt="spotify"] .sp-addscroll { overflow-y: auto; min-height: 0; padding: 0 16px calc(16px + var(--safe-bottom)); overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
 .wm[data-mzt="spotify"] .sp-addrow { display: flex; align-items: center; gap: 12px; width: 100%; box-sizing: border-box; padding: 8px 0; color: #fff; text-align: left; cursor: pointer; user-select: none; -webkit-user-select: none; transition: opacity .15s; }
 .wm[data-mzt="spotify"] .sp-addrow:active { opacity: .7; }
 .wm[data-mzt="spotify"] .sp-addrow.busy { opacity: .5; pointer-events: none; }
@@ -6879,7 +6879,7 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
 .sp-lyr[hidden] { display: none; }
 .sp-lyr-h { margin-bottom: 10px; }
 .sp-lyr-h b { font-size: 20px; font-weight: 800; }
-.sp-lyr-body { position: relative; max-height: 340px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 10px 0 60px; -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent); }
+.sp-lyr-body { position: relative; max-height: 340px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: none; padding: 10px 0 60px; -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent); }
 .sp-lyr-body::-webkit-scrollbar { display: none; }
 .sp-lyr-body p { margin: 0 0 14px; font-size: 24px; line-height: 1.25; font-weight: 800; color: rgba(255,255,255,.42); cursor: pointer; transition: color .25s; overflow-wrap: anywhere; }
 .sp-lyr-body p.on { color: #fff; }
@@ -7058,10 +7058,3 @@ body.desktop-mode .home-title .ht-prompt { font-size: 17px; }
 .wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-mrow .sp-mt b { font-size: 14px; }
 .wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-mrow:hover, .wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-mrow:focus-visible { background: rgba(255,255,255,.1); outline: none; }
 .wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-addsep { margin: 4px 0; }
-
-/* Two-finger swipe on a touchpad: back / forward, with a small arrow that follows the swipe */
-.swipe-hint { position: fixed; top: 50%; z-index: 9999; width: 44px; height: 44px; margin-top: -22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  background: rgba(30,30,30,.92); color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.45); pointer-events: none; opacity: 0; will-change: transform, opacity; }
-.swipe-hint.l { left: 0; } .swipe-hint.r { right: 0; }
-.swipe-hint.go { background: #1ed760; color: #000; }
-.swipe-hint.none { background: rgba(60,60,60,.9); color: #888; }

@@ -38,7 +38,7 @@
 .gl-tabs button.on { color: var(--text); background: var(--hairline-strong); }
 .gl-screen.selecting .gl-tabs { transform: translate(-50%, 140%); opacity: 0; pointer-events: none; }
 
-.gl-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; position: relative; }
+.gl-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior-y: contain; position: relative; }
 .gl-pad { height: calc(var(--safe-bottom) + 110px); }
 .gl-day { position: relative; }
 .gl-dayh { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; background: linear-gradient(var(--bg) 55%, transparent); font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
