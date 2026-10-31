@@ -7046,3 +7046,21 @@ body.desktop-mode #music-screen { max-width: none; margin: 0; }
 @keyframes ht-blink { 50% { opacity: 0; } }
 body.desktop-mode .home-title { max-width: 720px; margin: 0 auto; padding-top: 3vh; }
 body.desktop-mode .home-title .ht-prompt { font-size: 17px; }
+
+/* Right-click menu on a wide screen: a small menu at the pointer instead of the bottom sheet */
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-addback { background: transparent; transition: none; }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-addtop { display: none; }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-addpanel { right: auto; bottom: auto; width: 240px; max-height: 70dvh; padding: 4px; border-radius: 6px; transform: none; opacity: 0; transition: opacity .1s; box-shadow: 0 16px 32px rgba(0,0,0,.5); }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop.open .sp-addpanel { opacity: 1; }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-addscroll { padding: 0; }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-mrow { min-height: 36px; gap: 12px; padding: 0 10px; border-radius: 3px; }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-mrow > svg { width: 18px; height: 18px; }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-mrow .sp-mt b { font-size: 14px; }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-mrow:hover, .wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-mrow:focus-visible { background: rgba(255,255,255,.1); outline: none; }
+.wm[data-mzt="spotify"] .sp-msheet.sp-pop .sp-addsep { margin: 4px 0; }
+
+/* Two-finger swipe on a touchpad: back / forward, with a small arrow that follows the swipe */
+.swipe-hint { position: fixed; top: 50%; z-index: 9999; width: 44px; height: 44px; margin-top: -22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: rgba(30,30,30,.92); color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.45); pointer-events: none; opacity: 0; will-change: transform, opacity; }
+.swipe-hint.l { left: 0; } .swipe-hint.r { right: 0; }
+.swipe-hint.go { background: #1ed760; color: #000; }

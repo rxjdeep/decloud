@@ -8,9 +8,20 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.15"
+VERSION = "0.7.16"
 
 CHANGELOG = [
+    {
+        "version": "0.7.16",
+        "date": "2026-10-31",
+        "changes": [
+            "Desktop: right-click menu on playlists, touchpad swipe and scroll",
+            "Right-clicking a playlist (in the sidebar, on its page header, or on a card) opens a small menu at the pointer: Play, Shuffle play, Play next, Add to queue, Rename, Delete",
+            "Arrow keys and Escape work in that menu",
+            "A two-finger swipe sideways on a touchpad goes back or forward in any part of the app, with an arrow that follows the swipe",
+            "Scrolling with two fingers over the volume bar changes the volume",
+        ]
+    },
     {
         "version": "0.7.15",
         "date": "2026-10-31",

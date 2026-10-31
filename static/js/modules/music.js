@@ -1836,6 +1836,10 @@ function mzBindUI() {
     mz.prefs.vol = vol.value / 100; mz.prefs.muted = false; mzSavePrefs(); mzApplyVolume();
     if (mz.remote) mzCmd('vol', mz.prefs.vol);          // volume belongs to the device that is playing
   });
+  vol.addEventListener('wheel', function (e) {          // two-finger scroll (or the wheel) over the volume bar turns it up and down
+    if (e.ctrlKey || !e.deltaY) return;
+    e.preventDefault(); vol.value = Math.max(0, Math.min(100, +vol.value - e.deltaY / (e.deltaMode ? 3 : 10))); vol.dispatchEvent(new Event('input'));
+  }, { passive: false });
 
   // Escape closes an open menu, sheet or help panel and nothing else. This runs before the desktop's "Escape goes Home" shortcut, which used to
   // fire as well and take you out of the player with the menu still open.

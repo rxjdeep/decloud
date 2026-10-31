@@ -180,12 +180,15 @@ var mzSp = (function () {
     }
     return [];
   }
-  async function playCollection(k, v) {
+  async function collectionList(k, v) {
     if (k === 'playlist' && !mz.plCache[v]) {
       try { var r = await fetch('/api/music/playlist/' + encodeURIComponent(v)); mz.plCache[v] = (await r.json()).ids || []; } catch (_) { mz.plCache[v] = []; }
     }
-    var list = collectionTracks(k, v);
-    if (list.length) { mz.nextCtx = { k: k, v: v }; mzPlayList(list, 0); }
+    return collectionTracks(k, v);
+  }
+  async function playCollection(k, v, shuffle) {
+    var list = await collectionList(k, v);
+    if (list.length) { mz.nextCtx = { k: k, v: v }; mzPlayList(list, 0, shuffle); if (shuffle) SP.render(); }
   }
 
   // ─── sidebar ───────────────────────────────────────────
@@ -1251,6 +1254,8 @@ var mzSp = (function () {
     tick: mi('<polyline points="5 12.5 10 17.5 19 7"/>')
   };
   SP.menuSheet = function (o) {
+    var at = SP.menuAt; SP.menuAt = null;                                         // set by a right-click: on a wide screen the menu opens where the pointer is
+    if (at && !o.at && Date.now() - at.t < 300) o.at = at;
     var old = mzEl('sp-msheet');
     if (old) { if (old._close) old._close(); setTimeout(function () { SP.menuSheet(o); }, 330); return; }   // one at a time: let the first one finish leaving
     mzHaptic('open');
@@ -1264,9 +1269,15 @@ var mzSp = (function () {
     var el = document.createElement('div'); el.id = 'sp-msheet'; el.className = 'sp-addsheet sp-msheet';
     el.innerHTML = '<div class="sp-addback"></div><div class="sp-addpanel" role="dialog" aria-modal="true" aria-label="' + esc(o.title || 'Options') + '"><div class="sp-addtop"><div class="sp-addgrab"></div>' +
       (o.head || (o.title ? '<div class="sp-addhead">' + esc(o.title) + '</div>' : '')) + '</div><div class="sp-addscroll">' + rows + (o.body || '') + '</div></div>';
+    var pop = !!o.at && !mzIsMobile();
+    if (pop) el.classList.add('sp-pop');
     (rootEl() || document.body).appendChild(el);
     if (o.mount) o.mount(el);
     var panel = el.querySelector('.sp-addpanel'), scroller = el.querySelector('.sp-addscroll');
+    if (pop) {                                                                    // beside the pointer, kept inside the window
+      panel.style.left = Math.max(8, Math.min(o.at.x, innerWidth - panel.offsetWidth - 8)) + 'px';
+      panel.style.top = Math.max(8, Math.min(o.at.y, innerHeight - panel.offsetHeight - 8)) + 'px';
+    }
     var closing = false, openedAt = Date.now(), swipedAt = 0, lastScroll = 0;
     var entry = mzSheetOpenEntry(function () { hide(); });                       // Back closes just this sheet
     requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.add('open'); }); });
@@ -1291,7 +1302,16 @@ var mzSp = (function () {
       down = null;
       pick(r);
     });
+    if (pop) {
+      el.addEventListener('contextmenu', function (e) { e.preventDefault(); close(); });           // a second right-click elsewhere just closes it
+      var first = el.querySelector('.sp-mrow[data-i]'); if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 30);
+    }
     el.addEventListener('keydown', function (e) {
+      if (pop && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault();
+        var rs = Array.prototype.slice.call(el.querySelectorAll('.sp-mrow[data-i]')), i = rs.indexOf(document.activeElement);
+        var nx = rs[(i + (e.key === 'ArrowDown' ? 1 : -1) + rs.length) % rs.length]; if (nx) nx.focus({ preventScroll: true });
+      }
       if (e.key === 'Escape') close();
       else if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('sp-mrow')) { e.preventDefault(); pick(e.target); }
     });
@@ -1399,6 +1419,11 @@ var mzSp = (function () {
   SP.playlistMenu = function (pl) {
     var head = '<div class="sp-mhead">' + plCov(pl, 100, 'sm') + '<span class="sp-mt"><b>' + esc(pl.name) + '</b><small>Playlist • ' + plural(pl.n || 0, 'song') + '</small></span></div>';
     SP.menuSheet({ title: pl.name, head: head, items: [
+      { icon: MI.next, label: 'Play', run: function () { playCollection('playlist', pl.id); } },
+      { icon: I.shuffle.replace('width="16" height="16"', 'width="24" height="24"'), label: 'Shuffle play', run: function () { playCollection('playlist', pl.id, true); } },
+      { icon: MI.next, label: 'Play next', run: function () { collectionList('playlist', pl.id).then(function (l) { if (!mzCur()) playCollection('playlist', pl.id); else l.slice().reverse().forEach(function (t) { mzQueueNext(t); }); }); } },
+      { icon: MI.queue, label: 'Add to queue', run: function () { collectionList('playlist', pl.id).then(function (l) { l.forEach(function (t) { mzQueueAdd(t); }); }); } },
+      { sep: true },
       { icon: MI.queue, label: 'Rename', run: function () { setTimeout(function () { SP.renamePlaylist(pl); }, 330); } },
       { icon: TRASH, label: 'Delete playlist', run: function () {
         if (!window.confirm('Delete the playlist "' + pl.name + '"? The songs stay in your library.')) return;
@@ -1440,9 +1465,11 @@ var mzSp = (function () {
     var timer = 0, sx = 0, sy = 0, swallow = 0;
     function target(e) {                                           // a playlist, album or artist card / row: [open its menu]
       if (mz.theme !== 'spotify' || !e.target.closest) return null;
-      var el = e.target.closest('[data-k][data-v]'); if (!el || !el.closest('#music-screen')) return null;
+      var el = e.target.closest('[data-k][data-v]'), k, v;
       if (e.target.closest('button, .sp-playctx, [data-act="sp-playctx"]')) return null;
-      var k = el.dataset.k, v = el.dataset.v;
+      if (el && el.closest('#music-screen')) { k = el.dataset.k; v = el.dataset.v; }
+      else if (e.target.closest('#music-screen .sp-phead') && mz.view.type === 'playlist') { k = 'playlist'; v = mz.view.key; }      // the name and cover on the playlist's own page
+      else return null;
       if (k === 'playlist') { var pl = mz.playlists.filter(function (x) { return x.id === v; })[0]; return pl ? function () { SP.playlistMenu(pl); } : null; }
       if (k === 'album') { var al = mz.albums.get(v); return al ? function () { SP.albumMenu(al); } : null; }
       if (k === 'artist') { var ar = mz.artists.get(v); return ar ? function () { SP.artistMenu(ar); } : null; }
@@ -1457,7 +1484,7 @@ var mzSp = (function () {
     }, true);
     document.addEventListener('pointermove', function (e) { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 8) cancel(); }, true);
     ['pointerup', 'pointercancel', 'scroll'].forEach(function (ev) { document.addEventListener(ev, cancel, true); });
-    document.addEventListener('contextmenu', function (e) { var open = target(e); if (open) { e.preventDefault(); e.stopPropagation(); swallow = Date.now(); open(); } }, true);
+    document.addEventListener('contextmenu', function (e) { var open = target(e); if (open) { e.preventDefault(); e.stopPropagation(); swallow = Date.now(); SP.menuAt = { x: e.clientX, y: e.clientY, t: Date.now() }; open(); } }, true);
     document.addEventListener('click', function (e) { if (Date.now() - swallow < 600) { e.stopPropagation(); e.preventDefault(); } }, true);
   })();
 
