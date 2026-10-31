@@ -8,9 +8,18 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.20"
+VERSION = "0.7.21"
 
 CHANGELOG = [
+    {
+        "version": "0.7.21",
+        "date": "2026-10-31",
+        "changes": [
+            "Spotify playlist links: playlists made by people work",
+            "Spotify keeps the pictures of playlists made by people on a second image host, which was refused as unexpected",
+            "both hosts are accepted now (for playlist and artist links), any other host still is not",
+        ]
+    },
     {
         "version": "0.7.20",
         "date": "2026-10-31",

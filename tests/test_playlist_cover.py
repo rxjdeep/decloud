@@ -53,7 +53,7 @@ def test_spotify_link_uses_the_pages_picture(client, auth_headers, pl, monkeypat
     monkeypatch.setattr(music, '_spotify_page', lambda sid, kind='artist': seen.update(sid=sid, kind=kind) or {'avatar': 'https://i.scdn.co/image/abc', 'name': 'x'})
     monkeypatch.setattr(music, '_sc_fetch_image', lambda url, hosts=None: seen.update(url=url, hosts=hosts) or png(300, 300))
     r = client.post('/api/music/playlist/p1/cover', json={'link': 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M?si=zz'}, headers=auth_headers)
-    assert r.status_code == 200 and seen['sid'] == '37i9dQZF1DXcBWIGoYBM5M' and seen['kind'] == 'playlist' and seen['hosts'] == ('.scdn.co',)
+    assert r.status_code == 200 and seen['sid'] == '37i9dQZF1DXcBWIGoYBM5M' and seen['kind'] == 'playlist' and '.scdn.co' in seen['hosts'] and '.spotifycdn.com' in seen['hosts']
     assert (pl / 'pl_p1-avatar.jpg').exists()
     bad = client.post('/api/music/playlist/p1/cover', json={'link': 'https://example.com/playlist/x'}, headers=auth_headers)
     assert bad.status_code == 400
@@ -73,3 +73,12 @@ def test_remove_and_delete_take_the_picture_away(client, auth_headers, pl):
 def test_overrides_list_the_playlist_picture_so_the_app_can_tag_its_url(client, auth_headers, pl):
     upload(client, auth_headers, 'p1', png(100, 100))
     assert 'pl_p1' in client.get('/api/music/art/overrides', headers=auth_headers).get_json()['v']
+
+
+def test_pictures_of_playlists_made_by_people_are_allowed_but_other_hosts_are_not():
+    for ok in ('https://i.scdn.co/image/a', 'https://image-cdn-ak.spotifycdn.com/image/a', 'https://image-cdn-fa.spotifycdn.com/image/a'):
+        assert any((ok.split('/')[2]).endswith(h) for h in music._SPOTIFY_IMG)
+    with pytest.raises(ValueError):
+        music._sc_fetch_image('https://evil.example.com/a.jpg', music._SPOTIFY_IMG)
+    with pytest.raises(ValueError):
+        music._sc_fetch_image('https://notspotifycdn.com.evil.io/a.jpg', music._SPOTIFY_IMG)

@@ -993,6 +993,7 @@ def music_artwork(ident):
 # You pick the right profile (search results or a pasted link); only that profile's avatar and banner are downloaded and kept in artist_art/.
 # SoundCloud has no public API: profile pages carry their data in the HTML, and search needs the public client_id its own web player uses.
 _ART_DIR = _APP_DIR / 'artist_art'
+_SPOTIFY_IMG = ('.scdn.co', '.spotifycdn.com')          # where Spotify keeps its pictures (playlists made by people are on the second)
 _SC_UA = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0'}
 _sc_cid = {'v': None}
 
@@ -1213,7 +1214,7 @@ def music_art_apply():
             if not sid:
                 return jsonify({'error': 'Give an open.spotify.com/artist/… link'}), 400
             info = _spotify_page(sid)
-            url, name, hosts = info['avatar'], info['name'], ('.scdn.co',)
+            url, name, hosts = info['avatar'], info['name'], _SPOTIFY_IMG
             if info['banner']:
                 _ART_DIR.mkdir(exist_ok=True)
                 (_ART_DIR / f'{aid}-banner.jpg').write_bytes(_sc_fetch_image(info['banner'], hosts))
@@ -1309,7 +1310,7 @@ def music_playlist_cover(pid):
             info = _spotify_page(m.group(m.lastindex), 'playlist')
             if not info['avatar']:
                 return jsonify({'error': 'Spotify shows no picture for that playlist (is it public?)'}), 404
-            data = _sc_fetch_image(info['avatar'], ('.scdn.co',))
+            data = _sc_fetch_image(info['avatar'], _SPOTIFY_IMG)
         jpg = _square_jpeg(data)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
