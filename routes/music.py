@@ -457,6 +457,7 @@ def music_playlist_delete(pid):
         _nd_get('deletePlaylist', id=pid)
     except Exception as e:
         return jsonify({'error': str(e)}), 502
+    _pl_cover_clear(pid)
     _invalidate()
     return jsonify({'ok': True})
 
@@ -971,6 +972,13 @@ def music_artwork(ident):
                 resp = send_file(str(_art_thumb(own, size)), mimetype='image/jpeg', conditional=True)
                 resp.headers['Cache-Control'] = 'private, no-cache'
                 return resp
+        if ident.startswith('pl-'):                          # a playlist with a picture of its own
+            own = _artist_art_file('pl_' + ident[3:].split('_')[0], 'avatar')
+            if own:
+                size = min(1200, max(48, request.args.get('size', 300, type=int)))
+                resp = send_file(str(_art_thumb(own, size)), mimetype='image/jpeg', conditional=True)
+                resp.headers['Cache-Control'] = 'private, no-cache'
+                return resp
         if ident.startswith('ar-') and not _artist_has_photo(ident[3:].split('_')[0]):
             resp = jsonify({'error': 'no photo'})
             resp.status_code = 404
@@ -1107,9 +1115,9 @@ def music_sc_apply():
     return jsonify({'ok': True, 'name': user.get('username', ''), 'got': got})
 
 
-def _spotify_page(sid):
-    """Public artist page: name, photo (og:image) and the wide header image, if it has one."""
-    html = requests.get(f'https://open.spotify.com/artist/{sid}', headers={'User-Agent': 'Mozilla/5.0'}, timeout=20).text   # a browser-like UA gets a page without the preview tags
+def _spotify_page(sid, kind='artist'):
+    """Public artist (or playlist) page: name, photo (og:image) and, for an artist, the wide header image if it has one."""
+    html = requests.get(f'https://open.spotify.com/{kind}/{sid}', headers={'User-Agent': 'Mozilla/5.0'}, timeout=20).text   # a browser-like UA gets a page without the preview tags
     img = re.search(r'<meta property="og:image" content="([^"]+)"', html)
     nm = re.search(r'<meta property="og:title" content="([^"]*)"', html)
     ds = re.search(r'<meta property="og:description" content="([^"]*)"', html)
@@ -1240,6 +1248,84 @@ def music_sc_clear():
     aid = re.sub(r'[^A-Za-z0-9_-]', '_', str((request.get_json(silent=True) or {}).get('aid') or ''))
     for k in ('avatar', 'banner'):
         (_ART_DIR / f'{aid}-{k}.jpg').unlink(missing_ok=True)
+    return jsonify({'ok': True})
+
+
+# ─── A playlist's own picture: an uploaded photo, or the picture of a Spotify playlist link. Kept in artist_art/ as pl_<id>-avatar.jpg ───
+_PL_COVER_MAX = 12 * 1024 * 1024
+
+
+def _pl_cover_file(pid):
+    return _ART_DIR / (re.sub(r'[^A-Za-z0-9_-]', '_', 'pl_' + pid) + '-avatar.jpg')
+
+
+def _pl_cover_clear(pid):
+    f = _pl_cover_file(pid)
+    f.unlink(missing_ok=True)
+    for old in (_ART_DIR / '.thumbs').glob(f'{f.stem}-*.jpg'):
+        old.unlink(missing_ok=True)
+
+
+def _square_jpeg(data):
+    """A picture as a square JPEG (cut from the middle, at most 1000 px): the shape of every cover in the app. Raises ValueError if it is not a picture."""
+    import io
+    from PIL import Image, ImageOps
+    try:
+        im = Image.open(io.BytesIO(data))
+        if im.width * im.height > 60_000_000:
+            raise ValueError('picture too large')
+        im = ImageOps.exif_transpose(im).convert('RGB')
+    except (OSError, Image.DecompressionBombError) as e:
+        raise ValueError('not a picture') from e
+    side = min(im.size)
+    im = im.crop(((im.width - side) // 2, (im.height - side) // 2, (im.width + side) // 2, (im.height + side) // 2))
+    if side > 1000:
+        im = im.resize((1000, 1000), Image.LANCZOS)
+    out = io.BytesIO()
+    im.save(out, 'JPEG', quality=88)
+    return out.getvalue()
+
+
+@bp.route('/api/music/playlist/<pid>/cover', methods=['POST'])
+def music_playlist_cover(pid):
+    """Give a playlist its own picture: an uploaded `file`, or `link` to an open.spotify.com/playlist page (its public picture is used)."""
+    if _bad_id(pid) or not _nd_conf():
+        return jsonify({'error': 'bad request'}), 400
+    try:
+        _nd_get('getPlaylist', id=pid)                       # only for a playlist that exists
+    except Exception:
+        return jsonify({'error': 'Playlist not found'}), 404
+    try:
+        up = request.files.get('file')
+        if up:
+            data = up.read(_PL_COVER_MAX + 1)
+            if len(data) > _PL_COVER_MAX:
+                return jsonify({'error': 'That picture is too big (12 MB at most)'}), 413
+        else:
+            ref = str((request.get_json(silent=True) or {}).get('link') or '').strip()
+            m = re.search(r'playlist[/:]([A-Za-z0-9]{22})', ref) or re.fullmatch(r'()([A-Za-z0-9]{22})', ref)
+            if not m:
+                return jsonify({'error': 'Give an open.spotify.com/playlist/… link'}), 400
+            info = _spotify_page(m.group(m.lastindex), 'playlist')
+            if not info['avatar']:
+                return jsonify({'error': 'Spotify shows no picture for that playlist (is it public?)'}), 404
+            data = _sc_fetch_image(info['avatar'], ('.scdn.co',))
+        jpg = _square_jpeg(data)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': 'Import failed: ' + str(e)[:120]}), 502
+    _ART_DIR.mkdir(exist_ok=True)
+    f = _pl_cover_file(pid)
+    f.write_bytes(jpg)
+    return jsonify({'ok': True, 'v': int(f.stat().st_mtime)})
+
+
+@bp.route('/api/music/playlist/<pid>/cover/clear', methods=['POST'])
+def music_playlist_cover_clear(pid):
+    if _bad_id(pid):
+        return jsonify({'error': 'bad request'}), 400
+    _pl_cover_clear(pid)
     return jsonify({'ok': True})
 
 

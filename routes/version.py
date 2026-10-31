@@ -8,9 +8,21 @@ from flask import Blueprint, jsonify
 
 bp = Blueprint('version', __name__)
 
-VERSION = "0.7.19"
+VERSION = "0.7.20"
 
 CHANGELOG = [
+    {
+        "version": "0.7.20",
+        "date": "2026-10-31",
+        "changes": [
+            "Your own picture for a playlist",
+            "Playlist menu (right-click, long-press or the three dots) has Change cover",
+            "Upload a photo from your device, or paste a Spotify playlist link to use the picture Spotify shows for it",
+            "Remove this cover goes back to the mosaic",
+            "The picture is cut to a square from the middle and used everywhere the playlist shows, including the page colour",
+            "Deleting a playlist removes its picture",
+        ]
+    },
     {
         "version": "0.7.19",
         "date": "2026-10-31",

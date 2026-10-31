@@ -69,7 +69,8 @@ var mzSp = (function () {
   function songsCov(cls) { return '<div class="wm-art sp-art sp-allsongs ' + (cls || '') + '">' + I.note + '</div>'; }
   function plCov(pl, size, cls) {
     var first = pl && mz.plCache[pl.id] && mz.byId.get(mz.plCache[pl.id][0]);
-    return cov((pl && pl.c) || (first && first.c) || '', mzHue(pl ? pl.name : 'pl'), pl ? pl.name : '♪', size, cls);
+    var own = pl && mz.artV && mz.artV['pl_' + pl.id];                                  // a picture chosen for this playlist
+    return cov(own ? 'pl-' + pl.id : (pl && pl.c) || (first && first.c) || '', mzHue(pl ? pl.name : 'pl'), pl ? pl.name : '♪', size, cls);
   }
 
   // ─── tint (page header colour from the cover) ──────────
@@ -487,7 +488,7 @@ var mzSp = (function () {
         if (edit && edit.pid !== v.key) edit = null;                       // left the playlist: edits are discarded
         var ed = edit, pt = (ed ? ed.draft : mz.plCache[v.key]).map(function (id) { return mz.byId.get(id); }).filter(Boolean);
         var pen = '<button class="sp-editbtn" data-act="sp-edit" title="Edit playlist" aria-label="Edit playlist"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></button>';
-        return listPage({ title: pl ? pl.name : 'Playlist', cover: plCov(pl, 300), tint: (pl && pl.c) || (pt[0] && pt[0].c), hue: mzHue(pl ? pl.name : 'p'),
+        return listPage({ title: pl ? pl.name : 'Playlist', cover: plCov(pl, 300), tint: (pl && mz.artV && mz.artV['pl_' + pl.id] ? 'pl-' + pl.id : pl && pl.c) || (pt[0] && pt[0].c), hue: mzHue(pl ? pl.name : 'p'),
           edit: !!ed, actionsExtra: !ed && mzIsMobile() && pt.length ? pen : '',
           more: ed || !pl ? '' : '<button class="sp-mmore" data-act="sp-plmenu" data-v="' + esc(pl.id) + '" aria-label="More options"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>',
           bar: ed ? '<div class="sp-editbar"><button class="cancel" data-act="sp-edit-cancel"' + (ed.saving ? ' disabled' : '') + '>Cancel</button><b>Editing playlist</b><button class="done" data-act="sp-edit-done"' + (ed.saving ? ' disabled' : '') + '>' + (ed.saving ? 'Saving…' : 'Done') + '</button></div>' + selBar(ed) : '' }, pt);
@@ -1425,6 +1426,7 @@ var mzSp = (function () {
       { icon: MI.queue, label: 'Add to queue', run: function () { collectionList('playlist', pl.id).then(function (l) { l.forEach(function (t) { mzQueueAdd(t); }); }); } },
       { sep: true },
       { icon: MI.queue, label: 'Rename', run: function () { setTimeout(function () { SP.renamePlaylist(pl); }, 330); } },
+      { icon: MI.album, label: 'Change cover', run: function () { setTimeout(function () { SP.playlistCover(pl); }, 330); } },
       { icon: TRASH, label: 'Delete playlist', run: function () {
         if (!window.confirm('Delete the playlist "' + pl.name + '"? The songs stay in your library.')) return;
         var had = mz.plCache[pl.id] ? Promise.resolve(mz.plCache[pl.id].slice())
@@ -1443,6 +1445,45 @@ var mzSp = (function () {
         }).catch(function (e) { mzHaptic('warn'); mzToast(e.message || 'Could not delete the playlist'); });
       } }
     ] });
+  };
+  // A picture of your own for a playlist: a photo from this device, or the picture of a Spotify playlist link
+  function setPlCover(pl, send) {
+    mzToast('Saving the cover…');
+    return send.then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Could not save the cover'); return d; }); }).then(function (d) {
+      mz.artV = mz.artV || {}; mz.artV['pl_' + pl.id] = d.v;
+      Object.keys(tintCache).forEach(function (k) { if (k.indexOf('pl-' + pl.id) === 0) delete tintCache[k]; });
+      mzHaptic('like'); mzToast('Cover saved'); mzRender();
+    }).catch(function (e) { mzHaptic('warn'); mzToast(e.message || 'Could not save the cover'); });
+  }
+  SP.playlistCover = function (pl) {
+    var own = mz.artV && mz.artV['pl_' + pl.id], url = '/api/music/playlist/' + encodeURIComponent(pl.id) + '/cover';
+    var items = [
+      { icon: MI.album, label: 'Upload a photo', sub: 'From this device', run: function () {
+        var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+        inp.addEventListener('change', function () { if (inp.files[0]) { var f = new FormData(); f.append('file', inp.files[0]); setPlCover(pl, fetch(url, { method: 'POST', body: f })); } });
+        inp.click();
+      } },
+      { icon: MI.plus, label: 'Use a Spotify playlist link', sub: 'Takes the picture Spotify shows for it', run: function () { setTimeout(function () { SP.playlistCoverLink(pl); }, 330); } }
+    ];
+    if (own) items.push({ sep: true }, { icon: TRASH, label: 'Remove this cover', run: function () {
+      fetch(url + '/clear', { method: 'POST' }).then(function () { delete mz.artV['pl_' + pl.id]; mzToast('Cover removed'); mzRender(); });
+    } });
+    SP.menuSheet({ title: 'Cover for ' + pl.name, items: items });
+  };
+  SP.playlistCoverLink = function (pl) {
+    SP.menuSheet({ title: 'Spotify playlist link', items: [], body: '<div class="sp-qs"><div class="sp-rn"><input id="sp-pc-in" type="text" autocomplete="off" placeholder="open.spotify.com/playlist/…" aria-label="Spotify playlist link"><button type="button" class="sp-rn-ok">Use</button></div>' +
+      '<p class="sp-qs-fine">In Spotify: ⋯ → Share → Copy link to playlist. The playlist has to be public. The picture is cut to a square from the middle.</p></div>',
+      mount: function (el) {
+        var inp = el.querySelector('#sp-pc-in'), ok = el.querySelector('.sp-rn-ok');
+        function go() {
+          var link = inp.value.trim(); if (!link) return;
+          ok.disabled = true; el._close && el._close();
+          setPlCover(pl, fetch('/api/music/playlist/' + encodeURIComponent(pl.id) + '/cover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ link: link }) }));
+        }
+        ok.addEventListener('click', go);
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+        setTimeout(function () { inp.focus(); }, 380);
+      } });
   };
   SP.renamePlaylist = function (pl) {
     SP.menuSheet({ title: 'Rename playlist', items: [], body: '<div class="sp-rn"><input id="sp-rn-in" type="text" maxlength="120" autocomplete="off" value="' + esc(pl.name) + '" aria-label="Playlist name"><button type="button" class="sp-rn-ok">Save</button></div>',

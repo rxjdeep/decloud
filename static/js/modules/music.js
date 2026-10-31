@@ -75,7 +75,10 @@ function mzToggleHaptics() {
   mzToast(mz.prefs.haptics ? 'Vibration on' : 'Vibration off');
 }
 function mzScreenOpen() { var s = mzEl('music-screen'); return !!(s && s.classList.contains('active')); }
-function mzCoverUrl(c, size) { return '/api/music/artwork/' + mzEnc(c) + (size ? '?size=' + size : ''); }
+function mzCoverUrl(c, size) {
+  var u = '/api/music/artwork/' + mzEnc(c) + (size ? '?size=' + size : ''), m = /^pl-([^_]+)/.exec(c), v = m && mz.artV && mz.artV['pl_' + m[1]];     // a playlist picture of its own: tagged with its change time, so a stale copy is never shown
+  return v ? u + (size ? '&' : '?') + 'v=' + v : u;
+}
 function mzArt(t, size, cls, id) {
   var letter = escapeHtml((t.al || t.t || '♪').charAt(0).toUpperCase());
   return '<div class="wm-art ' + (cls || '') + '"' + (id ? ' id="' + id + '"' : '') + ' style="--h:' + t.h + '">' + letter +
